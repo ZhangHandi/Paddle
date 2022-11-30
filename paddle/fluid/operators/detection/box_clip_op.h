@@ -19,15 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class BoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input_box = context.Input<phi::DenseTensor>("Input");
-    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
-    auto* output_box = context.Output<phi::DenseTensor>("Output");
+    auto* input_box = context.Input<LoDTensor>("Input");
+    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* output_box = context.Output<LoDTensor>("Output");
     auto& dev_ctx = context.template device_context<phi::CPUContext>();
     output_box->mutable_data<T>(context.GetPlace());
     if (input_box->lod().size()) {

@@ -70,8 +70,8 @@ TEST(test_tracer, test_trace_op) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -102,8 +102,8 @@ TEST(test_tracer, test_trace_op) {
                , platform::EnforceNotMet);
 #endif
 
-  const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
-  for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -122,8 +122,8 @@ TEST(test_tracer, test_trace_op_with_backward) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -147,8 +147,8 @@ TEST(test_tracer, test_trace_op_with_backward) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
-  const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
-  for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -168,8 +168,8 @@ TEST(test_tracer, test_track_backward_output) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -213,8 +213,8 @@ TEST(test_tracer, test_track_backward_input) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -261,8 +261,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {2, 5};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -305,30 +305,31 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   engine.Init(tensors, grad_tensors);
   engine.Execute();
 
-  phi::DenseTensor rlt;
-  framework::TensorCopySync(vout->Var().Get<phi::DenseTensor>(), place, &rlt);
+  framework::LoDTensor rlt;
+  framework::TensorCopySync(
+      vout->Var().Get<framework::LoDTensor>(), place, &rlt);
   for (int i = 0; i < rlt.numel(); i++) {
     ASSERT_EQ(rlt.data<float>()[i], 4.0);
   }
 
-  phi::DenseTensor out_grad;
+  framework::LoDTensor out_grad;
   framework::TensorCopySync(
-      vout->GradVar().Get<phi::DenseTensor>(), place, &out_grad);
+      vout->GradVar().Get<framework::LoDTensor>(), place, &out_grad);
   for (int i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
 
-  phi::DenseTensor x_grad;
+  framework::LoDTensor x_grad;
   framework::TensorCopySync(
-      x_in->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
+      x_in->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 1.0);
   }
 
-  phi::DenseTensor y_grad;
+  framework::LoDTensor y_grad;
   framework::TensorCopySync(
-      y_in->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
+      y_in->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 1.0);
@@ -398,8 +399,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -424,8 +425,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
-  const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
-  for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 
@@ -440,17 +441,17 @@ TEST(test_tracer, test_var_without_grad_var) {
   engine.Execute();
 
   // check the grad
-  phi::DenseTensor x_grad;
+  framework::LoDTensor x_grad;
   framework::TensorCopySync(
-      x_in->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
+      x_in->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 4.0);
   }
 
-  phi::DenseTensor y_grad;
+  framework::LoDTensor y_grad;
   framework::TensorCopySync(
-      y_in->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
+      y_in->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -475,12 +476,12 @@ static void TestVarOpDestructionMain(const platform::Place& place,
     auto y = std::make_shared<VarBase>("y");
 
     x->MutableVar()
-        ->GetMutable<phi::DenseTensor>()
+        ->GetMutable<framework::LoDTensor>()
         ->Resize({tensor_size, tensor_size})
         .mutable_data<float>(place);
 
     y->MutableVar()
-        ->GetMutable<phi::DenseTensor>()
+        ->GetMutable<framework::LoDTensor>()
         ->Resize({tensor_size, tensor_size})
         .mutable_data<float>(place);
 
@@ -617,8 +618,8 @@ TEST(test_tracer, eager_tracer) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
@@ -644,8 +645,8 @@ TEST(test_tracer, eager_tracer) {
   tracer.TraceOp<egr::EagerVariable>(
       "mul", ins, outs, mul_attr_map, place, true);
 
-  const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
-  for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }

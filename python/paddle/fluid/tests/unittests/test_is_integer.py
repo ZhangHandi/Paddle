@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import numpy as np
-
 import paddle
+import numpy as np
+import unittest
 
 
 class TestIsInteger(unittest.TestCase):
+
     def test_for_integer(self):
         x = paddle.arange(10)
         self.assertTrue(paddle.is_integer(x))

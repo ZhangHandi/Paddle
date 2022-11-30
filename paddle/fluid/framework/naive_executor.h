@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,6 +23,10 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -37,8 +40,6 @@ class Scope;
 
 class NaiveExecutor {
  public:
-  using HookFunc = std::function<void(OperatorBase*)>;
-
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
@@ -52,7 +53,7 @@ class NaiveExecutor {
                bool with_feed_fetch_ops);
 
   // Create variables before head.
-  // Create parameters if persistable is true, or create the temporary variables
+  // Create parameters if persistable is ture, or create the temporary variables
   // instead.
   void CreateVariables(const ProgramDesc& desc,
                        int block_id,
@@ -63,15 +64,15 @@ class NaiveExecutor {
   void Run();
 
   // Get an tensor to operating directly, without the need for feed_ops.
-  phi::DenseTensor* FindTensor(const std::string& name);
+  LoDTensor* FindTensor(const std::string& name);
 
-  Scope* GetScope() { return scope_; }
+  Scope* scope() { return scope_; }
+
+  void CleanFeedFetchOps();
 
   void ResetTrtOps(int num);
 
-  void RegisterOutputHook(const HookFunc& hookfunc);
-
- private:
+ protected:
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
                  bool with_feed_fetch_ops);
@@ -80,9 +81,7 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  Scope* scope_{nullptr};
-
-  HookFunc hookfunc_{nullptr};
+  Scope* scope_;
 };
 
 }  // namespace framework

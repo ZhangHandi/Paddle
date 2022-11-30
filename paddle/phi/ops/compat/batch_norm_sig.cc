@@ -33,18 +33,19 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
-                           {"X", "Mean", "Variance", "Scale", "Bias"},
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
                            {"momentum", "epsilon", "data_layout"},
                            {"Y", "MeanOut", "VarianceOut"});
   } else {
     return KernelSignature("batch_norm",
-                           {"X", "Mean", "Variance", "Scale", "Bias"},
-                           {"is_test",
-                            "momentum",
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"momentum",
                             "epsilon",
                             "data_layout",
+                            "is_test",
                             "use_global_stats",
-                            "trainable_statistics"},
+                            "trainable_statistics",
+                            "fuse_with_relu"},
                            {"Y",
                             "MeanOut",
                             "VarianceOut",
@@ -73,7 +74,8 @@ KernelSignature BatchNormGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics"},
+                          "trainable_statistics",
+                          "fuse_with_relu"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
@@ -95,7 +97,8 @@ KernelSignature BatchNormGradGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics"},
+                          "trainable_statistics",
+                          "fuse_with_relu"},
                          {"DX", "DScale", "DDY"});
 }
 

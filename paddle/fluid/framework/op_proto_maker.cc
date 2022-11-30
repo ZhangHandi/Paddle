@@ -98,12 +98,12 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .SetDefault({})
       .AsExtra();
 
-  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namescope.")
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
       .SetDefault("")
       .AsExtra();
 
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
-                                    "Callstack for Op Creation.")
+                                    "Callstack for Op Creatation.")
       .SetDefault({})
       .AsExtra();
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")

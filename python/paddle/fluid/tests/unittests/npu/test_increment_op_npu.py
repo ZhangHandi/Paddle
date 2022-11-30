@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -29,6 +31,7 @@ NPUPlace = 0
 
 
 class TestIncrement(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -36,9 +39,8 @@ class TestIncrement(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(
-                np.array([1]).astype(self.dtype)
-            ),
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
         }
 
         self.attrs = {"Step": 1}
@@ -56,6 +58,7 @@ class TestIncrement(OpTest):
 
 
 class TestIncrementFP16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -63,9 +66,8 @@ class TestIncrementFP16(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(
-                np.array([1]).astype(self.dtype)
-            ),
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -83,6 +85,7 @@ class TestIncrementFP16(OpTest):
 
 
 class TestIncrementINT64(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -90,9 +93,8 @@ class TestIncrementINT64(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(
-                np.array([1]).astype(self.dtype)
-            ),
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -110,6 +112,7 @@ class TestIncrementINT64(OpTest):
 
 
 class TestIncrementInplace(unittest.TestCase):
+
     def test_npu(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -128,13 +131,9 @@ class TestIncrementInplace(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
-        b_value = exe.run(
-            main_prog,
-            feed={
-                "a": a_np,
-            },
-            fetch_list=[b],
-        )
+        b_value = exe.run(main_prog, feed={
+            "a": a_np,
+        }, fetch_list=[b])
 
         print('input a id is : {}'.format(id(a)))
         print('input b id is : {}'.format(id(b)))

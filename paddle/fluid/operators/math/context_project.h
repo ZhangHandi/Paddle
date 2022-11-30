@@ -18,15 +18,16 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace paddle {
 namespace operators {
 
 namespace math {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -50,8 +51,9 @@ using Tensor = phi::DenseTensor;
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:
  *
- * Assumed input (X) is a [4, M, N] float phi::DenseTensor, and X->lod()[0] =
- * [0, 3, 4]. Besides, for the sake of simplicity, we assume M=1 and N=2.
+ * Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3,
+ * 4].
+ * Besides, for the sake of simplicity, we assume M=1 and N=2.
  *
  * X = [[a1, a2;
  *       b1, b2;
@@ -87,19 +89,18 @@ template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& in,
-                  const phi::DenseTensor* padding_data,
+                  const LoDTensor& in,
+                  const Tensor* padding_data,
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
                   const int context_stride,
                   const int up_pad,
                   const int down_pad,
-                  phi::DenseTensor* col) {
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        im2col_ocf;
+    math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -216,7 +217,7 @@ template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& in,
+                  const LoDTensor& in,
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
@@ -225,12 +226,11 @@ class ContextProjectGradFunctor {
                   const int down_pad,
                   bool pad_grad,
                   bool input_grad,
-                  phi::DenseTensor* padding_data,
-                  phi::DenseTensor* col) {
+                  Tensor* padding_data,
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        col2im_ocf;
+    math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});

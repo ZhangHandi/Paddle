@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
@@ -122,15 +121,13 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
-                                    funcs::ToOneDNNDataType(x.dtype()),
-                                    out_format);
-    out->set_mem_desc(out_mem_desc);
+    out->set_layout(DataLayout::ONEDNN);
+    out->set_format(out_format);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
-    funcs::TransDataLayoutFromOneDNN(
+    funcs::innerTransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout == DataLayout::ONEDNN) {
@@ -138,7 +135,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
         src_layout,
         dst_layout,
         errors::PreconditionNotMet(
-            "No layout transform needed between two oneDNN OPKernels."));
+            "No layout transform needed between two MKLDNN OPKernels."));
   } else {
     TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
   }
@@ -157,13 +154,6 @@ void TransferLayoutKernel(const Context& dev_ctx,
                         "No layout transform needed between same layout."));
   VLOG(10) << "TransDataLayout from " << static_cast<DataLayout>(src_layout)
            << " -> " << static_cast<DataLayout>(dst_layout);
-
-  VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
-  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
-    VLOG(10) << "No need to transform, already is " << x.layout();
-    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    return;
-  }
 
 #ifdef PADDLE_WITH_MKLDNN
   TransferLayoutMKLDNN<Context>(dev_ctx,
@@ -184,10 +174,3 @@ PD_REGISTER_GENERAL_KERNEL(transfer_layout,
                            ALL_LAYOUT,
                            phi::TransferLayoutKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-#endif

@@ -23,8 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SequencePoolKernel : public framework::OpKernel<T> {
@@ -71,7 +71,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     dims[0] = lod[lod_level - 1].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
-    phi::DenseTensor* index = nullptr;
+    Tensor* index = nullptr;
 
     bool is_test =
         context.HasAttr("is_test") ? context.Attr<bool>("is_test") : false;
@@ -81,7 +81,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     if (pooltype == "MAX" &&
         (is_test == false ||
          platform::is_cpu_place(context.GetPlace()) == false)) {
-      index = context.Output<phi::DenseTensor>("MaxIndex");
+      index = context.Output<Tensor>("MaxIndex");
       index->Resize({dims});
       index->mutable_data<int>(context.GetPlace());
     }
@@ -103,9 +103,9 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
-    const phi::DenseTensor* index = nullptr;
+    const Tensor* index = nullptr;
     if (pooltype == "MAX") {
-      index = context.Input<phi::DenseTensor>("MaxIndex");
+      index = context.Input<Tensor>("MaxIndex");
     }
     in_g->mutable_data<T>(context.GetPlace());
     math::SequencePoolGradFunctor<DeviceContext, T> pool;

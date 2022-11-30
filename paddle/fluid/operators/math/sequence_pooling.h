@@ -30,10 +30,10 @@ class SequencePoolFunctor {
   void operator()(const DeviceContext& context,
                   const std::string pooltype,
                   T pad_value,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* output,
+                  const framework::LoDTensor& input,
+                  framework::LoDTensor* output,
                   bool is_test = false,
-                  phi::DenseTensor* index = nullptr);
+                  framework::Tensor* index = nullptr);
 };
 
 template <typename DeviceContext, typename T>
@@ -41,10 +41,10 @@ class SequencePoolGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const std::string pooltype,
-                  const phi::DenseTensor& out_grad,
-                  phi::DenseTensor* in_grad,
+                  const framework::LoDTensor& out_grad,
+                  framework::LoDTensor* in_grad,
                   /* max pool has index */
-                  const phi::DenseTensor* index = nullptr);
+                  const framework::Tensor* index = nullptr);
 };
 
 }  // namespace math

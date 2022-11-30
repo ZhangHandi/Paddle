@@ -50,8 +50,6 @@ inline void cpuid(int reg[4], int x) {
 #endif
 #endif
 
-#include "paddle/phi/backends/cpu/cpu_info.h"
-
 namespace paddle {
 namespace platform {
 
@@ -84,7 +82,18 @@ size_t NPUPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t NPUPinnedMaxChunkSize();
 
-using namespace phi::backends::cpu;  // NOLINT
+typedef enum {
+  isa_any,
+  sse42,
+  avx,
+  avx2,
+  avx512f,
+  avx512_core,
+  avx512_core_vnni,
+  avx512_mic,
+  avx512_mic_4ops,
+  avx512_bf16,
+} cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction
 bool MayIUse(const cpu_isa_t cpu_isa);

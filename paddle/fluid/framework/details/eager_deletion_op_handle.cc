@@ -150,9 +150,8 @@ void EagerDeletionOpHandle::RunImpl() {
 
     Variable *var = vars_[i];
 
-    if (var->IsType<phi::DenseTensor>()) {
-      garbages.emplace_back(
-          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    if (var->IsType<LoDTensor>()) {
+      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()

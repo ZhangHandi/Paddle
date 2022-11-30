@@ -19,6 +19,7 @@ limitations under the License. */
 using CPUPlace = paddle::platform::CPUPlace;
 using XPUPlace = paddle::platform::XPUPlace;
 using LoD = paddle::framework::LoD;
+using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
 template <typename T>
@@ -66,7 +67,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   lod.push_back(level_1);
 
   // Ids
-  phi::DenseTensor tensor_id_cpu;
+  LoDTensor tensor_id_cpu;
   tensor_id_cpu.set_lod(lod);
   tensor_id_cpu.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -75,7 +76,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
     id_cpu_ptr[i] = static_cast<int64_t>(data.at(i));
   }
 
-  phi::DenseTensor tensor_id;
+  LoDTensor tensor_id;
   const phi::DenseTensorMeta meta_data_id(paddle::experimental::DataType::INT64,
                                           tensor_id_cpu.dims());
   tensor_id.set_meta(meta_data_id);
@@ -89,7 +90,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                        tensor_id_cpu.numel() * sizeof(int64_t));
 
   // Scores
-  phi::DenseTensor tensor_score_cpu;
+  LoDTensor tensor_score_cpu;
   tensor_score_cpu.set_lod(lod);
   tensor_score_cpu.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -98,7 +99,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
     score_cpu_ptr[i] = static_cast<T>(data.at(i));
   }
 
-  phi::DenseTensor tensor_score;
+  LoDTensor tensor_score;
 
   if (std::is_same<float, T>::value) {
     const phi::DenseTensorMeta meta_data_score(
@@ -177,8 +178,8 @@ void BeamSearchDecodeTestByXPUFrame() {
   ASSERT_EQ(ids.size(), 5UL);
   ASSERT_EQ(scores.size(), 5UL);
 
-  phi::DenseTensor id_tensor_cpu;
-  phi::DenseTensor score_tensor_cpu;
+  LoDTensor id_tensor_cpu;
+  LoDTensor score_tensor_cpu;
 
   paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
       ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);

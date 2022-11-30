@@ -63,23 +63,22 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(phi::DenseTensor) Ids's type should be phi::DenseTensor"
+             "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
     AddInput("Shows",
-             "(phi::DenseTensor) Shows's type should be phi::DenseTensor"
+             "(LoDTensor) Shows's type should be LoDTensor"
              "THe shows default to be 1.")
         .AsDuplicable();
 
     AddInput("Clicks",
-             "(phi::DenseTensor) Clicks's type should be phi::DenseTensor"
+             "(LoDTensor) Clicks's type should be LoDTensor"
              "THe clicks usually equal to label.")
         .AsDuplicable();
 
-    AddOutput(
-        "Outputs",
-        "(phi::DenseTensor) The lookup results, which have the same type as W.")
+    AddOutput("Outputs",
+              "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);
@@ -113,6 +112,11 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<bool>("use_cvm_op", "(boolean, default false) Use cvm op or not.")
         .SetDefault(false);
+
+    AddAttr<std::vector<int>>("slots",
+                              "[slot_id1, slot_id2] Slots array of Ids.")
+        .SetDefault({})
+        .AsExtra();
 
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.

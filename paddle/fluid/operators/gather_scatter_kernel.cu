@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 class TensorAssign {
  public:
@@ -35,7 +35,7 @@ class ReduceAdd {
       typename tensor_t,
       std::enable_if_t<!std::is_same<tensor_t, uint8_t>::value>* = nullptr>
   __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    phi::CudaAtomicAdd(self_data, *src_data);
+    platform::CudaAtomicAdd(self_data, *src_data);
   }
   template <typename tensor_t,
             std::enable_if_t<std::is_same<tensor_t, uint8_t>::value>* = nullptr>
@@ -98,8 +98,7 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
                           i * outer_dim_size * replaced_select_dim_size;
   int64_t self_idx = is_scatter_like ? replace_index : tid;
   int64_t src_idx = is_scatter_like ? tid : replace_index;
-  reduce_op(static_cast<tensor_t*>(self_data + self_idx),
-            static_cast<tensor_t*>(src_data + src_idx));
+  reduce_op((tensor_t*)(self_data + self_idx), (tensor_t*)(src_data + src_idx));
 }
 
 template <typename tensor_t,
@@ -109,7 +108,7 @@ struct gpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(Tensor self,
                   int dim,
-                  const phi::DenseTensor& index,
+                  const Tensor& index,
                   Tensor src,
                   const std::string& method_name,
                   const func_t& reduce_op,
@@ -162,7 +161,7 @@ struct gpu_gather_scatter_functor {
 template <typename tensor_t, typename index_t>
 void gpu_gather_kernel(Tensor self,
                        int dim,
-                       const phi::DenseTensor& index,
+                       const Tensor& index,
                        Tensor result,
                        const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -175,7 +174,7 @@ void gpu_gather_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_assign_kernel(Tensor self,
                                int dim,
-                               const phi::DenseTensor& index,
+                               const Tensor& index,
                                Tensor src,
                                const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -187,7 +186,7 @@ void gpu_scatter_assign_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_add_kernel(Tensor self,
                             int dim,
-                            const phi::DenseTensor& index,
+                            const Tensor& index,
                             Tensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -199,7 +198,7 @@ void gpu_scatter_add_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_mul_kernel(Tensor self,
                             int dim,
-                            const phi::DenseTensor& index,
+                            const Tensor& index,
                             Tensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -232,7 +231,7 @@ __global__ void ScatterInputGradGPUKernel(tensor_t* grad_data,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_input_grad_kernel(Tensor self,
                                    int dim,
-                                   const phi::DenseTensor& index,
+                                   const Tensor& index,
                                    Tensor grad,
                                    const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();

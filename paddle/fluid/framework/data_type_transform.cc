@@ -35,24 +35,24 @@ struct CastDataTypeFunctor {
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>
-static void XPUCastData(const phi::DenseTensor& in,
-                        phi::DenseTensor* out,
+static void XPUCastData(const framework::Tensor& in,
+                        framework::Tensor* out,
                         const platform::XPUDeviceContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
-  int r = xpu::cast<XPUInTDType, XPUOutTDType>(
+  int r = xpu::cast_v2<XPUInTDType, XPUOutTDType>(
       dev_ctx->x_context(),
       reinterpret_cast<const XPUInTDType*>(in.data<InType>()),
       reinterpret_cast<XPUOutTDType*>(out->mutable_data<OutType>(in.place())),
       in.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
   dev_ctx->Wait();
 }
 
 template <typename InType>
 static void XPUTransDataType(
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const framework::Tensor& in,
+    framework::Tensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
     const platform::DeviceContext* ctx) {
   auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
@@ -79,12 +79,12 @@ static void XPUTransDataType(
 
 template <typename InType>
 struct CastDataType {
-  CastDataType(const phi::DenseTensor& in,
-               phi::DenseTensor* out,
+  CastDataType(const framework::Tensor& in,
+               framework::Tensor* out,
                const platform::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
-  const phi::DenseTensor in_;
-  phi::DenseTensor* out_;
+  const framework::Tensor in_;
+  framework::Tensor* out_;
   const platform::DeviceContext* ctx_;
 
   template <typename OutType>
@@ -112,16 +112,6 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
 #endif
-#if defined(PADDLE_WITH_IPU)
-    } else if (platform::is_ipu_place(in_.place())) {
-      platform::Transform<phi::CPUContext> trans;
-      auto* context = static_cast<const phi::CPUContext*>(ctx_);
-      trans(*context,
-            in_begin,
-            in_end,
-            out_begin,
-            CastDataTypeFunctor<InType, OutType>());
-#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Place type is not supported when casting data type."));
@@ -131,8 +121,8 @@ struct CastDataType {
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type,
-                   const phi::DenseTensor& in,
-                   phi::DenseTensor* out) {
+                   const Tensor& in,
+                   Tensor* out) {
   PADDLE_ENFORCE_EQ(
       framework::TransToProtoVarType(in.dtype()),
       kernel_type_for_var.data_type_,
@@ -145,9 +135,9 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
   TransDataType(in, dst_type, out);
 }
 
-void TransDataType(const phi::DenseTensor& in,
+void TransDataType(const Tensor& in,
                    const paddle::framework::proto::VarType::Type& type,
-                   phi::DenseTensor* out) {
+                   Tensor* out) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
@@ -223,8 +213,8 @@ void TransDataType(const phi::DenseTensor& in,
 
 void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
-                        const phi::DenseTensor& in,
-                        phi::DenseTensor* out) {
+                        const Tensor& in,
+                        Tensor* out) {
   auto& pool = platform::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());

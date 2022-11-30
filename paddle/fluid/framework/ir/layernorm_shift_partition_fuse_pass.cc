@@ -16,7 +16,6 @@
 
 #include <cmath>
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -86,33 +85,22 @@ LayerNormShiftPartitionFusePass::LayerNormShiftPartitionFusePass() {
       .AddAttr("axis")
       .IsType<std::vector<int>>()
       .End();
-  AddOpCompat(OpCompat("roll"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("axis")
-      .IsType<std::vector<int64_t>>()
-      .End()
-      .AddAttr("shifts")
-      .IsType<std::vector<int64_t>>()
-      .End();
 }
 
-int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
-                                                  bool with_roll) const {
+void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(
           "The input graph of LayerNormShiftPartitionFusePass should not be "
           "nullptr."));
+
   FusePassBase::Init(scope_name_, graph);
+
   GraphPatternDetector gpd;
   patterns::LayernormShiftPartitionPattern shift_patition_pattern(
-      gpd.mutable_pattern(), scope_name_, with_roll);
+      gpd.mutable_pattern(), scope_name_);
   shift_patition_pattern();
+
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -120,13 +108,8 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
       LOG(WARNING) << "layernorm_shift_partition_fuse in op compat failed.";
       return;
     }
-    if (with_roll) {
-      VLOG(4)
-          << "layernorm_shift_partition_fuse pass, shift_size>0, with roll op";
-    } else {
-      VLOG(4) << "layernorm_shift_partition_fuse pass, shift_size=0, without "
-                 "roll op";
-    }
+
+    VLOG(4) << "layernorm_shift_partition_fuse pass";
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_in, layer_norm_in, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -140,15 +123,6 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(reshape1_op, reshape1_op, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         reshape1_out, reshape1_out, shift_patition_pattern);
-    Node* roll1_op = nullptr;
-    Node* roll1_out = nullptr;
-    if (with_roll) {
-      GET_IR_NODE_FROM_SUBGRAPH(tmp_roll1_op, roll1_op, shift_patition_pattern);
-      GET_IR_NODE_FROM_SUBGRAPH(
-          tmp_roll1_out, roll1_out, shift_patition_pattern);
-      roll1_op = tmp_roll1_op;
-      roll1_out = tmp_roll1_out;
-    }
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_op, reshape2_op, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         reshape2_out, reshape2_out, shift_patition_pattern);
@@ -162,21 +136,6 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(reshape4_op, reshape4_op, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         reshape4_out, reshape4_out, shift_patition_pattern);
-    std::unordered_set<const Node*> del_node_set = {layer_norm_op,
-                                                    layer_norm_out,
-                                                    reshape1_op,
-                                                    reshape1_out,
-                                                    reshape2_op,
-                                                    reshape2_out,
-                                                    transpose_op,
-                                                    transpose_out,
-                                                    reshape3_op,
-                                                    reshape3_out,
-                                                    reshape4_op};
-    if (with_roll) {
-      del_node_set.insert(roll1_op);
-      del_node_set.insert(roll1_out);
-    }
 
     std::vector<int> shape_atr1 =
         PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
@@ -206,20 +165,7 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
     if (window_size < 0 || input_resolution < 0) {
       return;
     }
-    int shift_size = 0;
-    if (with_roll) {
-      std::vector<int64_t> roll_axis = PADDLE_GET_CONST(
-          std::vector<int64_t>, roll1_op->Op()->GetAttr("axis"));
-      std::vector<int64_t> roll_shifts = PADDLE_GET_CONST(
-          std::vector<int64_t>, roll1_op->Op()->GetAttr("shifts"));
-      if (roll_axis.size() != 2 || roll_axis[0] != 1 || roll_axis[1] != 2) {
-        return;
-      }
-      if (roll_shifts.size() != 2 || roll_shifts[0] != roll_shifts[1]) {
-        return;
-      }
-      shift_size = static_cast<int>(-roll_shifts[0]);
-    }
+
     OpDesc new_op_desc;
     new_op_desc.SetType("layernorm_shift_partition");
     new_op_desc.SetInput("X", {layer_norm_in->Name()});
@@ -230,7 +176,6 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
     new_op_desc.SetAttr("begin_norm_axis",
                         layer_norm_op->Op()->GetAttr("begin_norm_axis"));
     new_op_desc.SetAttr("window_size", window_size);
-    new_op_desc.SetAttr("shift_size", shift_size);
     new_op_desc.SetAttr("input_resolution", input_resolution);
     new_op_desc.Flush();
 
@@ -240,19 +185,22 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
     IR_NODE_LINK_TO(layer_norm_bias, layernorm_shift_partition);
     IR_NODE_LINK_TO(layer_norm_scale, layernorm_shift_partition);
     IR_NODE_LINK_TO(layernorm_shift_partition, reshape4_out);
-    GraphSafeRemoveNodes(graph, del_node_set);
+    GraphSafeRemoveNodes(graph,
+                         {layer_norm_op,
+                          layer_norm_out,
+                          reshape1_op,
+                          reshape1_out,
+                          reshape2_op,
+                          reshape2_out,
+                          transpose_op,
+                          transpose_out,
+                          reshape3_op,
+                          reshape3_out,
+                          reshape4_op});
     ++found_count;
   };
 
   gpd(graph, handler);
-
-  return found_count;
-}
-
-void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
-  int found_count = 0;
-  found_count += ApplyPattern(graph, true);
-  found_count += ApplyPattern(graph, false);
   AddStatis(found_count);
 }
 

@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class ElementwiseFloorDivNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* y = ctx.Input<phi::DenseTensor>("Y");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 

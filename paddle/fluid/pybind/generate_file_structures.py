@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
+import os
 
 if __name__ == "__main__":
     assert len(sys.argv) == 3
@@ -25,8 +25,7 @@ if __name__ == "__main__":
 
     for i in range(split_count):
         empty_files.append(
-            os.path.join(pybind_dir, "op_function" + str(i + 1) + ".cc")
-        )
+            os.path.join(pybind_dir, "op_function" + str(i + 1) + ".cc"))
 
     for path in empty_files:
         if not os.path.exists(path):

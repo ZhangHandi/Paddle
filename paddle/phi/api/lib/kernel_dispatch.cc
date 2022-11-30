@@ -54,29 +54,32 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
-    phi::Backend backend_key = phi::TransToPhiBackend(t.place());
-    BackendSet backend_set(backend_key);
-    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
-        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
-      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
+    switch (t.layout()) {
+      case DataLayout::ONEDNN:
+        backend_set = backend_set | BackendSet(Backend::ONEDNN);
+        break;
+      default:
+        // do nothing
+        break;
     }
     return backend_set;
   }
   return BackendSet(Backend::UNDEFINED);
 }
 
-std::size_t CountLeadingZeros(uint32_t val) {
+std::size_t CountLeadingZeros(uint64_t val) {
 #if defined(__clang__) || defined(__GNUC__)
-  return __builtin_clz(val);
+  return __builtin_clzl(val);
 #elif defined(_MSC_VER)
-  return __lzcnt(val);
+  return __lzcnt64(val);
 #else
   if (val == 0) {
-    return 32;
+    return 64;
   }
   std::size_t zero_bits = 0;
-  for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
-    uint32_t tmp = val >> shift;
+  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
+    uint64_t tmp = val >> shift;
     if (tmp) {
       val = tmp;
     } else {
@@ -123,13 +126,7 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
-  Backend backend_key = phi::TransToPhiBackend(tensor.place());
-  if (backend_key == Backend::GPU &&
-      phi::DenseTensor::classof(tensor.impl().get()) &&
-      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
-    return Backend::GPUDNN;
-  }
-  return backend_key;
+  return phi::TransToPhiBackend(tensor.place());
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {

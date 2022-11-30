@@ -123,10 +123,6 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
-void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
-                              MetaTensor* out,
-                              MetaConfig config);
-
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -158,16 +154,17 @@ void AverageAccumulatesInferMeta(const MetaTensor& param,
                                  MetaTensor* out_num_updates);
 
 void BatchNormInferMeta(const MetaTensor& x,
-                        const MetaTensor& mean,
-                        const MetaTensor& variance,
                         const MetaTensor& scale,
                         const MetaTensor& bias,
-                        bool is_test,
+                        const MetaTensor& mean,
+                        const MetaTensor& variance,
                         float momentum,
                         float epsilon,
                         const std::string& data_layout,
+                        bool is_test,
                         bool use_global_stats,
                         bool trainable_statistics,
+                        bool fuse_with_relu,
                         MetaTensor* y,
                         MetaTensor* mean_out,
                         MetaTensor* variance_out,
@@ -177,10 +174,10 @@ void BatchNormInferMeta(const MetaTensor& x,
                         MetaConfig config = MetaConfig());
 
 void BatchNormInferInferMeta(const MetaTensor& x,
-                             const MetaTensor& mean,
-                             const MetaTensor& variance,
                              const MetaTensor& scale,
                              const MetaTensor& bias,
+                             const MetaTensor& mean,
+                             const MetaTensor& variance,
                              float momentum,
                              float epsilon,
                              const std::string& data_layout,
@@ -287,18 +284,22 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    MetaTensor* out_count,
                                    MetaTensor* out_eids);
 
-void HSigmoidLossInferMeta(const MetaTensor& x,
-                           const MetaTensor& label,
-                           const MetaTensor& w,
-                           const MetaTensor& bias,
-                           const MetaTensor& path,
-                           const MetaTensor& code,
-                           int num_classes,
-                           bool remote_prefetch,
-                           bool is_sparse,
-                           MetaTensor* out,
-                           MetaTensor* pre_out,
-                           MetaTensor* w_out);
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  const MetaTensor& path,
+                                  const MetaTensor& code,
+                                  const MetaTensor& bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
 
 void InterpolateInferMeta(
     const MetaTensor& x,
@@ -446,23 +447,6 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
-void SendUERecvInferMeta(const MetaTensor& x,
-                         const MetaTensor& y,
-                         const MetaTensor& src_index,
-                         const MetaTensor& dst_index,
-                         const std::string& message_op,
-                         const std::string& reduce_op,
-                         const IntArray& out_size,
-                         MetaTensor* out,
-                         MetaTensor* dst_count);
-
-void SendUVInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     const MetaTensor& src_index,
-                     const MetaTensor& dst_index,
-                     const std::string& message_op,
-                     MetaTensor* out);
-
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
@@ -495,27 +479,44 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* loss,
-                      MetaTensor* warpctcgrad);
+                      MetaTensor* warpctcgrad,
+                      MetaTensor* loss);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
 
-void YoloLossInferMeta(const MetaTensor& x,
-                       const MetaTensor& gt_box,
-                       const MetaTensor& gt_label,
-                       const MetaTensor& gt_score,
-                       const std::vector<int>& anchors,
-                       const std::vector<int>& anchor_mask,
-                       int class_num,
-                       float ignore_thresh,
-                       int downsample_ratio,
-                       bool use_label_smooth,
-                       float scale_x_y,
-                       MetaTensor* loss,
-                       MetaTensor* objectness_mask,
-                       MetaTensor* gt_match_mask);
+void Yolov3LossInferMeta(const MetaTensor& x,
+                         const MetaTensor& gt_box,
+                         const MetaTensor& gt_label,
+                         const MetaTensor& gt_score,
+                         const std::vector<int>& anchors,
+                         const std::vector<int>& anchor_mask,
+                         int class_num,
+                         float ignore_thresh,
+                         int downsample_ratio,
+                         bool use_label_smooth,
+                         float scale_x_y,
+                         MetaTensor* loss,
+                         MetaTensor* objectness_mask,
+                         MetaTensor* gt_match_mask);
+
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
+
+void GraphSendUVInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& src_index,
+                          const MetaTensor& dst_index,
+                          const std::string& message_op,
+                          MetaTensor* out);
 
 }  // namespace phi

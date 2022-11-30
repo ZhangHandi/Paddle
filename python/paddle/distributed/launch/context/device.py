@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-
 import paddle.fluid as fluid
 from paddle.device import get_available_custom_device
 
@@ -28,7 +27,8 @@ class DeviceType:
     CUSTOM_DEVICE = 'custom_device'
 
 
-class Device:
+class Device(object):
+
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory
@@ -102,8 +102,7 @@ class Device:
         if 'PADDLE_XCCL_BACKEND' in os.environ:
             dev._dtype = DeviceType.CUSTOM_DEVICE
             visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                os.getenv('PADDLE_XCCL_BACKEND').upper()
-            )
+                os.getenv('PADDLE_XCCL_BACKEND').upper())
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif 'CUDA_VISIBLE_DEVICES' in os.environ:
@@ -128,6 +127,7 @@ class Device:
 
     @classmethod
     def detect_device(self):
+
         def get_custom_devices_count(device_type):
             all_custom_devices = get_available_custom_device()
             all_custom_devices = [
@@ -144,8 +144,7 @@ class Device:
             dev._dtype = DeviceType.CUSTOM_DEVICE
             num = get_custom_devices_count(custom_device_type)
             visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                custom_device_type.upper()
-            )
+                custom_device_type.upper())
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif fluid.core.is_compiled_with_cuda():

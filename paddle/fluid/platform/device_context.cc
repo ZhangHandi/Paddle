@@ -19,6 +19,7 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -27,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/expect.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -73,30 +73,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   }
 }
 
-static DeviceContextPool* pool = nullptr;
-
-DeviceContextPool& DeviceContextPool::Instance() {
-  PADDLE_ENFORCE_NOT_NULL(pool,
-                          phi::errors::PreconditionNotMet(
-                              "Need to Create DeviceContextPool firstly!"));
-  return *pool;
-}
-
-/*! \brief  Create should only called by Init function */
-DeviceContextPool& DeviceContextPool::Init(
-    const std::vector<platform::Place>& places) {
-  if (pool == nullptr) {
-    pool = new DeviceContextPool(places);
-  }
-  return *pool;
-}
-
-bool DeviceContextPool::IsInitialized() { return pool != nullptr; }
-
-void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
-  pool = dev_pool;
-}
-
+DeviceContextPool* DeviceContextPool::pool = nullptr;
 thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
@@ -183,9 +160,6 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
-  dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetZeroAllocator(platform::CPUPlace())
-                                    .get());
   return PtrType(dev_ctx);
 }
 
@@ -224,7 +198,7 @@ void EmplaceDeviceContexts(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<phi::OneDNNContext>(
+      EmplaceDeviceContext<MKLDNNDeviceContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);

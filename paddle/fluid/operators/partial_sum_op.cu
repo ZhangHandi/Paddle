@@ -23,7 +23,8 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using Tensor = phi::DenseTensor;
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <class T>
 __global__ void SumArrayPartialCUDAKernel(T **in,
@@ -76,8 +77,8 @@ template <typename T>
 class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
-    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+    auto in_vars = ctx.MultiInput<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
 
     PADDLE_ENFORCE_EQ(
         in_vars[0] != nullptr,
@@ -150,10 +151,9 @@ template <typename T>
 class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const Tensor *out_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
-    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+    const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,

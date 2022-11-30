@@ -17,22 +17,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class LookupTableV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");      // int tensor
-    auto *output_t = ctx.Output<phi::DenseTensor>("Out");  // float tensor
-    auto *table_t = ctx.Input<phi::DenseTensor>("W");
+    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");      // int tensor
+    auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
+    auto *table_t = ctx.Input<framework::LoDTensor>("W");
     int padding_idx = static_cast<int>(ctx.Attr<int64_t>("padding_idx"));
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        table_var->IsType<phi::DenseTensor>(),
+        table_var->IsType<framework::LoDTensor>(),
         true,
-        platform::errors::InvalidArgument("mlu only accept phi::DenseTensor"));
+        platform::errors::InvalidArgument("mlu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc ids_desc(*ids_t);
@@ -55,23 +55,22 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *table_var = ctx.InputVar("W");
-    PADDLE_ENFORCE_EQ(
-        table_var->IsType<phi::DenseTensor>(),
-        true,
-        platform::errors::PermissionDenied(
-            "Unsupported Variable Type , idx in "
-            "LookupTableV2GradMLUKernel should be phi::DenseTensor."));
+    PADDLE_ENFORCE_EQ(table_var->IsType<framework::LoDTensor>(),
+                      true,
+                      platform::errors::PermissionDenied(
+                          "Unsupported Variable Type , idx in "
+                          "LookupTableV2GradMLUKernel should be LoDTensor."));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
         is_sparse,
         false,
         platform::errors::InvalidArgument(
             "LookupTableV2GradMLUKernel dose NOT support is_sparse = True."));
-    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");
+    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
     auto *output_grad_t =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
     table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     int padding_idx = static_cast<int>(ctx.Attr<int64_t>("padding_idx"));

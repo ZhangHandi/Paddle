@@ -18,7 +18,7 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -29,8 +29,8 @@ struct VisitDataArgNPUMaxFunctor {
       : ctx(ctx) {}
   template <typename Tout>
   void apply() const {
-    auto& x = *(ctx.Input<phi::DenseTensor>("X"));
-    auto& out = *(ctx.Output<phi::DenseTensor>("Out"));
+    auto& x = *(ctx.Input<framework::Tensor>("X"));
+    auto& out = *(ctx.Output<framework::Tensor>("Out"));
     out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto dtype = ctx.Attr<int>("dtype");

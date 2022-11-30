@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import unittest
-
 import numpy as np
 from op_test import OpTest
-from test_attribute_var import UnittestBase
-
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from test_attribute_var import UnittestBase
 
 
 class BaseTestCase(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -46,6 +48,7 @@ class BaseTestCase(OpTest):
 
 
 class TestCase0(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -54,6 +57,7 @@ class TestCase0(BaseTestCase):
 
 
 class TestCase1(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -62,6 +66,7 @@ class TestCase1(BaseTestCase):
 
 
 class TestCase2(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -69,10 +74,10 @@ class TestCase2(BaseTestCase):
         self.axis = 0
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
 class TestCase0FP16(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -80,10 +85,10 @@ class TestCase0FP16(BaseTestCase):
         self.axis = 0
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
 class TestCase1FP16(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -92,6 +97,7 @@ class TestCase1FP16(BaseTestCase):
 
 
 class TestCase2_1(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -100,29 +106,33 @@ class TestCase2_1(BaseTestCase):
 
 
 class TestCase3(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.dims = (3,)
+        self.dims = (3, )
         self.dtype = 'int64'
         self.axis = 0
 
 
 class TestCase4(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (1,)
+        self.dims = (1, )
         self.dtype = 'int32'
         self.axis = 0
 
 
 class TestCase3_(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.dims = (3,)
+        self.dims = (3, )
         self.axis = 0
 
 
 class BaseTestComplex1_1(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -146,6 +156,7 @@ class BaseTestComplex1_1(OpTest):
 
 
 class BaseTestComplex1_2(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -169,6 +180,7 @@ class BaseTestComplex1_2(OpTest):
 
 
 class BaseTestComplex2_1(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -184,19 +196,20 @@ class BaseTestComplex2_1(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(self.x, axis=self.axis)
-                .asdtype("int32")
-                .reshape(4, 5, 1)
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
         else:
             self.outputs = {
-                'Out': np.argmax(self.x, axis=self.axis)
-                .asdtype("int32")
-                .reshape(4, 5, 1)
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
 
 
 class BaseTestComplex2_2(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -212,19 +225,20 @@ class BaseTestComplex2_2(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(self.x, axis=self.axis)
-                .asdtype("int32")
-                .reshape(4, 5, 1)
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
         else:
             self.outputs = {
-                'Out': np.argmax(self.x, axis=self.axis)
-                .asdtype("int32")
-                .reshape(4, 5, 1)
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
 
 
 class TestArgMaxTensorAxis(UnittestBase):
+
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.x = [np.random.randn(*shape) for shape in self.shapes]
@@ -248,9 +262,8 @@ class TestArgMaxTensorAxis(UnittestBase):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[feat, out])
-            paddle.static.save_inference_model(
-                self.save_path, [x], [feat, out], exe
-            )
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
             gt = np.argmax(res[0], 0)
             np.testing.assert_allclose(res[1], gt)
 
@@ -272,6 +285,7 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
+
     def test_static(self):
         main_prog = Program()
         starup_prog = Program()
@@ -290,9 +304,8 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[feat, out])
-            paddle.static.save_inference_model(
-                self.save_path, [x], [feat, out], exe
-            )
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
             gt = np.argmin(res[0], 1)
             np.testing.assert_allclose(np.squeeze(res[1]), gt)
 

@@ -74,8 +74,7 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
-
-  void SplitTensorsDev(const platform::DeviceContext &);
+  void SplitTensors(const platform::Place &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };

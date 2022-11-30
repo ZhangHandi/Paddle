@@ -29,10 +29,10 @@ __global__ void KeDequantize(
 template <typename T>
 struct DequantizeFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
                   float max_range,
-                  phi::DenseTensor* out) {
+                  framework::Tensor* out) {
     const T* in_data = in->data<T>();
     const float* scale_factor = scale->data<float>();
     float* out_data = out->mutable_data<float>(dev_ctx.GetPlace());

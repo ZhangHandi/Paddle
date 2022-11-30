@@ -256,28 +256,15 @@ __global__ void broadcast(const T *src,
   }
 }
 
-template <typename T>
-__global__ void broadcast_batch_head_number(const T *src,
-                                            T *dst,
-                                            const int batch_size,
-                                            const int seq_len,
-                                            const int head_num) {
-  int src_seq_id = blockIdx.x % seq_len;
-  int dst_offset = blockIdx.x * seq_len;
-  if (threadIdx.x < seq_len) {
-    dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_seq_id * seq_len];
-  }
-}
-
 template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = phi::DenseTensor;
-    auto *input = context.Input<phi::DenseTensor>("Input");
-    auto *w = context.Input<phi::DenseTensor>("W");
-    auto *bias = context.Input<phi::DenseTensor>("Bias");
-    auto *bias_qk = context.Input<phi::DenseTensor>("BiasQK");
+    using Tensor = framework::Tensor;
+    auto *input = context.Input<framework::Tensor>("Input");
+    auto *w = context.Input<framework::Tensor>("W");
+    auto *bias = context.Input<framework::Tensor>("Bias");
+    auto *bias_qk = context.Input<framework::Tensor>("BiasQK");
 
     auto *input_d = input->data<T>();
     auto *w_d = w->data<T>();
@@ -299,7 +286,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     Tensor temp_bias_tensor;
     // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
     if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
-      VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
       auto *temp_qk_bias = device_ctx.template Alloc<T>(
           &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
@@ -307,19 +293,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
           bias_qk_d, temp_qk_bias, seq_len, head_number);
-      bias_qk_d = static_cast<const T *>(temp_qk_bias);
-    }
-    // if bias_qk is[1, 1, seq_len, seq_len], the bias_qk_d need to be
-    // broadcasted
-    if (bias_qk && bias_qk->numel() == (1 * seq_len * seq_len)) {
-      VLOG(4) << "do broadcasted bias_qk from  [1, 1, seq_len, seq_len]";
-      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
-      auto *temp_qk_bias = device_ctx.template Alloc<T>(
-          &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-      int grid = batch * head_number * seq_len;
-      int block = round_up(seq_len);
-      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
-          bias_qk_d, temp_qk_bias, batch, seq_len, head_number);
       bias_qk_d = static_cast<const T *>(temp_qk_bias);
     }
     if (!bias_qk) {
@@ -337,7 +310,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int all_head_size = w_dims[2];
     int head_size = all_head_size / head_number;
 
-    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *out = context.Output<framework::Tensor>("Out");
     out->Resize({batch, seq_len, all_head_size});
     auto *output_d =
         device_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
@@ -360,8 +333,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(device_ctx);
     blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
-    VLOG(2) << "(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
-    VLOG(2) << temp_out_tensor;
+
     // temp_out_tensor.Resize(temp_out_dims);
 
     Tensor multihead_temp_tensor;
@@ -393,7 +365,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              head_size,
                              reinterpret_cast<half *>(qkptr),
                              reinterpret_cast<const half *>(bias_qk_d),
-                             false,
                              reinterpret_cast<half *>(tptr),
                              __float2half(static_cast<float>(scale)),
                              __float2half(0.0));
@@ -406,7 +377,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              head_size,
                              qkptr,
                              bias_qk_d,
-                             false,
                              tptr,
                              scale,
                              T(0.0));

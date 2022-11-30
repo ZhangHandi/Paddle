@@ -18,7 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class FusionSeqExpandConcatFCOp : public framework::OperatorWithKernel {
  public:

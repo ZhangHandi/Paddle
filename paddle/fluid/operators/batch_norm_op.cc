@@ -76,8 +76,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
             x_dims));
   }
 
-  const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -158,17 +158,12 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
-  ctx->ShareLoD("X", "Y");
   VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
-  if (!test_mode) {
-    ctx->SetOutputDim("SavedMean", {C});
-    ctx->SetOutputDim("SavedVariance", {C});
-  }
-  if (ctx->HasOutput("ReserveSpace")) {
-    ctx->SetOutputDim("ReserveSpace", {-1});
-  }
+  ctx->SetOutputDim("SavedMean", {C});
+  ctx->SetOutputDim("SavedVariance", {C});
+  ctx->ShareLoD("X", "Y");
 }
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
@@ -183,26 +178,35 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Mean")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type,
-                    framework::TransToProtoVarType(
-                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
-                    platform::errors::InvalidArgument(
-                        "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
+      platform::errors::InvalidArgument(
+          "Variance input should be of float type"));
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout, library);
 }
 
 framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
@@ -213,15 +217,15 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = framework::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
+    if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -350,13 +354,13 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
         true,
         platform::errors::InvalidArgument(
             "Using global stats during training is not supported "
-            "in oneDNN version of batch_norm_gradient kernel now."));
+            "in gradient op kernel of batch_norm_mkldnn_op now."));
   }
 
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -383,16 +387,28 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
@@ -403,15 +419,15 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = framework::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
+    if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -497,8 +513,8 @@ void BatchNormDoubleGradOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX", "BatchNormDoubleGrad");
 
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
@@ -525,8 +541,8 @@ framework::OpKernelType BatchNormDoubleGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

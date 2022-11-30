@@ -25,13 +25,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendMask(phi::DenseTensor* out,
-                int64_t offset,
-                phi::DenseTensor* to_add) {
+void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -124,11 +123,11 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  */
 template <typename T>
 static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
-                                    const phi::DenseTensor& masks,
-                                    const phi::DenseTensor& mask_class_labels,
+                                    const Tensor& masks,
+                                    const Tensor& mask_class_labels,
                                     const int resolution,
                                     const int num_classes,
-                                    phi::DenseTensor* mask_targets) {
+                                    Tensor* mask_targets) {
   const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
   const int* mask_class_labels_data = mask_class_labels.data<int>();
@@ -152,12 +151,12 @@ static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
 
 template <typename T>
 std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
-                                          const phi::DenseTensor& im_info,
-                                          const phi::DenseTensor& gt_classes,
-                                          const phi::DenseTensor& is_crowd,
-                                          const phi::DenseTensor& gt_segms,
-                                          const phi::DenseTensor& rois,
-                                          const phi::DenseTensor& label_int32,
+                                          const Tensor& im_info,
+                                          const Tensor& gt_classes,
+                                          const Tensor& is_crowd,
+                                          const Tensor& gt_segms,
+                                          const Tensor& rois,
+                                          const Tensor& label_int32,
                                           const int num_classes,
                                           const int resolution,
                                           const framework::LoD& segm_length) {
@@ -332,16 +331,16 @@ template <typename T>
 class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* im_info = ctx.Input<phi::DenseTensor>("ImInfo");
-    auto* gt_classes = ctx.Input<phi::DenseTensor>("GtClasses");
-    auto* is_crowd = ctx.Input<phi::DenseTensor>("IsCrowd");
-    auto* gt_segms = ctx.Input<phi::DenseTensor>("GtSegms");
-    auto* rois = ctx.Input<phi::DenseTensor>("Rois");
-    auto* label_int32 = ctx.Input<phi::DenseTensor>("LabelsInt32");
+    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
+    auto* gt_classes = ctx.Input<LoDTensor>("GtClasses");
+    auto* is_crowd = ctx.Input<LoDTensor>("IsCrowd");
+    auto* gt_segms = ctx.Input<LoDTensor>("GtSegms");
+    auto* rois = ctx.Input<LoDTensor>("Rois");
+    auto* label_int32 = ctx.Input<LoDTensor>("LabelsInt32");
 
-    auto* mask_rois = ctx.Output<phi::DenseTensor>("MaskRois");
-    auto* roi_has_mask_int32 = ctx.Output<phi::DenseTensor>("RoiHasMaskInt32");
-    auto* mask_int32 = ctx.Output<phi::DenseTensor>("MaskInt32");
+    auto* mask_rois = ctx.Output<LoDTensor>("MaskRois");
+    auto* roi_has_mask_int32 = ctx.Output<LoDTensor>("RoiHasMaskInt32");
+    auto* mask_int32 = ctx.Output<LoDTensor>("MaskInt32");
 
     int num_classes = ctx.Attr<int>("num_classes");
     int resolution = ctx.Attr<int>("resolution");
@@ -464,20 +463,17 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("GtClasses",
-             "(phi::DenseTensor), This input is a 2D phi::DenseTensor with "
-             "shape [M, 1]. "
+             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
-        "[M, 1]. "
+        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtSegms",
-        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
-        "[S, 2], it's LoD "
+        "(LoDTensor), This input is a 2D LoDTensor with shape [S, 2], it's LoD "
         "level is 3. The LoD[0] represents the gt objects number of each "
         "instance. LoD[1] represents the segmentation counts of each objects. "
         "LoD[2] represents the polygons number of each segmentation. S the "
@@ -485,29 +481,24 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "coordinate points.");
     AddInput(
         "Rois",
-        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
-        "[R, 4]. "
+        "(LoDTensor), This input is a 2D LoDTensor with shape [R, 4]. "
         "R is the number of rois which is the output of "
         "generate_proposal_labels, "
         "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
-             "(phi::DenseTensor), This intput is a 2D phi::DenseTensor with "
-             "shape [R, 1], "
+             "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
              "each element represents a class label of a roi");
     AddOutput(
         "MaskRois",
-        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
-        "[P, 4]. "
+        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
         "P is the number of mask, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
-              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
-              "shape [P, 1], "
+              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
               "each element represents the output mask rois index with regard "
               "to input rois");
     AddOutput("MaskInt32",
-              "(phi::DenseTensor), This output is a 4D phi::DenseTensor with "
-              "shape [P, Q], "
+              "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "
               "Q equal to num_classes * resolution * resolution");
 
     AddAttr<int>("num_classes", "Class number.");

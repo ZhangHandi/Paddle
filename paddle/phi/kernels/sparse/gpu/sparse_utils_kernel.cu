@@ -172,7 +172,6 @@ void DenseToCooKernel(const Context& dev_ctx,
                                                      temp_indexs_ptr,
                                                      indices_data,
                                                      sparse_data);
-
   out->SetMember(indices, values, x_dims, true);
 }
 
@@ -462,8 +461,8 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
 
   const auto place = dev_ctx.GetPlace();
   const T* x_data = values.data<T>();
-  dev_ctx.template Alloc<T>(out);
-
+  *out = phi::Empty(
+      dev_ctx, phi::DenseTensorMeta(x.dtype(), x.dims(), x.values().layout()));
   T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
@@ -539,8 +538,7 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t,
-                   bool) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    GPU,
@@ -553,8 +551,7 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t,
-                   bool) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    GPU,
@@ -614,21 +611,6 @@ PD_REGISTER_KERNEL(values_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::ValuesCsrKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
-
-PD_REGISTER_KERNEL(indices_coo,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::IndicesCooKernel,
                    float,
                    double,
                    phi::dtype::float16,

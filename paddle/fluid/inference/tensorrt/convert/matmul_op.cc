@@ -68,6 +68,7 @@ class MatMulOpConverter : public OpConverter {
         PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8")) &&
         engine_->precision() == AnalysisConfig::Precision::kInt8 &&
         platform::GetGPUComputeCapability(0) >= 75) {
+      
       if (engine_->with_dynamic_shape()) {
         VLOG(3) << "Convert a fluid matmul_op_int8_dynamic to TensorRT "
                    "MatmulPluginLayer";
@@ -141,7 +142,8 @@ class MatMulOpConverter : public OpConverter {
 
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
-          std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+          std::unique_ptr<framework::Tensor> tmp_tensor(
+              new framework::Tensor());
           tmp_tensor->Resize({1});
           auto* tmp_data =
               tmp_tensor->mutable_data<float>(platform::CPUPlace());

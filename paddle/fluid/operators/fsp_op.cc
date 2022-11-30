@@ -68,7 +68,7 @@ class FSPOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context(),

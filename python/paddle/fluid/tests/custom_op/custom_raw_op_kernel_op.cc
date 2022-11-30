@@ -16,14 +16,17 @@
 #include "paddle/fluid/framework/custom_raw_op_kernel_func.h"
 #include "paddle/fluid/platform/enforce.h"
 
-void ReluCPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
+void ReluCPUForward(const paddle::framework::Tensor &x,
+                    paddle::framework::Tensor *y) {
   custom_raw_op::ReluForward(x, y);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y);
+void ReluGPUForward(const paddle::framework::Tensor &x,
+                    paddle::framework::Tensor *y);
 #else
-void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
+void ReluGPUForward(const paddle::framework::Tensor &x,
+                    paddle::framework::Tensor *y) {
   PADDLE_THROW(paddle::platform::errors::Unimplemented(
       "ReluGPUForward is not supported when not compiled with GPU."));
 }
@@ -31,8 +34,8 @@ void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
 
 __PD_DEFINE_RAW_OP_KERNEL_FUNC(custom_raw_relu, ctx) {
   namespace f = paddle::framework;
-  const auto *x = ctx.Input<phi::DenseTensor>("X");
-  auto *y = ctx.Output<phi::DenseTensor>("Y");
+  const auto *x = ctx.Input<f::Tensor>("X");
+  auto *y = ctx.Output<f::Tensor>("Y");
   PADDLE_ENFORCE_NOT_NULL(x,
                           paddle::platform::errors::InvalidArgument(
                               "Input(X) should not be nullptr."));

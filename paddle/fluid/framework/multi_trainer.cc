@@ -141,11 +141,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (root_var->IsType<phi::SelectedRows>()) {
           continue;
         }
-        phi::DenseTensor* root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -214,9 +213,9 @@ void MultiTrainer::MergeDenseParam() {
     for (auto& name : trainable_param_) {
       VLOG(2) << "merge var " << name << " to root scope";
       Variable* root_var = root_scope_->FindVar(name);
-      phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
       Variable* var = thread_scope->FindVar(name);
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       TensorCopySync((*tensor), root_tensor->place(), root_tensor);
     }
   } else {
@@ -226,10 +225,9 @@ void MultiTrainer::MergeDenseParam() {
       for (auto& name : varnames) {
         VLOG(2) << "merge var " << name << " to root scope";
         Variable* root_var = root_scope_->FindVar(name);
-        phi::DenseTensor* root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
         Variable* var = thread_scope->FindVar(name);
-        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
         TensorCopySync((*tensor), root_tensor->place(), root_tensor);
       }
     }
@@ -239,12 +237,11 @@ void MultiTrainer::MergeDenseParam() {
 #endif
 
 template <typename T>
-void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
-                                    phi::DenseTensor* tensor) {
-  phi::DenseTensor tmp_root;
+void MultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
+  LoDTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  phi::DenseTensor tmp_tensor;
+  LoDTensor tmp_tensor;
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -262,7 +259,7 @@ void MultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
 
     for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
@@ -271,8 +268,7 @@ void MultiTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
-      phi::DenseTensor* thread_tensor =
-          thread_var->GetMutable<phi::DenseTensor>();
+      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \

@@ -18,17 +18,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class DeformableConvMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
-    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
 
     const int groups = ctx.Attr<int>("groups");
@@ -125,21 +125,17 @@ template <typename T>
 class DeformableConvGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto* input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto* filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
-    auto* offset_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Offset"));
-    auto* mask_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Mask"));
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto* offset_grad = ctx.Output<Tensor>(framework::GradVarName("Offset"));
+    auto* mask_grad = ctx.Output<Tensor>(framework::GradVarName("Mask"));
 
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
-    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
 
     int groups = ctx.Attr<int>("groups");
     int deformable_groups = ctx.Attr<int>("deformable_groups");

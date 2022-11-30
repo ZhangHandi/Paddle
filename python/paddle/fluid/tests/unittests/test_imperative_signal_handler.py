@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
 import os
-import signal
 import sys
-import time
+import signal
 import unittest
+import multiprocessing
+import time
 
+import paddle.compat as cpt
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -38,7 +39,9 @@ def set_child_signal_handler(self, child_pid):
 
 
 class DygraphDataLoaderSingalHandler(unittest.TestCase):
+
     def func_child_process_exit_with_error(self):
+
         def __test_process__():
             core._set_process_signal_handler()
             sys.exit(1)
@@ -52,7 +55,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Fatal", str(ex))
+                self.assertIn("Fatal", cpt.get_exception_message(ex))
                 exception = ex
             return exception
 
@@ -71,6 +74,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.func_child_process_exit_with_error()
 
     def func_child_process_killed_by_sigsegv(self):
+
         def __test_process__():
             core._set_process_signal_handler()
             os.kill(os.getpid(), signal.SIGSEGV)
@@ -84,7 +88,8 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Segmentation fault", str(ex))
+                self.assertIn("Segmentation fault",
+                              cpt.get_exception_message(ex))
                 exception = ex
             return exception
 
@@ -103,6 +108,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.func_child_process_killed_by_sigsegv()
 
     def func_child_process_killed_by_sigbus(self):
+
         def __test_process__():
             core._set_process_signal_handler()
             os.kill(os.getpid(), signal.SIGBUS)
@@ -116,7 +122,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Bus error", str(ex))
+                self.assertIn("Bus error", cpt.get_exception_message(ex))
                 exception = ex
             return exception
 
@@ -135,6 +141,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.func_child_process_killed_by_sigbus()
 
     def func_child_process_killed_by_sigterm(self):
+
         def __test_process__():
             core._set_process_signal_handler()
             time.sleep(10)

@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
@@ -25,6 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
+using framework::LoDTensor;
 using framework::ProgramDesc;
 using framework::VarDesc;
 using framework::Variable;
@@ -231,7 +233,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     if (var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -278,7 +280,7 @@ void FleetWrapper::PullSparseVarsSync(
     if (var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -326,25 +328,24 @@ void FleetWrapper::PullSparseVarsSync(
 // is_training is true means training, false means inference, the behavior is
 // different on pserver
 
-void FleetWrapper::PullSparseToTensorSync(
-    const uint64_t table_id,
-    int fea_dim,
-    uint64_t padding_id,
-    platform::Place place,
-    bool is_training,
-    std::vector<const phi::DenseTensor*>* inputs,
-    std::vector<phi::DenseTensor*>* outputs) {
+void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
+                                          int fea_dim,
+                                          uint64_t padding_id,
+                                          platform::Place place,
+                                          bool is_training,
+                                          std::vector<const LoDTensor*>* inputs,
+                                          std::vector<LoDTensor*>* outputs) {
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  phi::DenseTensor* output = nullptr;
+  framework::LoDTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const phi::DenseTensor* tensor = inputs->at(index);
+    const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -398,7 +399,7 @@ void FleetWrapper::PullDenseVarsAsync(
       varname = var_names[i] + "pin";
     }
     Variable* var = scope.FindVar(varname);
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* w = tensor->data<float>();
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -417,7 +418,7 @@ void FleetWrapper::PullDenseVarsSync(
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     if (!platform::is_gpu_place(tensor->place())) {
       float* w = tensor->data<float>();
       paddle::distributed::Region reg(w, tensor->numel());
@@ -437,7 +438,7 @@ void FleetWrapper::PushDenseParamSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     if (!platform::is_gpu_place(tensor->place())) {
       float* g = tensor->mutable_data<float>(place);
       paddle::distributed::Region reg(g, tensor->numel());
@@ -468,7 +469,7 @@ void FleetWrapper::PushDenseVarsAsync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g = tensor->mutable_data<float>(place);
     // TODO(zhaocaibei123): how to get batch_size in op?
@@ -544,8 +545,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     const std::string& click_name,
     platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const phi::DenseTensor*>* inputs,
-    std::vector<const phi::DenseTensor*>* outputs) {
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<const LoDTensor*>* outputs) {
   // not support
   return;
 }
@@ -555,11 +556,11 @@ void FleetWrapper::PushSparseFromTensorAsync(
     int fea_dim,
     uint64_t padding_id,
     platform::Place place,
-    std::vector<const phi::DenseTensor*>* inputs,
+    std::vector<const LoDTensor*>* inputs,
     std::vector<int>& slots,
-    const phi::DenseTensor* shows,
-    const phi::DenseTensor* clks,
-    std::vector<phi::DenseTensor*>* outputs,
+    const LoDTensor* shows,
+    const LoDTensor* clks,
+    std::vector<LoDTensor*>* outputs,
     bool use_cvm_op) {
   CHECK(slots.size() == inputs->size());
   int batch_size = -1;
@@ -568,8 +569,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
     size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
-      batch_size = static_cast<int>(cur_batch_size);
-    } else if (batch_size != static_cast<int>(cur_batch_size)) {
+      batch_size = int(cur_batch_size);
+    } else if (batch_size != int(cur_batch_size)) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -601,7 +602,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   const float* clk_tensor = clks->data<float>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    phi::DenseTensor* g_tensor = outputs->at(index);
+    framework::LoDTensor* g_tensor = outputs->at(index);
     float* g = g_tensor->data<float>();
     // no cvm
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -616,7 +617,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
       }
     }
 
-    const phi::DenseTensor* tensor = inputs->at(index);
+    const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;
@@ -777,7 +778,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
       VLOG(3) << "prepare shrink dense batch_sum";
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
 
       // show_batch_sum += N * log(decay)
@@ -787,7 +788,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
-      float* g_size = var_size->GetMutable<phi::DenseTensor>()->data<float>();
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -797,7 +798,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
     } else {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
       paddle::distributed::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));

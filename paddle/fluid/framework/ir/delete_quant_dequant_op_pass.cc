@@ -66,12 +66,13 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     // Get input scale from tensor
     std::string input_scale_var_name =
         quant_dequant_op->Op()->Input("InScale").front();
+    //std::cout << "input scale var name: " << input_scale_var_name << std::endl;
     PADDLE_ENFORCE_NOT_NULL(
         scope,
         platform::errors::InvalidArgument(
             "Scope in DeleteQuantDequantOpPass should not be null."));
-    const phi::DenseTensor& input_scale_tensor =
-        scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
+    const LoDTensor& input_scale_tensor =
+        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()),
         true,
@@ -79,6 +80,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float input_scale = input_scale_data[0];
+    //std::cout << "input scale: " << input_scale << std::endl;
 
     // Set input scale in attr, and relink nodes
     std::string input_name = input->Var()->Name();

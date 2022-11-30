@@ -15,8 +15,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/phi/backends/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {
@@ -27,7 +25,7 @@ using XPUOpListMap =
     std::unordered_map<std::string, std::vector<vartype::Type>>;
 
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
-using phi::backends::xpu::is_in_xpu_black_list;
+bool is_in_xpu_black_list(const std::string& op_name);
 
 #ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& op_name,

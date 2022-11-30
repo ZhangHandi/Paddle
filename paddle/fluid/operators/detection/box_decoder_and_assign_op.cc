@@ -14,6 +14,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
+
 class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -155,12 +157,12 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "default.")
         .AsDispensable();
     AddInput("TargetBox",
-             "(phi::DenseTensor or Tensor) "
-             "This input can be a 2-D phi::DenseTensor with shape "
+             "(LoDTensor or Tensor) "
+             "This input can be a 2-D LoDTensor with shape "
              "[N, classnum*4]. It holds N targets for N boxes.");
     AddInput("BoxScore",
-             "(phi::DenseTensor or Tensor) "
-             "This input can be a 2-D phi::DenseTensor with shape "
+             "(LoDTensor or Tensor) "
+             "This input can be a 2-D LoDTensor with shape "
              "[N, classnum], each box is represented as [classnum] which is "
              "the classification probabilities.");
     AddAttr<float>("box_clip",
@@ -168,12 +170,12 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
                    "clip box to prevent overflowing")
         .SetDefault(4.135f);
     AddOutput("DecodeBox",
-              "(phi::DenseTensor or Tensor) "
+              "(LoDTensor or Tensor) "
               "the output tensor of op with shape [N, classnum * 4] "
               "representing the result of N target boxes decoded with "
               "M Prior boxes and variances for each class.");
     AddOutput("OutputAssignBox",
-              "(phi::DenseTensor or Tensor) "
+              "(LoDTensor or Tensor) "
               "the output tensor of op with shape [N, 4] "
               "representing the result of N target boxes decoded with "
               "M Prior boxes and variances with the best non-background class "
@@ -187,7 +189,7 @@ Decode the target bounding box with the prior_box information.
 The Decoding schema is described below:
 
     $$
-    ox = (pw \\times pxv \\times tx + px) - \\frac{tw}{2}
+    ox = (pw \\times pxv \\times tx + px) - \\frac{tw}{2} 
     $$
     $$
     oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2}
@@ -203,11 +205,11 @@ where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 prior_box's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the prior_box and `ox`, `oy`, `ow`, `oh` denote the
-decoded coordinates, width and height in decode_box.
+decoded coordinates, width and height in decode_box. 
 
 decode_box is obtained after box decode, then assigning schema is described below:
 
-For each prior_box, use the best non-background class's decoded values to
+For each prior_box, use the best non-background class's decoded values to 
 update the prior_box locations and get output_assign_box. So, the shape of
 output_assign_box is the same as PriorBox.
 )DOC");

@@ -18,13 +18,10 @@
 namespace phi {
 
 KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSelectedRowsInputs("X")) {
-    return KernelSignature("add_n_sr", {"X"}, {}, {"Out"});
-  } else if (ctx.IsDenseTensorVectorInput("X")) {
-    return KernelSignature("add_n_array", {"X"}, {}, {"Out"});
-  } else {
+  if (ctx.IsDenseTensorInputs("X")) {
     return KernelSignature("add_n", {"X"}, {}, {"Out"});
   }
+  return KernelSignature("unregistered", {}, {}, {});
 }
 
 }  // namespace phi

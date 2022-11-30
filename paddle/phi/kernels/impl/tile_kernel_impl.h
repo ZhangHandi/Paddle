@@ -54,10 +54,6 @@ void Tile(const Context& dev_ctx,
           vec_x_dims.size(),
           repeat_times.size()));
 
-  if (Rank == 0) {
-    phi::Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    return;
-  }
   Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
@@ -75,7 +71,6 @@ void Tile(const Context& dev_ctx,
 
   auto eigen_out = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *dev_ctx.eigen_device();
-
   // use 32-bit index to speed up
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
@@ -98,9 +93,6 @@ void TileKernel(const Context& dev_ctx,
   rank = std::max(rank, repeat_times_size);
 
   switch (rank) {
-    case 0:
-      Tile<Context, T, 0>(dev_ctx, x, repeat_times_data, out);
-      break;
     case 1:
       Tile<Context, T, 1>(dev_ctx, x, repeat_times_data, out);
       break;

@@ -37,12 +37,12 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                    "Output",
                    "VelocityOut",
                    "LarsMomentum");
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The input var's type should be phi::DenseTensor, "
-                          "but the received is %s",
-                          ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Param").front()));
 
     auto lr_dims = ctx->GetInputsDim("LearningRate");
     auto grad_dim = ctx->GetInputsDim("Grad");
@@ -102,7 +102,7 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad")[i],
                         framework::proto::VarType::LOD_TENSOR,
                         platform::errors::InvalidArgument(
-                            "The Var(%s)'s type should be phi::DenseTensor, "
+                            "The Var(%s)'s type should be LoDTensor, "
                             "but the received is %s",
                             ctx->Inputs("Grad")[i].front(),
                             ctx->GetInputsVarType("Grad")[i]));
@@ -145,31 +145,31 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "(LoDTensor, default LoDTensor<float>) "
              "Input parameter that has to be updated")
         .AsDuplicable();
     AddInput("Grad",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "(LoDTensor, default LoDTensor<float>) "
              "Input gradient of the parameter")
         .AsDuplicable();
     AddInput("Velocity",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "(LoDTensor, default LoDTensor<float>) "
              "Input velocity (corresponding to the parameter) "
              "that has to be updated")
         .AsDuplicable();
     AddInput("LearningRate",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) "
+             "(LoDTensor, default LoDTensor<float>) "
              "Input learning rate")
         .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("ParamOut",
-              "(phi::DenseTensor) This output is updated parameter. "
+              "(LoDTensor) This output is updated parameter. "
               "It shared memory with Input(Param).")
         .AsDuplicable();
     AddOutput("VelocityOut",
-              "(phi::DenseTensor) This output is updated velocity. "
+              "(LoDTensor) This output is updated velocity. "
               "It shared memory with Input(Velocity).")
         .AsDuplicable();
     AddOutput("MasterParamOut",

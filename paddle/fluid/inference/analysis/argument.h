@@ -42,9 +42,11 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using framework::ir::Graph;
+
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 #endif
 
 /*
@@ -146,10 +148,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
-  DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
-
-  // For JITLayer
-  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
+  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -178,6 +177,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
+  // Calibration file path of quantize model
+  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
+
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -286,9 +288,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
-  DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
-
-  DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
@@ -315,7 +314,6 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
-  DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
 
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
@@ -345,15 +343,6 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
-  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
-                      IpuCustomOpsInfo,
-                      std::vector<std::vector<std::string>>);
-  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
-                      IpuCustomPatterns,
-                      std::vector<std::vector<std::string>>);
-  DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
-                      IpuEnableModelRuntimeExecutor,
-                      bool);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

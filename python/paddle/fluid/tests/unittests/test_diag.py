@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
+import unittest
 import numpy as np
 from op_test import OpTest
-
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid import Program, program_guard
 
 
 class TestDiagOp(OpTest):
+
     def setUp(self):
         self.op_type = "diag"
         self.init_config()
@@ -39,11 +41,13 @@ class TestDiagOp(OpTest):
 
 
 class TestDiagOpCase1(TestDiagOp):
+
     def init_config(self):
         self.case = np.array([3], dtype='int32')
 
 
 class TestDiagError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):

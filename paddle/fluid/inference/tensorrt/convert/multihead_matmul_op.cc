@@ -39,10 +39,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto bias_name = op_desc.Input("Bias").front();
 
     auto* weight_v = scope.FindVar(weight_name);
-    auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
+    auto* weight_t = weight_v->GetMutable<framework::LoDTensor>();
 
     auto* bias_v = scope.FindVar(bias_name);
-    auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
 
     float* weight_data = nullptr;
     bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
@@ -100,7 +100,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                static_cast<int32_t>(bias_t->numel())};
         auto max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
         auto pos_id_tensor = engine_->GetITensor("pos_id");
-        if (engine_->with_interleaved()) {
+        // if (engine_->with_interleaved()) {
+        if (engine_->with_interleaved() & op_desc.HasAttr("Input_scale")) {
           VLOG(4) << "fused multihead_matmul op: use_varseqlen and "
                      "with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
@@ -159,7 +160,28 @@ class MultiheadMatMulOpConverter : public OpConverter {
           free(plugin_collection);
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(fc_layer->getOutput(0));
+          if ((fc_layer->getOutput(0)->getDimensions().d[0] == 1) & (fc_layer->getOutput(0)->getDimensions().d[2] == -1)) {
+            plugin_inputs.emplace_back(fc_layer->getOutput(0));
+            //LOG(ERROR) << "interleaved fc_layer getoutput dims d0: " << fc_layer->getOutput(0)->getDimensions().d[0];
+            //LOG(ERROR) << "interleaved fc_layer getoutput dims d1: " << fc_layer->getOutput(0)->getDimensions().d[1];
+            //LOG(ERROR) << "interleaved fc_layer getoutput dims d2: " << fc_layer->getOutput(0)->getDimensions().d[2];
+            //LOG(ERROR) << "interleaved fc_layer getoutput dims d3: " << fc_layer->getOutput(0)->getDimensions().d[3];
+          } else if ((fc_layer->getOutput(0)->getDimensions().d[0] == -1) & (fc_layer->getOutput(0)->getDimensions().d[2] == 1)) {
+            //transpose after
+            auto* shuffler_fc_after = TRT_ENGINE_ADD_LAYER(
+                engine_, Shuffle, *(fc_layer->getOutput(0)));
+            nvinfer1::Permutation transpose_fc_after{2, 1, 0, 3};
+            shuffler_fc_after->setSecondTranspose(transpose_fc_after);
+            shuffler_fc_after->setName(
+                ("fc_multihead_output_shuffler_transpose back (Output: " + 
+                 output_name + ")")
+                    .c_str()); 
+            plugin_inputs.emplace_back(shuffler_fc_after->getOutput(0));
+            //LOG(ERROR) << "interleaved shuffler_fc_layer getoutput dims d0: " << shuffler_fc_after->getOutput(0)->getDimensions().d[0];
+            //LOG(ERROR) << "interleaved shuffler_fc_layer getoutput dims d1: " << shuffler_fc_after->getOutput(0)->getDimensions().d[1];
+            //LOG(ERROR) << "interleaved shuffler_fc_layer getoutput dims d2: " << shuffler_fc_after->getOutput(0)->getDimensions().d[2];
+            //LOG(ERROR) << "interleaved shuffler_fc_layer getoutput dims d3: " << shuffler_fc_after->getOutput(0)->getDimensions().d[3];
+          }
           plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
@@ -222,8 +244,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
             fc_layer = TRT_ENGINE_ADD_LAYER(
                 engine_, Convolution, *input, n, nv_ksize, weight, bias);
           } else {
+            //fc_layer = TRT_ENGINE_ADD_LAYER(
+            //    engine_, FullyConnected, *input, n, weight, bias);
+            nvinfer1::DimsHW nv_ksize(1, 1);
             fc_layer = TRT_ENGINE_ADD_LAYER(
-                engine_, FullyConnected, *input, n, weight, bias);
+                engine_, Convolution, *input, n, nv_ksize, weight, bias);
           }
 
           if (op_desc.HasAttr("fc_out_threshold")) {
@@ -240,6 +265,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                   PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
             }
           }
+
           auto creator = GetPluginRegistry()->getPluginCreator(
               "CustomQKVToContextPluginDynamic", "2");
           assert(creator != nullptr);
@@ -248,6 +274,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               (engine_->precision() == AnalysisConfig::Precision::kInt8)) {
             type = static_cast<int>(nvinfer1::DataType::kINT8);
           }
+          
           bool has_mask = true;
           int var_seqlen = 1;
           std::vector<nvinfer1::PluginField> fields{
@@ -281,15 +308,43 @@ class MultiheadMatMulOpConverter : public OpConverter {
           free(plugin_collection);
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(fc_layer->getOutput(0));
+          
+          if ((fc_layer->getOutput(0)->getDimensions().d[0] == -1) & (fc_layer->getOutput(0)->getDimensions().d[2] == 1)) {
+            plugin_inputs.emplace_back(fc_layer->getOutput(0));
+            //LOG(ERROR) << "no_interleaved_fc_layer getoutput dims d0: " << fc_layer->getOutput(0)->getDimensions().d[0];
+            //LOG(ERROR) << "no_interleaved_fc_layer getoutput dims d1: " << fc_layer->getOutput(0)->getDimensions().d[1];
+            //LOG(ERROR) << "no_interleaved_fc_layer getoutput dims d2: " << fc_layer->getOutput(0)->getDimensions().d[2];
+            //LOG(ERROR) << "no_interleaved_fc_layer getoutput dims d3: " << fc_layer->getOutput(0)->getDimensions().d[3]; 
+          } else if ((fc_layer->getOutput(0)->getDimensions().d[0] == 1) & (fc_layer->getOutput(0)->getDimensions().d[2] == -1)) {
+            //transpose
+            auto* shuffler_fc = TRT_ENGINE_ADD_LAYER(
+                engine_, Shuffle, *(fc_layer->getOutput(0)));
+            nvinfer1::Permutation transpose_fc{2, 1, 0, 3};
+            shuffler_fc->setSecondTranspose(transpose_fc);
+            shuffler_fc->setName(
+                ("fc_multihead_output_shuffler_transpose (Output: " + 
+                 output_name + ")")
+                    .c_str());         
+            plugin_inputs.emplace_back(shuffler_fc->getOutput(0));
+            //LOG(ERROR) << "no_interleaved_shuffler_fc_layer getoutput dims d0: " << shuffler_fc->getOutput(0)->getDimensions().d[0];
+            //LOG(ERROR) << "no_interleaved_shuffler_fc_layer getoutput dims d1: " << shuffler_fc->getOutput(0)->getDimensions().d[1];
+            //LOG(ERROR) << "no_interleaved_shuffler_fc_layer getoutput dims d2: " << shuffler_fc->getOutput(0)->getDimensions().d[2];
+            //LOG(ERROR) << "no_interleaved_shuffler_fc_layer getoutput dims d3: " << shuffler_fc->getOutput(0)->getDimensions().d[3];
+          } 
+
+          //plugin_inputs.emplace_back(fc_layer->getOutput(0));
           plugin_inputs.emplace_back(engine_->GetITensor("qkv_plugin_mask"));
           plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
-
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
           layer = plugin_layer;
+          //transpose back
+          auto* shuffler_output_back = TRT_ENGINE_ADD_LAYER(
+                engine_, Shuffle, *(plugin_layer->getOutput(0)));
+          nvinfer1::Permutation transpose_output_back{2, 1, 0, 3};
+          shuffler_output_back->setSecondTranspose(transpose_output_back); 
         }
       } else {
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
@@ -398,37 +453,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // add fc layer
           nvinfer1::ILayer* fc_layer = nullptr;
-          if (op_desc.HasAttr("Input_scale")) {
-            engine_->SetTensorDynamicRange(
-                reshape_before_fc_layer->getOutput(0), in_scale);
-            nvinfer1::DimsHW nv_ksize(1, 1);
-            fc_layer =
-                TRT_ENGINE_ADD_LAYER(engine_,
-                                     Convolution,
-                                     *reshape_before_fc_layer->getOutput(0),
-                                     n,
-                                     nv_ksize,
-                                     weight,
-                                     bias);
-            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
-                              true,
-                              platform::errors::InvalidArgument(
-                                  "must have out threshold in multihead layers "
-                                  "in int8 mode"));
-            float out_scale =
-                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
-            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
-          } else {
-            fc_layer =
-                TRT_ENGINE_ADD_LAYER(engine_,
-                                     FullyConnected,
-                                     *reshape_before_fc_layer->getOutput(0),
-                                     n,
-                                     weight,
-                                     bias);
-          }
-          fc_layer->setName(
-              ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+          fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   FullyConnected,
+                                   *reshape_before_fc_layer->getOutput(0),
+                                   n,
+                                   weight,
+                                   bias);
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -484,10 +515,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
           plugin_inputs.emplace_back(mask_tensor);
           // input_2 for plugin
           std::vector<int> pos_id = {0};
-          int max_batch = 512;
-          int length = (input_dims.d[1] == -1) ? 1 : input_dims.d[1];
+          int max_batch = 500;
           for (int i = 1; i < max_batch; i++) {
-            pos_id.push_back(i * length);
+            pos_id.push_back(i);
           }
           nvinfer1::ITensor* fake_pos_id_tensor = Add1DConstantLayer(pos_id);
           nvinfer1::ITensor* length_tensor =
@@ -522,26 +552,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
           stride.d[0] = 1;
           size.d[0] = 1;
 
-          nvinfer1::ITensor* pos_id_tensor = (input_dims.d[1] == -1)
-                                                 ? pos_id_layer->getOutput(0)
-                                                 : fake_pos_id_tensor;
-
           auto* slice_pos_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Slice, *pos_id_tensor, start, size, stride);
+              engine_, Slice, *pos_id_layer->getOutput(0), start, size, stride);
           slice_pos_layer->setInput(2, *size_layer->getOutput(0));
           plugin_inputs.emplace_back(slice_pos_layer->getOutput(0));
 
           // input_3 for plugin
-          int max_length = (input_dims.d[1] == -1) ? 512 : input_dims.d[1];
-          std::vector<int> data(max_length, 1);
+          std::vector<int> data(500, 1);
           nvinfer1::ITensor* fake_max_seqlen_tensor = Add1DConstantLayer(data);
           auto* slice_max_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Slice, *fake_max_seqlen_tensor, start, size, stride);
           slice_max_layer->setInput(2, *length_tensor);
-          nvinfer1::ITensor* max_seqlen_tensor =
-              (input_dims.d[1] == -1) ? slice_max_layer->getOutput(0)
-                                      : fake_max_seqlen_tensor;
-          plugin_inputs.emplace_back(max_seqlen_tensor);
+          plugin_inputs.emplace_back(slice_max_layer->getOutput(0));
           // plugin_layer
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);

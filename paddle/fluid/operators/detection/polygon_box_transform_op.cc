@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
@@ -27,10 +27,10 @@ class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
         platform::is_cpu_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
-    auto* in = ctx.Input<phi::DenseTensor>("Input");
+    auto* in = ctx.Input<Tensor>("Input");
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
-    auto* out = ctx.Output<phi::DenseTensor>("Output");
+    auto* out = ctx.Output<Tensor>("Output");
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     int batch_size = in_dims[0];

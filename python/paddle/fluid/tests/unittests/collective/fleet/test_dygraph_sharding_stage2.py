@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import unittest
+import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -27,12 +30,8 @@ class TestDygraphShardingStage2(TestMultipleGpus):
 
     def test_dygraph_sharding_stage2_offload(self):
         self.run_mnist_2gpu('dygraph_group_sharded_stage2_offload.py')
-        self.run_mnist_2gpu(
-            'dygraph_sharding_stage2_offload.py', eager_mode=False
-        )
-
-    def test_dygraph_sharding_stage2_with_comm_overlap(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage2_comm_overlap.py')
+        self.run_mnist_2gpu('dygraph_sharding_stage2_offload.py',
+                            eager_mode=False)
 
 
 if __name__ == "__main__":

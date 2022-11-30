@@ -18,16 +18,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class PriorBoxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* image = ctx.Input<phi::DenseTensor>("Image");
-    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
-    auto* variances = ctx.Output<phi::DenseTensor>("Variances");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* image = ctx.Input<Tensor>("Image");
+    auto* boxes = ctx.Output<Tensor>("Boxes");
+    auto* variances = ctx.Output<Tensor>("Variances");
 
     PADDLE_ENFORCE_EQ(boxes->dims(),
                       variances->dims(),

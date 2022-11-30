@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class GridSamplerMLUKernel : public framework::OpKernel<T> {
@@ -30,9 +30,9 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable("This kernel only runs on MLU."));
 
     // input and output data
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
-    const phi::DenseTensor* grid = ctx.Input<phi::DenseTensor>("Grid");
-    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("X");
+    const Tensor* grid = ctx.Input<Tensor>("Grid");
+    Tensor* output = ctx.Output<Tensor>("Output");
 
     int n = input->dims()[0];
     int c = input->dims()[1];
@@ -47,7 +47,8 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
     const std::string mode = ctx.Attr<std::string>("mode");
     const std::string padding_mode = ctx.Attr<std::string>("padding_mode");
     bool align_corners = ctx.Attr<bool>("align_corners");
-    const std::string data_format = phi::DataLayoutToString(input->layout());
+    const std::string data_format =
+        paddle::framework::DataLayoutToString(input->layout());
 
     PADDLE_ENFORCE_EQ(
         mode == "bilinear",

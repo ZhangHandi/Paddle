@@ -22,22 +22,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 constexpr int64_t kNoPadding = -1;
 
 template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");      // int tensor
-    auto *output_t = ctx.Output<phi::DenseTensor>("Out");  // float tensor
-    auto *table_t = ctx.Input<phi::DenseTensor>("W");
+    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");      // int tensor
+    auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
+    auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        table_var->IsType<phi::DenseTensor>(),
+        table_var->IsType<framework::LoDTensor>(),
         true,
-        platform::errors::InvalidArgument("npu only accept phi::DenseTensor"));
+        platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
@@ -93,11 +93,11 @@ template <typename T>
 class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");
+    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
     auto *output_grad_t =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
     table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =

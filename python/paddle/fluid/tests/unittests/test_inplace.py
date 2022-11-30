@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
+import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class TestInplace(unittest.TestCase):
+
     def func_test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
@@ -60,11 +63,9 @@ class TestInplace(unittest.TestCase):
 
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegexp(
-                RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
-            ):
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
                 loss.backward()
 
     def test_backward_error(self):
@@ -103,9 +104,7 @@ class TestInplace(unittest.TestCase):
 
             var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            var_c = (
-                var_b + var_b
-            )  # Here, the grad op of sum doesn't use the value of var_b
+            var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_c.sum()
 
             var_b[1:2] = 3  # var_b is modified inplace after using it
@@ -119,6 +118,7 @@ class TestInplace(unittest.TestCase):
 
 
 class TestDygraphInplace(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
         self.set_np_compare_func()
@@ -141,7 +141,7 @@ class TestDygraphInplace(unittest.TestCase):
         inplace_var = self.inplace_api_processing(var)
         self.assertTrue(id(var) == id(inplace_var))
 
-        inplace_var[0] = 2.0
+        inplace_var[0] = 2.
         np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
     def test_inplace_api(self):
@@ -157,7 +157,7 @@ class TestDygraphInplace(unittest.TestCase):
             inplace_var = self.inplace_api_processing(var)
             self.assertEqual(var.inplace_version, 1)
 
-            inplace_var[0] = 2.0
+            inplace_var[0] = 2.
             self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
@@ -198,11 +198,9 @@ class TestDygraphInplace(unittest.TestCase):
 
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegexp(
-                RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
-            ):
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
                 loss.backward()
 
     def test_backward_error(self):
@@ -220,8 +218,7 @@ class TestDygraphInplace(unittest.TestCase):
 
             var_b = var_a**2
             var_c = self.inplace_api_processing(
-                var_b
-            )  # var_b is modified inplace before using it
+                var_b)  # var_b is modified inplace before using it
 
             # Here, the gradient computation will use the value of var_b
             var_d = var_c**2
@@ -258,12 +255,9 @@ class TestDygraphInplace(unittest.TestCase):
             var_b = var_a**2
 
             var_c = self.inplace_api_processing(
-                var_b
-            )  # var_b is modified inplace before using it
+                var_b)  # var_b is modified inplace before using it
 
-            var_d = (
-                var_c + var_c
-            )  # Here, the grad op of sum doesn't use the value of var_b
+            var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_d.sum()
 
             loss.backward()
@@ -277,9 +271,7 @@ class TestDygraphInplace(unittest.TestCase):
 
             var_c = self.non_inplace_api_processing(var_b)
 
-            var_d = (
-                var_c + var_c
-            )  # Here, the grad op of sum doesn't use the value of var_b
+            var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_d.sum()
 
             loss.backward()
@@ -293,6 +285,7 @@ class TestDygraphInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.unsqueeze(var, -1)
 
@@ -301,6 +294,7 @@ class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
 
 
 class TestDygraphInplaceReshape(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.reshape(var, [-1])
 
@@ -309,6 +303,7 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
 
 
 class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         shape = paddle.to_tensor(-1)
         return paddle.reshape(var, shape)
@@ -319,6 +314,7 @@ class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
 
 
 class TestDygraphInplaceFlatten(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.flatten()
 
@@ -327,28 +323,28 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
 
 
 class TestDygraphInplaceScatter(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
         self.dtype = "float32"
 
     def non_inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
-        )
+        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]],
+                                   dtype='float32')
 
         return paddle.scatter(var, index, updates, overwrite=False)
 
     def inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
-        )
+        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]],
+                                   dtype='float32')
 
         return paddle.scatter_(var, index, updates, overwrite=False)
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.elu(var)
 
@@ -357,6 +353,7 @@ class TestDygraphInplaceElu(TestDygraphInplace):
 
 
 class TestDygraphInplaceRelu(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.relu(var)
 
@@ -365,6 +362,7 @@ class TestDygraphInplaceRelu(TestDygraphInplace):
 
 
 class TestDygraphInplaceSoftmax(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.softmax(var)
 
@@ -373,6 +371,7 @@ class TestDygraphInplaceSoftmax(TestDygraphInplace):
 
 
 class TestDygraphInplaceTanh(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.tanh(var)
 
@@ -381,6 +380,7 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
 
 
 class TestDygraphInplaceCeil(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.ceil()
 
@@ -389,6 +389,7 @@ class TestDygraphInplaceCeil(TestDygraphInplace):
 
 
 class TestDygraphInplaceFloor(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.floor()
 
@@ -397,6 +398,7 @@ class TestDygraphInplaceFloor(TestDygraphInplace):
 
 
 class TestDygraphInplaceExp(TestDygraphInplace):
+
     def set_np_compare_func(self):
         self.np_compare = np.allclose
 
@@ -408,6 +410,7 @@ class TestDygraphInplaceExp(TestDygraphInplace):
 
 
 class TestDygraphInplaceReciprocal(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.reciprocal()
 
@@ -416,6 +419,7 @@ class TestDygraphInplaceReciprocal(TestDygraphInplace):
 
 
 class TestDygraphInplaceRound(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.round()
 
@@ -424,6 +428,7 @@ class TestDygraphInplaceRound(TestDygraphInplace):
 
 
 class TestDygraphInplaceSqrt(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.random.uniform(0, 5, [10, 20, 1])
         self.dtype = "float32"
@@ -436,6 +441,7 @@ class TestDygraphInplaceSqrt(TestDygraphInplace):
 
 
 class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
+
     def non_inplace_api_processing(self, var):
         return var.rsqrt()
 
@@ -444,6 +450,7 @@ class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
 
 
 class TestDygraphInplaceClip(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.clip(0.6, 1.5)
 
@@ -452,6 +459,7 @@ class TestDygraphInplaceClip(TestDygraphInplace):
 
 
 class TestDygraphInplaceScale(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.scale(scale=2.0, bias=3.0)
 
@@ -460,6 +468,7 @@ class TestDygraphInplaceScale(TestDygraphInplace):
 
 
 class TestDygraphInplaceAdd(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.random.rand(2, 3, 4)
         self.dtype = "float32"
@@ -475,6 +484,7 @@ class TestDygraphInplaceAdd(TestDygraphInplace):
 
 
 class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
+
     def non_inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.subtract(input_var_2)
@@ -485,6 +495,7 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
 
 
 class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
+
     def non_inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.remainder(input_var_2)
@@ -507,6 +518,7 @@ class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
 
 
 class TestLossIsInplaceVar(unittest.TestCase):
+
     def func_test_loss_is_inplace_var(self):
         with paddle.fluid.dygraph.guard():
             var_a = paddle.ones((2, 2))
@@ -537,6 +549,7 @@ class TestLossIsInplaceVar(unittest.TestCase):
 
 
 class TestContinuouslyInplace(unittest.TestCase):
+
     def func_test_continuously_inplace(self):
         a = paddle.rand([2, 3])
         a.stop_gradient = False
@@ -555,6 +568,7 @@ class TestContinuouslyInplace(unittest.TestCase):
 
 
 class TestGetitemBeforeInplace(unittest.TestCase):
+
     def test_getitem_before_inplace(self):
         with _test_eager_guard():
             a = paddle.ones(shape=[4, 2, 3], dtype="float32")

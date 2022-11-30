@@ -34,6 +34,7 @@ void SyncBatchNormGradKernel(const Context& ctx,
                              bool is_test,
                              bool use_global_stats,
                              bool trainable_statistics,
+                             bool fuse_with_relu,
                              DenseTensor* x_grad,
                              DenseTensor* scale_grad,
                              DenseTensor* bias_grad) {

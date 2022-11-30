@@ -22,8 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SequenceConvKernel : public framework::OpKernel<T> {
@@ -31,7 +31,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    auto filter = *context.Input<phi::DenseTensor>("Filter");
+    auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -53,9 +53,9 @@ class SequenceConvKernel : public framework::OpKernel<T> {
             "present. But received: lod level %u.",
             in->lod().size()));
 
-    const phi::DenseTensor* padding_data = nullptr;
+    const Tensor* padding_data = nullptr;
     if (padding_trainable) {
-      padding_data = context.Input<phi::DenseTensor>("PaddingData");
+      padding_data = context.Input<Tensor>("PaddingData");
     }
 
     int up_pad = std::max(0, -context_start);
@@ -94,12 +94,11 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* filter_g =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
     auto* padding_data_g =
-        context.Output<phi::DenseTensor>(framework::GradVarName("PaddingData"));
+        context.Output<Tensor>(framework::GradVarName("PaddingData"));
     auto* in = context.Input<LoDTensor>("X");
-    auto* filter = context.Input<phi::DenseTensor>("Filter");
+    auto* filter = context.Input<Tensor>("Filter");
 
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
@@ -181,9 +180,9 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad = *filter_g;
       LoDTensor out_grad = *out_g;
 
-      const phi::DenseTensor* padding_data = nullptr;
+      const Tensor* padding_data = nullptr;
       if (padding_trainable) {
-        padding_data = context.Input<phi::DenseTensor>("PaddingData");
+        padding_data = context.Input<Tensor>("PaddingData");
       }
 
       seq_project_functor(dev_ctx,

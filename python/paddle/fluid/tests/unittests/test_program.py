@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 import unittest
 
+from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, default_main_program, program_guard
-
-paddle.enable_static()
+import paddle.fluid as fluid
 
 main_program = default_main_program()
 
 
 class TestProgram(unittest.TestCase):
+
     def test_program(self):
         b = main_program.current_block()
         self.assertEqual(-1, b.parent_idx)
@@ -56,17 +56,20 @@ class TestProgram(unittest.TestCase):
     def test_program_clone(self):
         prog = Program()
 
-        x = prog.global_block().create_var(
-            name='X', shape=[1000, 784], dtype='float32'
-        )
+        x = prog.global_block().create_var(name='X',
+                                           shape=[1000, 784],
+                                           dtype='float32')
 
-        y = prog.global_block().create_var(
-            name='Y', shape=[784, 100], dtype='float32'
-        )
+        y = prog.global_block().create_var(name='Y',
+                                           shape=[784, 100],
+                                           dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
-        prog.global_block().append_op(
-            type="mul", inputs={'X': [x], 'Y': [y]}, outputs={'Out': [out]}
-        )
+        prog.global_block().append_op(type="mul",
+                                      inputs={
+                                          'X': [x],
+                                          'Y': [y]
+                                      },
+                                      outputs={'Out': [out]})
 
         # FIXME(yuyang18): We manual compare the output string, since the order
         # of variable could be changed.
@@ -76,17 +79,20 @@ class TestProgram(unittest.TestCase):
     def test_parse_program_from_string(self):
         prog = Program()
 
-        x = prog.global_block().create_var(
-            name='X', shape=[1000, 784], dtype='float32'
-        )
+        x = prog.global_block().create_var(name='X',
+                                           shape=[1000, 784],
+                                           dtype='float32')
 
-        y = prog.global_block().create_var(
-            name='Y', shape=[784, 100], dtype='float32'
-        )
+        y = prog.global_block().create_var(name='Y',
+                                           shape=[784, 100],
+                                           dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
-        prog.global_block().append_op(
-            type="mul", inputs={'X': [x], 'Y': [y]}, outputs={'Out': [out]}
-        )
+        prog.global_block().append_op(type="mul",
+                                      inputs={
+                                          'X': [x],
+                                          'Y': [y]
+                                      },
+                                      outputs={'Out': [out]})
 
         binary_str = prog.desc.serialize_to_string()
         prog_restored = Program.parse_from_string(binary_str)
@@ -106,19 +112,17 @@ class TestProgram(unittest.TestCase):
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
 
     def test_program_inference_optimize(self):
+
         def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True,
-            )
+            reader = fluid.layers.py_reader(capacity=10,
+                                            shapes=[[-1, 10], [-1, 1]],
+                                            lod_levels=[0, 0],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
-            )
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -129,8 +133,7 @@ class TestProgram(unittest.TestCase):
             net()
         no_read_program = main_program._inference_optimize()
         keep_read_program = main_program._inference_optimize(
-            prune_read_op=False
-        )
+            prune_read_op=False)
         no_read_ops = no_read_program.global_block().ops
         keep_read_ops = keep_read_program.global_block().ops
         self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)
@@ -156,9 +159,8 @@ class TestProgram(unittest.TestCase):
     def test_prune_with_input_type_error(self):
         program = fluid.default_main_program()
         feed_var_names = [2, 3, 4]
-        self.assertRaises(
-            ValueError, program._prune_with_input, feed_var_names, []
-        )
+        self.assertRaises(ValueError, program._prune_with_input, feed_var_names,
+                          [])
 
     def test_random_seed_error(self):
         program = fluid.default_main_program()
@@ -168,24 +170,21 @@ class TestProgram(unittest.TestCase):
     def test_copy_info_from_error(self):
         program = fluid.default_main_program()
         self.assertRaises(TypeError, program._copy_param_info_from, "program")
-        self.assertRaises(
-            TypeError, program._copy_dist_param_info_from, "program"
-        )
+        self.assertRaises(TypeError, program._copy_dist_param_info_from,
+                          "program")
 
     def test_remove_training_info(self):
+
         def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True,
-            )
+            reader = fluid.layers.py_reader(capacity=10,
+                                            shapes=[[-1, 10], [-1, 1]],
+                                            lod_levels=[0, 0],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
-            )
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -214,6 +213,7 @@ def build_program():
 
 
 class TestProgramProto(unittest.TestCase):
+
     def test_update_op(self):
         program = build_program()
         a = program.desc.serialize_to_string()
@@ -230,16 +230,19 @@ class TestProgramProto(unittest.TestCase):
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
 
+    # it seems the attrs of framework::VarDesc is not write to proto,
+    # except for persistable/need_check_feed/is_parameter/stop_gradient
     def test_update_var_attr(self):
         program = build_program()
         a = program.desc.serialize_to_string()
         program.current_block().var("x").desc._set_attr("a", 1)
-        self.assertTrue(program.desc.need_update())
+        self.assertFalse(program.desc.need_update())
         b = program.desc.serialize_to_string()
-        self.assertFalse(a == b)
+        self.assertTrue(a == b)  # not affected
 
 
 class TestProgramHash(unittest.TestCase):
+
     def build_program(self):
         main_program = paddle.static.Program()
         startuo_program = paddle.static.Program()
@@ -262,8 +265,8 @@ class TestProgramHash(unittest.TestCase):
         program1, program2 = programs[0], programs[1]
         # why not write as below?
         # since the callstack attribute are not equal
-        # program1 = self.build_program()
-        # program2 = self.build_program()
+        #program1 = self.build_program()
+        #program2 = self.build_program()
 
         self.assertTrue(program1.desc.need_update())
         self.assertTrue(program2.desc.need_update())
@@ -271,8 +274,7 @@ class TestProgramHash(unittest.TestCase):
         self.assertFalse(id(program1) == id(program2))
         # print(program1, program2)
         self.assertTrue(
-            program1.desc.cached_hash_str() == program2.desc.cached_hash_str()
-        )
+            program1.desc.cached_hash_str() == program2.desc.cached_hash_str())
 
         self.assertFalse(program1.desc.need_update())
         self.assertFalse(program2.desc.need_update())
@@ -282,10 +284,8 @@ class TestProgramHash(unittest.TestCase):
         program_clone = program.clone()
 
         self.assertFalse(id(program) == id(program_clone))
-        self.assertTrue(
-            program.desc.cached_hash_str()
-            == program_clone.desc.cached_hash_str()
-        )
+        self.assertTrue(program.desc.cached_hash_str() ==
+                        program_clone.desc.cached_hash_str())
 
     def test_program_update(self):
         program = self.build_program()

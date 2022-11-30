@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import unittest
-
 import numpy as np
 from op_test import OpTest
-
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
 class TestShareDataOp(OpTest):
+
     def setUp(self):
         self.op_type = "share_data"
         input = np.random.rand(2, 3, 5).astype("float32")
@@ -33,6 +32,7 @@ class TestShareDataOp(OpTest):
 
 
 class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

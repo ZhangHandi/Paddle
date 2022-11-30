@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-class FileSystem:
+class FileSystem(object):
     """
-    A file system that support hadoop client desc.
+    A file system that support hadoop client desc. 
 
     Args:
         fs_type (string): fs_type, for example is "afs"
@@ -26,26 +26,23 @@ class FileSystem:
         fs = FileSystm()
     """
 
-    def __init__(
-        self,
-        fs_type="afs",
-        uri="afs://xx",
-        user=None,
-        passwd=None,
-        hadoop_bin="",
-    ):
-        assert user is not None
-        assert passwd is not None
-        assert hadoop_bin is not None
+    def __init__(self,
+                 fs_type="afs",
+                 uri="afs://xx",
+                 user=None,
+                 passwd=None,
+                 hadoop_bin=""):
+        assert user != None
+        assert passwd != None
+        assert hadoop_bin != None
         import ps_pb2 as pslib
-
         self.fs_client = pslib.FsClientParameter()
         self.fs_client.uri = uri
         self.fs_client.user = user
         self.fs_client.passwd = passwd
-        # self.fs_client.buffer_size = 0
+        #self.fs_client.buffer_size = 0
         self.fs_client.hadoop_bin = hadoop_bin
-        # self.fs_client.afs_conf = afs_conf if not afs_conf else ""
+        #self.fs_client.afs_conf = afs_conf if not afs_conf else ""
 
     def get_desc(self):
         """
@@ -54,7 +51,7 @@ class FileSystem:
         return self.fs_client
 
 
-class MPIHelper:
+class MPIHelper(object):
     """
     MPIHelper is a wrapper of mpi4py, support get_rank get_size etc.
     Args:
@@ -66,7 +63,6 @@ class MPIHelper:
 
     def __init__(self):
         from mpi4py import MPI
-
         self.comm = MPI.COMM_WORLD
         self.MPI = MPI
 
@@ -78,13 +74,11 @@ class MPIHelper:
 
     def get_ip(self):
         import socket
-
         local_ip = socket.gethostbyname(socket.gethostname())
         return local_ip
 
     def get_hostname(self):
         import socket
-
         return socket.gethostname()
 
     def finalize(self):

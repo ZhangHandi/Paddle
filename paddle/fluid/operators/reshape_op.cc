@@ -41,7 +41,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
@@ -258,15 +258,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::ONEDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -388,13 +379,14 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *out = ctx.Output<phi::DenseTensor>("Out");
-    auto *in = ctx.Input<phi::DenseTensor>("X");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *in = ctx.Input<framework::LoDTensor>("X");
 
     auto list_new_shape_tensor =
-        ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
-    auto *shape_tensor =
-        ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
     phi::IntArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
@@ -402,7 +394,7 @@ class ReshapeKernel {
       for (auto &tensor : list_new_shape_tensor) {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
-          phi::DenseTensor temp;
+          framework::Tensor temp;
           paddle::framework::TensorCopySync(
               *tensor, platform::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -415,7 +407,7 @@ class ReshapeKernel {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
-        phi::DenseTensor temp;
+        framework::Tensor temp;
         paddle::framework::TensorCopySync(
             *shape_tensor, platform::CPUPlace(), &temp);
         pt_shape = std::move(temp);
@@ -458,8 +450,8 @@ class ReshapeKernel {
 class ReshapeGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -487,9 +479,9 @@ class ReshapeGradKernel {
 class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *dd_x = ctx.Input<phi::DenseTensor>("DDX");
-    auto *d_out = ctx.Input<phi::DenseTensor>("DOut");
-    auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
+    auto *dd_x = ctx.Input<framework::Tensor>("DDX");
+    auto *d_out = ctx.Input<framework::Tensor>("DOut");
+    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -527,16 +519,19 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->HasOutput("XShape")) {
-      const auto &x_dims = ctx->GetInputDim("X");
-      std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-      xshape_dims[0] = 0;
-      for (int i = 0; i < x_dims.size(); ++i) {
-        xshape_dims[i + 1] = x_dims[i];
-      }
-      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-      ctx->ShareLoD("X", /*->*/ "XShape");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(XShape) of ReshapeOp should not be null."));
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
     }
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", /*->*/ "XShape");
+
     ReshapeOp::InferShape(ctx);
   }
 };
@@ -623,15 +618,6 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::ONEDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

@@ -14,38 +14,42 @@
 import paddle
 
 
-class Constraint:
-    """Constraint condition for random variable."""
+class Constraint(object):
+    """Constraint condition for random variable.
+    """
 
     def __call__(self, value):
         raise NotImplementedError
 
 
 class Real(Constraint):
+
     def __call__(self, value):
         return value == value
 
 
 class Range(Constraint):
+
     def __init__(self, lower, upper):
         self._lower = lower
         self._upper = upper
-        super().__init__()
+        super(Range, self).__init__()
 
     def __call__(self, value):
         return self._lower <= value <= self._upper
 
 
 class Positive(Constraint):
+
     def __call__(self, value):
-        return value >= 0.0
+        return value >= 0.
 
 
 class Simplex(Constraint):
+
     def __call__(self, value):
-        return paddle.all(value >= 0, axis=-1) and (
-            (value.sum(-1) - 1).abs() < 1e-6
-        )
+        return paddle.all(value >= 0,
+                          axis=-1) and ((value.sum(-1) - 1).abs() < 1e-6)
 
 
 real = Real()

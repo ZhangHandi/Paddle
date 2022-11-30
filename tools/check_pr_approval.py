@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import sys
+import json
 
 
 def check_approval(count, required_reviewers):
@@ -39,11 +39,8 @@ def check_approval(count, required_reviewers):
         else:
             required_reviewers_login.add(rr)
 
-    if (
-        len(set(approved_user_ids) & required_reviewers_int)
-        + len(approved_user_logins & required_reviewers_login)
-        >= count
-    ):
+    if len(set(approved_user_ids) & required_reviewers_int) + len(
+            approved_user_logins & required_reviewers_login) >= count:
         print("TRUE")
     else:
         print("FALSE")

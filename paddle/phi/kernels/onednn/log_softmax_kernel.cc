@@ -65,7 +65,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(log_softmax,
                    OneDNN,
-                   ONEDNN,
+                   ALL_LAYOUT,
                    phi::LogSoftmaxKernel,
                    float,
                    phi::dtype::bfloat16) {}

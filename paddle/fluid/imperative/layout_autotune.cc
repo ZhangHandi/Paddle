@@ -14,14 +14,22 @@
 
 #include "paddle/fluid/imperative/layout_autotune.h"
 
-#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/layout_transformer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+
 namespace paddle {
 namespace imperative {
+
+bool LayoutAutoTune::UseLayoutAutoTune() const {
+#if defined(PADDLE_WITH_CUDA)
+  return use_layout_autotune_;
+#else
+  return false;
+#endif
+}
 
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
@@ -132,26 +140,6 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
   return transposer->Apply(ins, outs, attrs, tracer);
 }
 
-LayoutAutotuneGuard::LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer,
-                                         bool use_autotune)
-    : tracer_(tracer) {
-  pre_layout_autotune_ = tracer_->UseLayoutAutoTune();
-  if (pre_layout_autotune_ != use_autotune) {
-    tracer_->EnableLayoutAutoTune();
-    if (!use_autotune) {
-      tracer_->DisableLayoutAutoTune();
-    }
-  }
-}
-
-LayoutAutotuneGuard::~LayoutAutotuneGuard() {
-  if (pre_layout_autotune_) {
-    tracer_->EnableLayoutAutoTune();
-  } else {
-    tracer_->DisableLayoutAutoTune();
-  }
-}
-
 template <typename VarType>
 paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const std::string& op_type,
@@ -159,7 +147,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const paddle::imperative::NameVarMap<VarType>& outs,
     paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<imperative::Tracer>& tracer) {
-  if (!tracer->UseLayoutAutoTune()) {
+  if (!LayoutAutoTune::Instance().UseLayoutAutoTune()) {
     return ins;
   }
   // When layout autotuning is enabled, the tuner will check the desired layout.
@@ -177,7 +165,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     } else {
 #if defined(PADDLE_WITH_CUDA)
       if (!phi::backends::gpu::TensorCoreAvailable()) {
-        tracer->DisableLayoutAutoTune();
+        LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return ins;
       }
 #endif
@@ -194,18 +182,16 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (conv_in_type == framework::proto::VarType::FP16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
-        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);
       } else if (is_tune_fp16) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
-        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NCHW);
       } else {
-        tracer->DisableLayoutAutoTune();
+        LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return ins;
       }
       VLOG(3) << "Tune the layout from "
               << PADDLE_GET_CONST(std::string, (*attrs)["data_format"])
               << " to "
-              << phi::DataLayoutToString(
+              << paddle::framework::DataLayoutToString(
                      LayoutAutoTune::Instance().GetDesiredLayout());
     }
   }

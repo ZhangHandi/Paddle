@@ -204,7 +204,7 @@ struct TestGatherOpHandle {
               out_select_rows.rows()[k]));
     }
 
-    phi::DenseTensor result_tensor;
+    f::Tensor result_tensor;
     f::TensorCopy(rt, cpu_place, *(ctxs_[output_scope_idx]), &result_tensor);
     float* ct = result_tensor.data<float>();
 

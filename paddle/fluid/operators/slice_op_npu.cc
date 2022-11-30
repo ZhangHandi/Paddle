@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/operators/slice_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 void UpdateAttr(const framework::DDim& in_dims,
@@ -59,8 +58,8 @@ template <typename T>
 class SliceNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -75,18 +74,16 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     const auto& in_dims = input->dims();
 
     // Get the accurate attribute value of starts and ends
-    auto starts_tensor_list =
-        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -157,10 +154,9 @@ template <typename T>
 class SliceGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dinput =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dinput = ctx.Output<Tensor>(framework::GradVarName("Input"));
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -170,18 +166,16 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> ends(ends_int.begin(), ends_int.end());
 
     // Get the accurate attribute value of starts and ends
-    auto starts_tensor_list =
-        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }

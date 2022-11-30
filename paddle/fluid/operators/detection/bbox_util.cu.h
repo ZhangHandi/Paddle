@@ -30,7 +30,8 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 

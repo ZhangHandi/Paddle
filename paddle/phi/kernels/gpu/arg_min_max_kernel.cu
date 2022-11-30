@@ -28,8 +28,9 @@ namespace cub = hipcub;
 #endif
 #include <limits>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/utils/data_type.h"
+
 namespace phi {
 
 namespace {  // NOLINT
@@ -208,14 +209,15 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            int dtype,
                            DenseTensor* out) {
   if (dtype < 0) {
-    phi::VisitDataTypeTiny(
-        phi::DataType::INT64,
+    paddle::framework::VisitDataTypeTiny(
+        static_cast<paddle::framework::proto::VarType::Type>(
+            paddle::framework::proto::VarType::INT64),
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  phi::VisitDataTypeTiny(
-      phi::TransToPhiDataType(dtype),
+  paddle::framework::VisitDataTypeTiny(
+      static_cast<paddle::framework::proto::VarType::Type>(dtype),
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -248,12 +250,11 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(argmin,
+PD_REGISTER_KERNEL(arg_min,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    float,
                    double,
                    int32_t,
@@ -261,12 +262,11 @@ PD_REGISTER_KERNEL(argmin,
                    int16_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(argmax,
+PD_REGISTER_KERNEL(arg_max,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    float,
                    double,
                    int32_t,

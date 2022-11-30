@@ -22,11 +22,13 @@ KernelSignature GaussianRandomOpArgumentMapping(
   if (ctx.InputSize("ShapeTensorList") > 0) {
     // Infer output shape by Attr("shape") in CompileTime if it is specified.
     if (!ctx.IsRuntime() && !shape.empty()) {
-      return KernelSignature(
-          "gaussian", {}, {"shape", "mean", "std", "seed", "dtype"}, {"Out"});
+      return KernelSignature("gaussian_random",
+                             {},
+                             {"shape", "mean", "std", "seed", "dtype"},
+                             {"Out"});
     } else {
       return KernelSignature(
-          "gaussian",
+          "gaussian_random",
           {},
           {"ShapeTensorList", "mean", "std", "seed", "dtype"},
           {"Out"});
@@ -34,19 +36,19 @@ KernelSignature GaussianRandomOpArgumentMapping(
   }
 
   if (ctx.HasInput("ShapeTensor") && shape.empty()) {
-    return KernelSignature("gaussian",
+    return KernelSignature("gaussian_random",
                            {},
                            {"ShapeTensor", "mean", "std", "seed", "dtype"},
                            {"Out"});
   }
 
-  return KernelSignature(
-      "gaussian", {}, {"shape", "mean", "std", "seed", "dtype"}, {"Out"});
+  return KernelSignature("gaussian_random",
+                         {},
+                         {"shape", "mean", "std", "seed", "dtype"},
+                         {"Out"});
 }
 
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(gaussian_random, gaussian);
 
 PD_REGISTER_ARG_MAPPING_FN(gaussian_random,
                            phi::GaussianRandomOpArgumentMapping);

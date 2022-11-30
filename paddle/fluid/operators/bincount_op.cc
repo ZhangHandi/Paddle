@@ -25,6 +25,7 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
+using framework::Tensor;
 
 class BincountOp : public framework::OperatorWithKernel {
  public:

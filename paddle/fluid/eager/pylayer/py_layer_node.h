@@ -31,18 +31,10 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
-    name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
     Py_INCREF(ctx_);
   }
 
-  GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
-    this->ctx_ = other.ctx_;
-    Py_INCREF(this->ctx_);
-    this->forward_outputs_meta_ = other.forward_outputs_meta_;
-    this->forward_outputs_place_ = other.forward_outputs_place_;
-  }
-
-  ~GradNodePyLayer() override;
+  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -53,7 +45,9 @@ class GradNodePyLayer : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  std::string name() override { return name_; }
+  std::string name() {
+    return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
+  }
 
   void SaveForwardOutputsMeta(
       const std::vector<std::vector<paddle::experimental::Tensor*>>&
@@ -83,7 +77,6 @@ class GradNodePyLayer : public GradNodeBase {
 
  private:
   PyObject* ctx_{nullptr};
-  std::string name_{""};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
 };

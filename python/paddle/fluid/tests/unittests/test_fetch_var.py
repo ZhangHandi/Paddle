@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import numpy as np
+from __future__ import print_function
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import op_test
+import numpy as np
+import unittest
 
 
 class TestFetchVar(unittest.TestCase):
+
     def set_input(self):
         self.val = np.array([1, 3, 5]).astype(np.int32)
 
@@ -36,6 +38,7 @@ class TestFetchVar(unittest.TestCase):
 
 
 class TestFetchNullVar(TestFetchVar):
+
     def set_input(self):
         self.val = np.array([]).astype(np.int32)
 

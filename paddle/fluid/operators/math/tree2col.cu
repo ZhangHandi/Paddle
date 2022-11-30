@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 namespace math {
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 using Node = paddle::operators::math::TreeNode;
 template <typename T>
 __global__ void tree2col(const T* eta,
@@ -54,9 +54,9 @@ template <typename T>
 class Tree2ColFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& EdgeSet,
-                  const phi::DenseTensor& node_features,
-                  phi::DenseTensor* patch,
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& node_features,
+                  framework::Tensor* patch,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
@@ -131,9 +131,9 @@ template <typename T>
 class Col2TreeFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& EdgeSet,
-                  const phi::DenseTensor& patch_grad,
-                  phi::DenseTensor* embedding_grad,
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& patch_grad,
+                  framework::Tensor* embedding_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();

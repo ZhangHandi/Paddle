@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
@@ -143,6 +143,12 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
+      PADDLE_ENFORCE_GT(
+          c_dim[3],
+          0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(
@@ -191,10 +197,6 @@ class FusedMultiTransformerOpOpMaker
     AddInput("QKVW", "The qkv weight tensor.").AsDuplicable();
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable().AsDuplicable();
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
-        .AsDispensable()
-        .AsDuplicable();
-    AddInput("PreCaches",
-             "(optional) The prefix caches for generation inference.")
         .AsDispensable()
         .AsDuplicable();
     AddInput("TimeStep",
@@ -270,17 +272,7 @@ class FusedMultiTransformerOpOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<std::string>("act_method", "act_method")
-        .SetDefault("gelu")
-        .AddCustomChecker([](const std::string &act_type) {
-          PADDLE_ENFORCE_EQ(
-              act_type == "gelu" || act_type == "relu" || act_type == "none",
-              true,
-              platform::errors::InvalidArgument(
-                  "Only support `gelu`, `relu`, `none` activation in "
-                  "FusedMultiTransformer. "));
-        });
-
+    AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"

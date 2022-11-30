@@ -26,6 +26,8 @@
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class RollOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -83,10 +85,10 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
         "with shifts or size == 0")
         .SetDefault({});
     AddComment(R"DOC(
-    Roll the tensor along the given dimension(s).
+    Roll the tensor along the given dimension(s). 
     Elements that are shifted beyond the last position
     are re-introduced at the first position. If a dimension
-    is not specified, the tensor will be flattened before
+    is not specified, the tensor will be flattened before 
     rolling and then restored to the original shape.
     )DOC");
   }

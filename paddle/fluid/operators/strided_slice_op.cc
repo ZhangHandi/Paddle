@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/slice_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
@@ -26,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
@@ -57,7 +58,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
           ctx.device_context());
     }
     // NOTE: cuda pinned tensor need to copy its data to target place
-    auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
+    auto in_tensor = ctx.Input<Tensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
       return framework::OpKernelType(
           framework::TransToProtoVarType(in_tensor->dtype()),

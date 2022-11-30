@@ -18,12 +18,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -31,7 +34,7 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<phi::DenseTensor>("Out");
+    auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
@@ -55,14 +58,26 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(
+        data_type, ctx.device_context(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
@@ -129,7 +144,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
                             GaussianRandomInferShapeFunctor,
-                            PD_INFER_META(phi::GaussianInferMeta));
+                            PD_INFER_META(phi::GaussianRandomInferMeta));
 
 REGISTER_OPERATOR(
     gaussian_random,
@@ -146,7 +161,7 @@ REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(
-               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
+               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList] 
                and modify the attribute of [shape])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("ShapeTensor",

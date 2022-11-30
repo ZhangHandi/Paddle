@@ -16,12 +16,12 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_erase_op.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using phi::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = phi::DenseTensor;
+using platform::PADDLE_CUDA_NUM_THREADS;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat,

@@ -12,18 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/operators/slice_op.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
-using Variable = framework::Variable;
-using LoDTensorArray = framework::LoDTensorArray;
-using DDim = framework::DDim;
 
 static void ProcessStridedSliceParams(
     const std::vector<int>& axes,
@@ -101,7 +95,7 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
                       false,
                       platform::errors::InvalidArgument(
                           "Tensor array as input is not supported."));
-    int rank = ctx.Input<phi::DenseTensor>("Input")->dims().size();
+    int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
         StridedSliceCompute<1>(ctx);
@@ -139,8 +133,8 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
   void StridedSliceCompute(const framework::ExecutionContext& ctx) const {
     auto place = ctx.GetPlace();
 
-    auto in = ctx.Input<phi::DenseTensor>("Input");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("Input");
+    auto out = ctx.Output<framework::Tensor>("Out");
     auto in_dims = in->dims();
 
     // list<int>
@@ -158,31 +152,31 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
 
     // vector<Tensor<int32>>
     auto list_new_starts_tensor =
-        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+        ctx.MultiInput<framework::Tensor>("StartsTensorList");
     auto list_new_ends_tensor =
-        ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+        ctx.MultiInput<framework::Tensor>("EndsTensorList");
     auto list_new_strides_tensor =
-        ctx.MultiInput<phi::DenseTensor>("StridesTensorList");
+        ctx.MultiInput<framework::Tensor>("StridesTensorList");
 
     // Tensor<int32>
     if (list_new_starts_tensor.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
-      auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
+      auto* starts_tensor = ctx.Input<framework::Tensor>("StartsTensor");
       starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
-      auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
+      auto* ends_tensor = ctx.Input<framework::Tensor>("EndsTensor");
       ends = GetDataFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
-      auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
+      auto* strides_tensor = ctx.Input<framework::Tensor>("StridesTensor");
       strides = GetDataFromTensor<int64_t>(strides_tensor);
     }
 
@@ -269,7 +263,7 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
                       false,
                       platform::errors::InvalidArgument(
                           "Tensor array as input is not supported."));
-    int rank = ctx.Input<phi::DenseTensor>("Input")->dims().size();
+    int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
 
     switch (rank) {
       case 1:
@@ -308,10 +302,10 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
   void StridedSliceGradCompute(const framework::ExecutionContext& ctx) const {
     auto place = ctx.GetPlace();
 
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* input = ctx.Input<framework::Tensor>("Input");
     auto input_dims = input->dims();
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
     dx->mutable_data<T>(input_dims, place);
 
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -327,30 +321,30 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
     auto list_new_ends_tensor =
-        ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+        ctx.MultiInput<framework::Tensor>("EndsTensorList");
     auto list_new_starts_tensor =
-        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+        ctx.MultiInput<framework::Tensor>("StartsTensorList");
     auto list_new_strides_tensor =
-        ctx.MultiInput<phi::DenseTensor>("StridesTensorList");
+        ctx.MultiInput<framework::Tensor>("StridesTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
-      auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
+      auto* starts_tensor = ctx.Input<framework::Tensor>("StartsTensor");
       starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
-      auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
+      auto* ends_tensor = ctx.Input<framework::Tensor>("EndsTensor");
       ends = GetDataFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
-      auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
+      auto* strides_tensor = ctx.Input<framework::Tensor>("StridesTensor");
       strides = GetDataFromTensor<int64_t>(strides_tensor);
     }
 

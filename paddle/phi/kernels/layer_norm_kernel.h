@@ -26,22 +26,23 @@ void LayerNormKernel(const Context& ctx,
                      const paddle::optional<DenseTensor>& bias,
                      float epsilon,
                      int begin_norm_axis,
+                     bool is_test,
                      DenseTensor* out,
                      DenseTensor* mean,
                      DenseTensor* variance);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T, typename U>
+template <typename T>
 class LayerNormDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream,
                   const T* input,
                   std::vector<int> input_shape,
-                  const U* bias,
-                  const U* scale,
+                  const T* bias,
+                  const T* scale,
                   T* output,
-                  U* mean,
-                  U* variance,
+                  T* mean,
+                  T* variance,
                   int begin_norm_axis,
                   float eps);
 };

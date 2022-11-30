@@ -20,7 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
@@ -32,9 +33,9 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
     if (in_var->IsType<phi::SelectedRows>()) {
       in_dims = in_var->Get<phi::SelectedRows>().value().dims();
     } else {
-      in_dims = in_var->Get<phi::DenseTensor>().dims();
+      in_dims = in_var->Get<LoDTensor>().dims();
     }
-    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+    auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
     out_t->mutable_data<int32_t>(ctx.GetPlace());
 

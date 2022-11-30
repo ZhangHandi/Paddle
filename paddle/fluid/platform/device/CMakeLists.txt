@@ -24,7 +24,3 @@ endif()
 if(WITH_MLU)
   add_subdirectory(mlu)
 endif()
-
-if(WITH_CUSTOM_DEVICE)
-  add_subdirectory(custom)
-endif()

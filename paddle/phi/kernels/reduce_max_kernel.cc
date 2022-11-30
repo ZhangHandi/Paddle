@@ -25,7 +25,10 @@ void MaxKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
+  bool reduce_all = false;
+  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size()) {
+    reduce_all = true;
+  }
   MaxRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -39,15 +42,11 @@ PD_REGISTER_KERNEL(
     max, GPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU_KP)
 PD_REGISTER_KERNEL(max, KPS, ALL_LAYOUT, phi::MaxKernel, float) {}
 #endif
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {}
-#endif
-
-#if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float) {}
+    max, OneDNN, ALL_LAYOUT, phi::MaxKernel, float, phi::dtype::bfloat16) {}
 #endif

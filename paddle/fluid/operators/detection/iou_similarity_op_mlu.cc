@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 struct IouFunction {
@@ -26,15 +26,11 @@ struct IouFunction {
   explicit IouFunction(const framework::ExecutionContext& ctx) : ctx(ctx) {
     place = ctx.GetPlace();
   }
-  void Transpose(const phi::DenseTensor* x,
-                 phi::DenseTensor* y,
-                 const std::vector<int>& axis) {
+  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
     //  y should be init first
     TransposeFromMLUTensor<T>(ctx, axis, x, y, false /*need_reshape_or_alloc*/);
   }
-  void Add(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -53,9 +49,7 @@ struct IouFunction {
                       ToCnnlDataType<T>());
   }
 
-  void Sub(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -73,9 +67,7 @@ struct IouFunction {
                       GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
-  void Mul(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -93,9 +85,7 @@ struct IouFunction {
                       GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
-  void DivNoNan(const phi::DenseTensor* x,
-                const phi::DenseTensor* y,
-                phi::DenseTensor* z) {
+  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -112,7 +102,7 @@ struct IouFunction {
                       z_desc.get(),
                       GetBasePtr(z));
   }
-  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+  void Adds(const Tensor* x, float scalar, Tensor* y) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -126,9 +116,7 @@ struct IouFunction {
                        y_desc.get(),
                        GetBasePtr(y));
   }
-  void Maximum(const phi::DenseTensor* x,
-               const phi::DenseTensor* y,
-               phi::DenseTensor* z) {
+  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -142,9 +130,7 @@ struct IouFunction {
                      z_desc.get(),
                      GetBasePtr(z));
   }
-  void Minimum(const phi::DenseTensor* x,
-               const phi::DenseTensor* y,
-               phi::DenseTensor* z) {
+  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -168,10 +154,10 @@ template <typename T>
 class IouSimilarityMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
 
     auto _type = x->dtype();
     auto place = ctx.GetPlace();

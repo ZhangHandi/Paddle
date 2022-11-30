@@ -29,26 +29,26 @@ std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(),
                     true,
                     platform::errors::InvalidArgument(
                         "the type of micro id shoulde be LoDTensor."));
   auto micro_id = -1;
-  auto* tensor = var->GetMutable<phi::DenseTensor>();
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
   if (platform::is_cpu_place(tensor->place())) {
     auto data = reinterpret_cast<const float*>(tensor->data());
     micro_id = static_cast<int>(data[0]);
   } else {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
-    temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
+    temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(platform::CPUPlace(),
                  temp_ptr,
                  tensor->place(),
                  tensor->data(),
-                 tensor->numel() * phi::SizeOf(tensor->dtype()),
+                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
                  stream);
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     micro_id = static_cast<int>(temp_ptr_float[0]);
@@ -251,7 +251,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
     send_var_msg->set_varname(send_var_name);
     framework::Variable* var = p_scope->FindVar(send_var_name);
     butil::IOBuf temp_iobuf;
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<framework::LoDTensor>()) {
       SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
     } else if (var->IsType<phi::SelectedRows>()) {
       SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);

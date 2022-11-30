@@ -18,7 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
  public:
@@ -412,7 +413,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
                                 const std::vector<Tensor>& scores,
                                 const std::vector<Tensor>& bboxes,
                                 const std::vector<Tensor>& anchors,
-                                const phi::DenseTensor& im_info,
+                                const Tensor& im_info,
                                 std::vector<std::vector<T>>* nmsed_out,
                                 int* num_nmsed_out) const {
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
@@ -470,7 +471,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
 
   void MultiClassOutput(const platform::DeviceContext& ctx,
                         const std::vector<std::vector<T>>& nmsed_out,
-                        phi::DenseTensor* outs) const {
+                        Tensor* outs) const {
     auto* odata = outs->data<T>();
     int count = 0;
     int64_t out_dim = 6;
@@ -486,11 +487,11 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto boxes = ctx.MultiInput<phi::DenseTensor>("BBoxes");
-    auto scores = ctx.MultiInput<phi::DenseTensor>("Scores");
-    auto anchors = ctx.MultiInput<phi::DenseTensor>("Anchors");
-    auto* im_info = ctx.Input<phi::DenseTensor>("ImInfo");
-    auto* outs = ctx.Output<phi::DenseTensor>("Out");
+    auto boxes = ctx.MultiInput<Tensor>("BBoxes");
+    auto scores = ctx.MultiInput<Tensor>("Scores");
+    auto anchors = ctx.MultiInput<Tensor>("Anchors");
+    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
+    auto* outs = ctx.Output<LoDTensor>("Out");
 
     std::vector<Tensor> boxes_list(boxes.size());
     std::vector<Tensor> scores_list(scores.size());
@@ -585,8 +586,7 @@ class RetinanetDetectionOutputOpMaker
              "[xmin, ymin, xmax, ymax].")
         .AsDuplicable();
     AddInput("ImInfo",
-             "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [N, 3] "
-             "represents the "
+             "(LoDTensor) A 2-D LoDTensor with shape [N, 3] represents the "
              "image information. N is the batch size, each image information "
              "includes height, width and scale.");
     AddAttr<float>("score_threshold",
@@ -609,8 +609,7 @@ class RetinanetDetectionOutputOpMaker
         "Number of total bounding boxes to be kept per image after NMS "
         "step.");
     AddOutput("Out",
-              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
-              "represents the "
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax]"
               "No is the total number of detections in this mini-batch."
@@ -641,7 +640,7 @@ where `tx`, `ty`, `tw`, `th` denote the predicted box's center coordinates, widt
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 anchor's center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the anchor box and `ox`, `oy`, `ow`, `oh` denote the
-decoded coordinates, width and height.
+decoded coordinates, width and height. 
 
 Then the top decoded prediction from all levels are merged followed by NMS.
 In the NMS step, this operator prunes away boxes that have high IOU
@@ -651,7 +650,7 @@ After NMS step, at most keep_top_k number of total bounding boxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
+image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bounding box for this image. If there is no detected boxes
 for all images, all the elements in LoD are set to 0, and the output tensor is

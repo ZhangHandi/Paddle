@@ -42,8 +42,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
                                              const std::string& prog_filename,
-                                             const std::string& param_filename,
-                                             bool load_params = true);
+                                             const std::string& param_filename);
 
 std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
     framework::Executor* executor,

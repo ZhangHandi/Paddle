@@ -418,9 +418,7 @@ template <typename T,
           int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW,
           int ROWS_PER_CTA = WARPS_M,
           int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
-          int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA,
-          typename InType = T,
-          typename OutType = T>
+          int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
 __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     int rows,
     int cols,
@@ -430,7 +428,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     const bool is_test,
     const uint64_t increment,
     const float epsilon,
-    const InType *__restrict__ x_ptr,
+    const T *__restrict__ x_ptr,
     const T *__restrict__ residual_ptr,
     const T *__restrict__ bias_ptr,
     const ScaleT *__restrict__ gamma_ptr,
@@ -439,19 +437,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     U *__restrict__ mean_out_ptr,
     U *__restrict__ var_out_ptr,
     T *__restrict__ residual_out_ptr,
-    OutType *__restrict__ y_ptr,
-    const float quant_last_in_scale = 1.0,
-    const float *__restrict__ quant_out_scale_ptr = nullptr,
-    const float quant_next_in_scale = 1.0,
-    const int quant_round_type = 1,
-    const float quant_max_bound = 127.0,
-    const float quant_min_bound = -127.0) {
+    T *__restrict__ y_ptr) {
   __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
-  using Vec_in_type = phi::AlignedVector<InType, VecSize>;
-  using Vec_out_type = phi::AlignedVector<OutType, VecSize>;
-  using Vec_float = phi::AlignedVector<float, VecSize>;
   using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
 
   const int tidx = threadIdx.x;
@@ -492,20 +481,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
   constexpr U rn = 1.f / U(ELTS_PER_ROW);
   for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
     Vec x[LDGS];
-    Vec_in_type x_input[LDGS];
     Vec residual[LDGS];
-    Vec_float dequant_out_scale[LDGS];
-
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
+      phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
       phi::Load<T, VecSize>(residual_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &residual[it]);
-      phi::Load<InType, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize,
-                                 &x_input[it]);
-      if (quant_out_scale_ptr != nullptr) {
-        phi::Load<float, VecSize>(quant_out_scale_ptr + col * VecSize,
-                                  &dequant_out_scale[it]);
-      }
       col += THREADS_PER_ROW;
     }
 
@@ -539,20 +520,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
           // dropout(x) + residual
-          if (std::is_same<InType, int32_t>::value) {
-            T tmp = (static_cast<T>(static_cast<float>(x_input[it][jt]) *
-                                    dequant_out_scale[it][jt]) +
-                     bias[it][jt]) *
-                        static_cast<T>(mask_vec[it][jt]) * factor +
-                    residual[it][jt];
-            x[it][jt] = tmp;
-            xf[it * VecSize + jt] = U(tmp);
-          } else {
-            x[it][jt] = (static_cast<T>(x_input[it][jt]) + bias[it][jt]) *
-                            static_cast<T>(mask_vec[it][jt]) * factor +
-                        residual[it][jt];
-            xf[it * VecSize + jt] = U(x[it][jt]);
-          }
+          x[it][jt] = (x[it][jt] + bias[it][jt]) *
+                          static_cast<T>(mask_vec[it][jt]) * factor +
+                      residual[it][jt];
+          xf[it * VecSize + jt] = U(x[it][jt]);
         }
       }
     } else {
@@ -561,18 +532,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
           // dropout(x) + residual
-          if (std::is_same<InType, int32_t>::value) {
-            // for int32 input, we need to dequantize.
-            T tmp = static_cast<T>(static_cast<float>(x_input[it][jt]) *
-                                   dequant_out_scale[it][jt]) *
-                        static_cast<T>(mask_vec[it][jt]) * factor +
-                    residual[it][jt];
-            x[it][jt] = tmp;
-          } else {
-            x[it][jt] = static_cast<T>(x_input[it][jt]) *
-                            static_cast<T>(mask_vec[it][jt]) * factor +
-                        residual[it][jt];
-          }
+          x[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor +
+                      residual[it][jt];
           xf[it * VecSize + jt] = U(x[it][jt]);
         }
       }
@@ -665,8 +626,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
       var_out_ptr[row] = var_local * rn;
     }
 
-    Vec_out_type x_output[LDGS];
-
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
 #pragma unroll
@@ -679,26 +638,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         U tmp = rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local);
         x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
                                    static_cast<U>(beta[it][jt]));
-
-        if (std::is_same<OutType, int8_t>::value)
-          x_output[it][jt] = quant_helper(x[it][jt],
-                                          quant_next_in_scale,
-                                          quant_round_type,
-                                          quant_max_bound,
-                                          quant_min_bound);
       }
     }
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      if (std::is_same<OutType, int8_t>::value) {
-        phi::Store<OutType, VecSize>(
-            x_output[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
-      } else {
-        phi::Store<T, VecSize>(
-            x[it],
-            reinterpret_cast<T *>(y_ptr) + row * ELTS_PER_ROW + col * VecSize);
-      }
+      phi::Store<T, VecSize>(x[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
       col += THREADS_PER_ROW;
     }
   }
@@ -723,9 +668,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 template <typename T,
           typename MaskType,
           typename U,
-          bool ScaleBiasWithSameTypeX = false,
-          typename InType = T,
-          typename OutType = T>
+          bool ScaleBiasWithSameTypeX = false>
 void LaunchLayernormResidualDropoutBias(
     const uint32_t rows,
     const uint32_t cols,
@@ -735,25 +678,18 @@ void LaunchLayernormResidualDropoutBias(
     const float epsilon,
     const bool is_upscale_in_train,
     const bool is_test,
-    const InType *src,
+    const T *src,
     const T *residual,
     const T *bias,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
     MaskType *mask_data,
     T *dst,
-    OutType *layernorm_dst,
+    T *layernorm_dst,
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
-    const phi::GPUContext &ctx,
-    const float quant_last_in_scale = 1.0,
-    const float *dequant_out_scale_data = nullptr,
-    const float quant_next_in_scale = 1.0,
-    const int quant_round_type = 1,
-    const float quant_max_bound = 127.0,
-    const float quant_min_bound = -127.0) {
+    const phi::GPUContext &ctx) {
   // dropout_prob == 1.0f
-  // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = ctx.GetPlace();
     memory::Copy(cuda_place,
@@ -769,15 +705,14 @@ void LaunchLayernormResidualDropoutBias(
     switch (GetDesiredBlockDim(cols)) {
       FIXED_BLOCK_DIM_CASE(
           LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
-          <<<rows, kBlockDim, 0, ctx.stream()>>>(
-              dst,
-              scale,
-              layernorm_bias,
-              reinterpret_cast<T *>(layernorm_dst),
-              mean,
-              var,
-              epsilon,
-              cols));
+          <<<rows, kBlockDim, 0, ctx.stream()>>>(dst,
+                                                 scale,
+                                                 layernorm_bias,
+                                                 layernorm_dst,
+                                                 mean,
+                                                 var,
+                                                 epsilon,
+                                                 cols));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Product from begin_norm_axis to end must be larger than 1"));
@@ -787,62 +722,44 @@ void LaunchLayernormResidualDropoutBias(
     return;
   }
 
-#define LAUNCH_FUSED_FAST_LN_KERNEL_BASE(cols)                                \
-  case (cols): {                                                              \
-    constexpr int WARPS_N = cols < 1024 ? 1 : (cols / 1024);                  \
-    constexpr int WARPS_M = 4 / WARPS_N;                                      \
-    const int THREADS_PER_WARP = 32;                                          \
-    const int BYTES_PER_LDG = 16;                                             \
-    const int VecSize = BYTES_PER_LDG / sizeof(T);                            \
-    const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;         \
-    const int ROWS_PER_CTA = WARPS_M;                                         \
-    const int THREADS_PER_ROW = WARPS_N * THREADS_PER_WARP;                   \
-    const int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW * VecSize;               \
-    const int LDGS = cols / ELTS_PER_ROW_PER_CTA;                             \
-    const int grid =                                                          \
-        static_cast<int>(std::ceil(rows / static_cast<float>(ROWS_PER_CTA))); \
-    fused_fast_ln_fwd_kernel<                                                 \
-        T,                                                                    \
-        U,                                                                    \
-        LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,                    \
-        uint8_t,                                                              \
-        VecSize,                                                              \
-        WARPS_M,                                                              \
-        WARPS_N,                                                              \
-        BYTES_PER_LDG,                                                        \
-        cols,                                                                 \
-        THREADS_PER_WARP,                                                     \
-        THREADS_PER_ROW,                                                      \
-        THREADS_PER_CTA,                                                      \
-        ROWS_PER_CTA,                                                         \
-        ELTS_PER_ROW_PER_CTA,                                                 \
-        LDGS,                                                                 \
-        InType,                                                               \
-        OutType>                                                              \
-        <<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(rows,                    \
-                                                     cols,                    \
-                                                     seed,                    \
-                                                     dropout_prob,            \
-                                                     is_upscale_in_train,     \
-                                                     is_test,                 \
-                                                     increment,               \
-                                                     epsilon,                 \
-                                                     src,                     \
-                                                     residual,                \
-                                                     bias,                    \
-                                                     scale,                   \
-                                                     layernorm_bias,          \
-                                                     mask_data,               \
-                                                     mean,                    \
-                                                     var,                     \
-                                                     dst,                     \
-                                                     layernorm_dst,           \
-                                                     quant_last_in_scale,     \
-                                                     dequant_out_scale_data,  \
-                                                     quant_next_in_scale,     \
-                                                     quant_round_type,        \
-                                                     quant_max_bound,         \
-                                                     quant_min_bound);        \
+#define LAUNCH_FUSED_FAST_LN_KERNEL_BASE(cols)                                 \
+  case (cols): {                                                               \
+    constexpr int WARPS_N = cols < 1024 ? 1 : (cols / 1024);                   \
+    constexpr int WARPS_M = 4 / WARPS_N;                                       \
+    const int THREADS_PER_WARP = 32;                                           \
+    const int BYTES_PER_LDG = 16;                                              \
+    const int VecSize = BYTES_PER_LDG / sizeof(T);                             \
+    const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;          \
+    const int ROWS_PER_CTA = WARPS_M;                                          \
+    const int grid =                                                           \
+        static_cast<int>(std::ceil(rows / static_cast<float>(ROWS_PER_CTA)));  \
+    fused_fast_ln_fwd_kernel<                                                  \
+        T,                                                                     \
+        U,                                                                     \
+        LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,                     \
+        uint8_t,                                                               \
+        VecSize,                                                               \
+        WARPS_M,                                                               \
+        WARPS_N,                                                               \
+        BYTES_PER_LDG,                                                         \
+        cols><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(rows,                \
+                                                          cols,                \
+                                                          seed,                \
+                                                          dropout_prob,        \
+                                                          is_upscale_in_train, \
+                                                          is_test,             \
+                                                          increment,           \
+                                                          epsilon,             \
+                                                          src,                 \
+                                                          residual,            \
+                                                          bias,                \
+                                                          scale,               \
+                                                          layernorm_bias,      \
+                                                          mask_data,           \
+                                                          mean,                \
+                                                          var,                 \
+                                                          dst,                 \
+                                                          layernorm_dst);      \
   } break
 
 #define LAUNCH_FUSED_FAST_LN_KERNEL       \
@@ -867,25 +784,24 @@ void LaunchLayernormResidualDropoutBias(
   if (cols % VecSize != 0) {
     int blockDim = GetDesiredBlockDim(cols);
     FusedLayernormResidualDropoutBias<T, uint8_t, 1, U, ScaleBiasWithSameTypeX>
-        <<<rows, blockDim, 0, ctx.stream()>>>(
-            rows,
-            cols,
-            seed,
-            dropout_prob,
-            is_upscale_in_train,
-            is_test,
-            increment,
-            epsilon,
-            reinterpret_cast<const T *>(src),
-            residual,
-            bias,
-            scale,
-            layernorm_bias,
-            mask_data,
-            dst,
-            reinterpret_cast<T *>(layernorm_dst),
-            mean,
-            var);
+        <<<rows, blockDim, 0, ctx.stream()>>>(rows,
+                                              cols,
+                                              seed,
+                                              dropout_prob,
+                                              is_upscale_in_train,
+                                              is_test,
+                                              increment,
+                                              epsilon,
+                                              src,
+                                              residual,
+                                              bias,
+                                              scale,
+                                              layernorm_bias,
+                                              mask_data,
+                                              dst,
+                                              layernorm_dst,
+                                              mean,
+                                              var);
   } else {
     if (can_call_fast_ln_kernel) {
       switch (cols) {
@@ -903,25 +819,24 @@ void LaunchLayernormResidualDropoutBias(
                                         VecSize,
                                         U,
                                         ScaleBiasWithSameTypeX>
-          <<<rows, blockDim, 0, ctx.stream()>>>(
-              rows,
-              cols,
-              seed,
-              dropout_prob,
-              is_upscale_in_train,
-              is_test,
-              increment,
-              epsilon,
-              reinterpret_cast<const T *>(src),
-              residual,
-              bias,
-              scale,
-              layernorm_bias,
-              mask_data,
-              dst,
-              reinterpret_cast<T *>(layernorm_dst),
-              mean,
-              var);
+          <<<rows, blockDim, 0, ctx.stream()>>>(rows,
+                                                cols,
+                                                seed,
+                                                dropout_prob,
+                                                is_upscale_in_train,
+                                                is_test,
+                                                increment,
+                                                epsilon,
+                                                src,
+                                                residual,
+                                                bias,
+                                                scale,
+                                                layernorm_bias,
+                                                mask_data,
+                                                dst,
+                                                layernorm_dst,
+                                                mean,
+                                                var);
     }
   }
 }

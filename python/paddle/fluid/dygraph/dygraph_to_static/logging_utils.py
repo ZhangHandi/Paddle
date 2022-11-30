@@ -15,6 +15,7 @@
 import os
 import threading
 
+import six
 from paddle.fluid import log_helper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
@@ -29,6 +30,7 @@ LOG_AllTransformer = 100
 
 
 def synchronized(func):
+
     def wrapper(*args, **kwargs):
         with threading.Lock():
             return func(*args, **kwargs)
@@ -36,7 +38,7 @@ def synchronized(func):
     return wrapper
 
 
-class TranslatorLogger:
+class TranslatorLogger(object):
     """
     class for Logging and debugging during the tranformation from dygraph to static graph.
     The object of this class is a singleton.
@@ -58,8 +60,7 @@ class TranslatorLogger:
         self._logger = log_helper.get_logger(
             self.logger_name,
             1,
-            fmt='%(asctime)s %(name)s %(levelname)s: %(message)s',
-        )
+            fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
         self._verbosity_level = None
         self._transformed_code_level = None
         self._need_to_echo_log_to_stdout = None
@@ -116,7 +117,7 @@ class TranslatorLogger:
         self._need_to_echo_code_to_stdout = code_to_stdout
 
     def check_level(self, level):
-        if isinstance(level, (int, type(None))):
+        if isinstance(level, (six.integer_types, type(None))):
             rv = level
         else:
             raise TypeError("Level is not an integer: {}".format(level))
@@ -155,19 +156,16 @@ class TranslatorLogger:
             if self.need_to_echo_log_to_stdout:
                 self._output_to_stdout('INFO: ' + msg_with_level, *args)
 
-    def log_transformed_code(
-        self, level, ast_node, transformer_name, *args, **kwargs
-    ):
+    def log_transformed_code(self, level, ast_node, transformer_name, *args,
+                             **kwargs):
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
             if level == LOG_AllTransformer:
-                header_msg = "After the last level ast transformer: '{}', the transformed code:\n".format(
-                    transformer_name
-                )
+                header_msg = "After the last level ast transformer: '{}', the transformed code:\n" \
+                    .format(transformer_name)
             else:
-                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n".format(
-                    level, transformer_name
-                )
+                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
+                    .format(level, transformer_name)
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
@@ -274,6 +272,5 @@ def log(level, msg, *args, **kwargs):
 
 
 def log_transformed_code(level, ast_node, transformer_name, *args, **kwargs):
-    _TRANSLATOR_LOGGER.log_transformed_code(
-        level, ast_node, transformer_name, *args, **kwargs
-    )
+    _TRANSLATOR_LOGGER.log_transformed_code(level, ast_node, transformer_name,
+                                            *args, **kwargs)

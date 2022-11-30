@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-from decorator_helper import prog_scope
+from __future__ import print_function
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.layers.device import get_places
+from decorator_helper import prog_scope
+import unittest
 
 
 class TestGetPlaces(unittest.TestCase):
+
     @prog_scope()
     def check_get_cpu_places(self):
         places = get_places()

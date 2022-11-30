@@ -18,12 +18,12 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 static void CastToFP16(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
-                       const phi::DenseTensor& in,
-                       phi::DenseTensor* out) {
+                       const Tensor& in,
+                       Tensor* out) {
   out->mutable_data<paddle::platform::float16>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Cast")
@@ -35,8 +35,8 @@ static void CastToFP16(const framework::ExecutionContext& ctx,
 
 static void CastToFP32(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
-                       const phi::DenseTensor& in,
-                       phi::DenseTensor* out) {
+                       const Tensor& in,
+                       Tensor* out) {
   out->mutable_data<float>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Cast")
@@ -50,9 +50,9 @@ template <typename T>
 class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
-    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
 
     const std::vector<int> stride = ctx.Attr<std::vector<int>>("strides");
@@ -151,14 +151,11 @@ template <typename T>
 class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> stride = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> padding = ctx.Attr<std::vector<int>>("paddings");
@@ -271,9 +268,9 @@ template <typename T>
 class NPUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -339,14 +336,11 @@ template <typename T>
 class NPUConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("Input");
-    auto filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    auto input = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -453,9 +447,9 @@ template <typename T>
 class NPUConv3dKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
-    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -539,14 +533,12 @@ template <typename T>
 class NPUConv3dGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
-    const phi::DenseTensor* output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    phi::DenseTensor* input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    phi::DenseTensor* filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");

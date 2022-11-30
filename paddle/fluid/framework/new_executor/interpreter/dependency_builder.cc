@@ -15,35 +15,59 @@
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 
 #include <queue>
-#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+
+// The difference between "sequential_run" and "serial_run":
+// "sequential_run" dispatches OPs one by one according to the sequence in the
+// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// thread. In standalone executor, "sequential_run" is also "serial_run", while
+// "serial_run" is not necessarily "sequential_run".
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                            false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
-size_t CountDownstreamMap(
-    const std::map<size_t, std::set<size_t>>& downstream_map) {
+size_t CountDownstreamMap(const std::map<int, std::set<int>>& downstream_map) {
   size_t count = 0;
   for (auto pair : downstream_map) {
     count += pair.second.size();
   }
   return count;
 }
+
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
+}
+
 const std::string StringizeDownstreamMap(
-    const std::map<size_t, std::set<size_t>>& downstream_map) {
+    const std::map<int, std::set<int>>& downstream_map) {
   std::ostringstream oss;
   for (auto pair : downstream_map) {
     oss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
-              std::ostream_iterator<size_t>(oss, " "));
+              std::ostream_iterator<int>(oss, " "));
     oss << std::endl;
   }
   return oss.str();
 }
 
-const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
-    const std::vector<Instruction>& instructions, bool is_sequential_run) {
+const std::map<int, std::set<int>>& DependencyBuilder::Build(
+    const std::vector<Instruction>& instructions) {
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -56,14 +80,14 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
-  if (is_sequential_run) {
-    AddDependencyForSequentialRun();
-  }
-
   AddDependencyForCoalesceTensorOp();
   AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
+
+  if (FLAGS_new_executor_sequential_run) {
+    AddDependencyForSequentialRun();
+  }
 
   is_build_ = true;
 
@@ -75,18 +99,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   return op_downstream_map_;
 }
 
-const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
-    const {
-  PADDLE_ENFORCE_EQ(
-      is_build_,
-      true,
-      phi::errors::Unavailable(
-          "DependencyBuilder is not yet built, call Build() firstly."));
-  return op_downstream_map_;
-}
-
-bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
-                                        size_t posterior_op_idx) const {
+bool DependencyBuilder::OpHappensBefore(int prior_op_idx,
+                                        int posterior_op_idx) {
   PADDLE_ENFORCE_GE(
       op_happens_before_.size(),
       0,
@@ -95,15 +109,16 @@ bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
+  const std::string kCoalesceTensor = "coalesce_tensor";
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
       auto fused_out = instructions_->at(op_idx).Outputs().at("FusedOutput")[0];
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
 
-      auto is_read = [](const Instruction& inst, size_t var_id) -> bool {
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
         for (auto pair : inst.Inputs()) {
-          for (size_t item : pair.second) {
+          for (auto item : pair.second) {
             if (item == var_id) {
               return true;
             }
@@ -112,9 +127,9 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
         return false;
       };
 
-      auto is_write = [](const Instruction& inst, size_t var_id) -> bool {
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
         for (auto pair : inst.Outputs()) {
-          for (size_t item : pair.second) {
+          for (auto item : pair.second) {
             if (item == var_id) {
               return true;
             }
@@ -124,7 +139,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       };
 
       // find first op that reads fused_out
-      auto first_read_fused_out_op = ULLONG_MAX;
+      auto first_read_fused_out_op = -1;
       for (auto j = op_idx + 1; j < op_num_; ++j) {
         if (is_read(instructions_->at(j), fused_out)) {
           first_read_fused_out_op = j;
@@ -132,7 +147,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
         }
       }
 
-      if (UNLIKELY(first_read_fused_out_op == ULLONG_MAX)) {
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
         VLOG(4) << "No op read FusedOutput";
         continue;
       }
@@ -161,8 +176,9 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
-        if (j == target + 1 && IsCommunicationOp(instructions_->at(target)) &&
-            IsCommunicationOp(instructions_->at(j))) {
+        if (j == target + 1 &&
+            IsCommunicationOp(instructions_->at(target).OpBase()->Type()) &&
+            IsCommunicationOp(instructions_->at(j).OpBase()->Type())) {
           VLOG(4) << "Found consecutive communication ops, "
                   << instructions_->at(target).OpBase()->Type() << " -> "
                   << instructions_->at(j).OpBase()->Type();
@@ -181,10 +197,25 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
 }
 
 void DependencyBuilder::AddDependencyForCommunicationOp() {
-  size_t dependence_op_idx = ULLONG_MAX;
+  auto IsCommunicationOp = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send",
+        "recv",
+        "send_v2",
+        "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (IsCommunicationOp(instructions_->at(op_idx))) {
-      if (dependence_op_idx != ULLONG_MAX) {
+    if (IsCommunicationOp(instructions_->at(op_idx).OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -201,12 +232,12 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
   // c_allreduce_sum(c)
   // c_sync_comm_stream(a)
   const std::string kSyncComm = "c_sync_comm_stream";
-  dependence_op_idx = ULLONG_MAX;
+  dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kSyncComm) {
       dependence_op_idx = op_idx;
     } else {
-      if (dependence_op_idx != ULLONG_MAX) {
+      if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
     }
@@ -228,10 +259,10 @@ void DependencyBuilder::AddDependencyForRandomOp() {
                                                "dropout",
                                                "class_center_sample"};
 
-  size_t dependence_op_idx = ULLONG_MAX;
+  int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (random_op_set.count(instructions_->at(op_idx).OpBase()->Type())) {
-      if (dependence_op_idx != ULLONG_MAX) {
+      if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -274,10 +305,10 @@ void DependencyBuilder::AddDependencyForReadOp() {
 }
 
 void DependencyBuilder::AddDependencyForSequentialRun() {
-  size_t dependence_op_idx = ULLONG_MAX;
+  int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (!IsCpuOp(instructions_->at(op_idx))) {
-      if (dependence_op_idx != ULLONG_MAX) {
+      if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -285,9 +316,9 @@ void DependencyBuilder::AddDependencyForSequentialRun() {
   }
 }
 
-void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
-                                        size_t posterior_op_idx) {
-  std::set<size_t>& downstream_ops = op_downstream_map_[prior_op_idx];
+void DependencyBuilder::AddDownstreamOp(int prior_op_idx,
+                                        int posterior_op_idx) {
+  std::set<int>& downstream_ops = op_downstream_map_[prior_op_idx];
 
   if (op_happens_before_.size() != 0) {
     PADDLE_ENFORCE_EQ(
@@ -300,7 +331,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
             posterior_op_idx,
             prior_op_idx));
 
-    for (size_t op_idx : downstream_ops) {
+    for (int op_idx : downstream_ops) {
       if (op_happens_before_[op_idx][posterior_op_idx]) {
         VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx
                 << "->" << posterior_op_idx << ", skip adding " << prior_op_idx
@@ -314,10 +345,6 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
   if (op_happens_before_.size() != 0) {
     for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-      if (op_happens_before_[op_idx][prior_op_idx]) {
-        op_happens_before_[op_idx][posterior_op_idx] = true;
-      }
-
       if (op_happens_before_[posterior_op_idx][op_idx]) {
         op_happens_before_[prior_op_idx][op_idx] = true;
       }
@@ -333,31 +360,30 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
 void DependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
-      std::map<size_t, std::list<size_t>>();  // # map from variable id to read
-                                              //  write op id.
+      std::map<int, std::list<int>>();  // # map from variable id to read /
+                                        // write op id.
   auto var2recent_write_op =
-      std::map<size_t, size_t>();  // # map from variable to recent write op.
+      std::map<int, int>();  // # map from variable to recent write op.
   auto op2dependences =
-      std::map<size_t,
-               std::set<size_t>>();  //# map from op to the dependence list,
-                                     // op must run after the dependence.
-  std::set<size_t>
+      std::map<int, std::set<int>>();  //# map from op to the dependence list,
+                                       // op must run after the dependence.
+  std::set<int>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 
   // reserve
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    op2dependences[op_idx] = std::set<size_t>();
+    op2dependences[op_idx] = std::set<int>();
   }
 
   auto update_var_min_rw_op =
-      [](const std::map<size_t, std::set<size_t>>& op2dependences,
-         std::map<size_t, std::list<size_t>>* var2min_rw_op,
-         size_t cur_op,
-         size_t rw_var) {
+      [](const std::map<int, std::set<int>>& op2dependences,
+         std::map<int, std::list<int>>* var2min_rw_op,
+         int cur_op,
+         int rw_var) {
         // rw_var is inputs or outputs of cur_op
         // this function update the var2min_rw_op set .
         if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
-          (*var2min_rw_op)[rw_var] = std::list<size_t>();
+          (*var2min_rw_op)[rw_var] = std::list<int>();
         }
         for (auto dep_op : op2dependences.at(cur_op)) {
           var2min_rw_op->at(rw_var).remove(dep_op);
@@ -404,7 +430,7 @@ void DependencyBuilder::BuildDownstreamMap() {
          instructions_->at(op_idx).Outputs()) {  // for all write vars
       for (auto var : item.second) {
         var2recent_write_op[var] = op_idx;
-        var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
         remove_duplicate.insert(var);
       }
     }
@@ -419,7 +445,7 @@ void DependencyBuilder::BuildDownstreamMap() {
       for (auto& p : m) {
         auto var = p.second;
         var2recent_write_op[var] = op_idx;
-        var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
         remove_duplicate.insert(var);
       }
     }
@@ -440,11 +466,15 @@ void DependencyBuilder::BuildDownstreamMap() {
   // next instruction of op. The size of downstream != size of op2dependences
   // since there are some ops that have no downstream-op.
   for (auto& item : op2dependences) {
-    size_t op = item.first;
+    int op = item.first;
     for (auto dep_op : item.second) {
       AddDownstreamOp(dep_op, op);
     }
   }
+
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
+          << StringizeDownstreamMap(op_downstream_map_);
 }
 
 void DependencyBuilder::BuildOpHappensBefore() {
@@ -475,7 +505,7 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
-          VLOG(10) << "happens before: " << op_idx << " " << next;
+          VLOG(8) << "happens before: " << op_idx << " " << next;
           q.push(next);
         }
       }
@@ -503,7 +533,7 @@ void DependencyBuilder::ShrinkDownstreamMap() {
       continue;
     }
 
-    std::set<size_t> minumum_nexts;
+    std::set<int> minumum_nexts;
     for (size_t item : op_downstream_map_.at(i)) {
       bool not_after_any = true;
       // find the op that is not executed after any
@@ -522,9 +552,8 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     op_downstream_map_.at(i) = minumum_nexts;
   }
-  VLOG(8) << "Finish shrink downstream map";
-  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(8) << "downstream_map: " << std::endl
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
 }
 

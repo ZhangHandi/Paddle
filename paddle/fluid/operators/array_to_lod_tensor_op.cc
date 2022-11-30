@@ -44,8 +44,8 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
-  std::vector<phi::DenseTensor> in;
-  mutable phi::DenseTensor *out;
+  std::vector<framework::Tensor> in;
+  mutable framework::Tensor *out;
 
   template <typename Place>
   void operator()(Place place) const {
@@ -93,7 +93,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
+    auto *out =
+        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
 
     // Check dims, place and data type of input's elements and infer output's
     // dim
@@ -157,7 +158,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
           return table_items[a].index < table_items[b].index;
         });
 
-    // Build phi::DenseTensor `out`
+    // Build LoDTensor `out`
     framework::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
     auto prefix_lod = rank_table.coarse_lod();
@@ -215,19 +216,17 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "
-             "be casted to a big phi::DenseTensor.");
+             "be casted to a big LoDTensor.");
     AddInput("RankTable",
              "(LoDRankTable) RankTable provides the coarse lod information to "
-             "build the output phi::DenseTensor. See "
+             "build the output LoDTensor. See "
              "'paddle/framework/lod_rank_table.h' for more details.");
-    AddOutput("Out",
-              "(phi::DenseTensor) The phi::DenseTensor formed by input tensor "
-              "array.");
+    AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big phi::DenseTensor from a std::vector<phi::DenseTensor>
+        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal phi::DenseTensor. The std::vector<phi::DenseTensor>
-          would be the output of RNN Op and the LoDRankTable would be build
+          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
+          would be the output of RNN Op and the LoDRankTable would be build 
           with RNN's input.)DOC");
   }
 };
@@ -249,9 +248,9 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
     // detail kernel implementation.
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
-    // The output phi::DenseTensor's lod_level should be input X's lod_level
-    // + 1. For compile-time, we call SetLoDLevel to set output's lod_level. For
-    // runtime, output phi::DenseTensor's lod is determined by input X's lod and
+    // The output LoDTensor's lod_level should be input X's lod_level + 1.
+    // For compile-time, we call SetLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.

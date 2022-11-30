@@ -246,10 +246,10 @@ class TypedAttrChecker {
                         true,
                         platform::errors::InvalidArgument(
                             "Found Attribute('%s') with type(Variable), but it "
-                            "doesn't support phi::DenseTensor type.",
+                            "doesn't support Tensor type.",
                             attr_name_));
 
-      VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";
+      VLOG(1) << "Found Attribute " << attr_name_ << " with type(Variable).";
       var_info_checker_(it->second);
       return;
     }
@@ -342,12 +342,13 @@ class OpAttrChecker {
   AttributeMap default_attrs_;
 
   // in order to improve the efficiency of dynamic graph mode,
-  // we divide the attribute into explicit type and implicit type.
+  // we divede the attribute into explicit type and implicit type.
   // for explicit attribute, we mean the attribute added in the customized
   // op makers, usually it's defined in the overloaded Make method.
   // for implicit attribute, we mean the attribute added outside of the Make
   // method like "op_role", "op_role_var", and they are useless in dynamic
-  // graph mode
+  // graph
+  // mode
   size_t explicit_checker_num_;
 };
 

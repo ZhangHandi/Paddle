@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using DataLayout = framework::DataLayout;
 
 inline void ExtractNCWHD(const framework::DDim &dims,
                          const DataLayout &data_layout,

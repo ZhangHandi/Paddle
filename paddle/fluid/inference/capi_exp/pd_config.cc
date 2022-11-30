@@ -155,16 +155,14 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                         PD_Bool autotune,
                         const char* autotune_file,
                         const char* precision,
-                        PD_Bool adaptive_seqlen,
-                        PD_Bool enable_multi_stream) {
+                        PD_Bool adaptive_seqlen) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableXpu(l3_workspace_size,
                     locked,
                     autotune,
                     autotune_file,
                     precision,
-                    adaptive_seqlen,
-                    enable_multi_stream);
+                    adaptive_seqlen);
 }
 
 void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {

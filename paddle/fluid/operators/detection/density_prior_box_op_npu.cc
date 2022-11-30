@@ -15,7 +15,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 using fp16 = paddle::platform::float16;
 
 template <typename T>
@@ -31,67 +31,55 @@ struct DensityPriorBoxFunction {
     FillNpuTensorWithConstant<float>(&t0, static_cast<float>(0));
     FillNpuTensorWithConstant<float>(&t1, static_cast<float>(1));
   }
-  void Arange(int n, phi::DenseTensor* x) {
+  void Arange(int n, Tensor* x) {
     //  x should be init first
     FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
     const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {*x}, {});
     runner.Run(stream);
   }
-  void Add(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Cast(const phi::DenseTensor* x, phi::DenseTensor* y) {
+  void Cast(const Tensor* x, Tensor* y) {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(y->type()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
   }
-  void Sub(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Mul(const phi::DenseTensor* x,
-           const phi::DenseTensor* y,
-           phi::DenseTensor* z) {
+  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+  void Adds(const Tensor* x, float scalar, Tensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Muls(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+  void Muls(const Tensor* x, float scalar, Tensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Maximum(const phi::DenseTensor* x,
-               const phi::DenseTensor* y,
-               phi::DenseTensor* z) {
+  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Minimum(const phi::DenseTensor* x,
-               const phi::DenseTensor* y,
-               phi::DenseTensor* z) {
+  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Minimum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Concat(const std::vector<Tensor>& inputs,
-              int axis,
-              phi::DenseTensor* output) {
+  void Concat(const std::vector<Tensor>& inputs, int axis, Tensor* output) {
     //  output should be init first
     std::vector<std::string> names;
     for (size_t i = 0; i < inputs.size(); i++) {
@@ -105,9 +93,7 @@ struct DensityPriorBoxFunction {
     runner.AddInputNames(names);
     runner.Run(stream);
   }
-  void Tile(const phi::DenseTensor* x,
-            phi::DenseTensor* y,
-            const std::vector<int>& multiples) {
+  void Tile(const Tensor* x, Tensor* y, const std::vector<int>& multiples) {
     //  y should be init first
     if (x->dims() == y->dims()) {
       framework::TensorCopy(
@@ -121,7 +107,7 @@ struct DensityPriorBoxFunction {
         NpuOpRunner("TileD", {*x}, {*y}, {{"multiples", multiples}});
     runner.Run(stream);
   }
-  void FloatVec2Tsr(const std::vector<float>& vec, phi::DenseTensor* tsr_dst) {
+  void FloatVec2Tsr(const std::vector<float>& vec, Tensor* tsr_dst) {
     //
     framework::TensorFromVector<T>(vec, ctx.device_context(), tsr_dst);
     ctx.template device_context<platform::NPUDeviceContext>().Wait();
@@ -137,7 +123,7 @@ struct DensityPriorBoxFunction {
 };
 
 template <>
-void DensityPriorBoxFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
+void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
   Tensor x_fp32(experimental::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
@@ -148,7 +134,7 @@ void DensityPriorBoxFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
 
 template <>
 void DensityPriorBoxFunction<fp16>::FloatVec2Tsr(const std::vector<float>& vec,
-                                                 phi::DenseTensor* tsr_dst) {
+                                                 Tensor* tsr_dst) {
   Tensor tsr_fp32(experimental::DataType::FLOAT32);
   tsr_fp32.mutable_data<float>(tsr_dst->dims(), place);
   framework::TensorFromVector<float>(vec, ctx.device_context(), &tsr_fp32);
@@ -160,10 +146,10 @@ template <typename T>
 class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* image = ctx.Input<phi::DenseTensor>("Image");
-    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
-    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
+    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
+    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
+    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
+    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto clip = ctx.Attr<bool>("clip");

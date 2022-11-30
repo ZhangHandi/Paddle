@@ -13,41 +13,39 @@
 # limitations under the License.
 
 import unittest
-
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import (
-    EagerParamBase,
-    ParamBase,
-    _test_eager_guard,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import ParamBase, EagerParamBase
 from paddle.jit import ProgramTranslator
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class L1(fluid.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(L1, self).__init__()
         self._param_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.1)
-        )
-        self.w1 = self.create_parameter(
-            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False
-        )
-        self.w2 = self.create_parameter(
-            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False
-        )
+            initializer=fluid.initializer.Constant(value=0.1))
+        self.w1 = self.create_parameter(attr=self._param_attr,
+                                        shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
+        self.w2 = self.create_parameter(attr=self._param_attr,
+                                        shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
 
 
 class L2(fluid.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(L2, self).__init__()
         self.layer1 = L1()
         self.layer2 = L1()
 
@@ -56,8 +54,9 @@ class L2(fluid.Layer):
 
 
 class L3(fluid.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(L3, self).__init__()
         self.layer1 = L2()
         self.layer2 = L2()
 
@@ -66,6 +65,7 @@ class L3(fluid.Layer):
 
 
 class TestBaseLayer(unittest.TestCase):
+
     def func_test_one_level(self):
         with fluid.dygraph.guard():
             l = L1()
@@ -75,9 +75,9 @@ class TestBaseLayer(unittest.TestCase):
             for name, _ in l.named_parameters(prefix='l1'):
                 self.assertEqual(name, expected_names[idx])
                 idx += 1
-            np.testing.assert_allclose(
-                ret.numpy(), 0.2 * np.ones([2, 2]), rtol=1e-05
-            )
+            np.testing.assert_allclose(ret.numpy(),
+                                       0.2 * np.ones([2, 2]),
+                                       rtol=1e-05)
 
     def test_one_level(self):
         with _test_eager_guard():
@@ -102,9 +102,9 @@ class TestBaseLayer(unittest.TestCase):
                 self.assertEqual(name, expected_names[idx])
                 idx += 1
             ret = l()
-            np.testing.assert_allclose(
-                ret.numpy(), 0.8 * np.ones([2, 2]), rtol=1e-05
-            )
+            np.testing.assert_allclose(ret.numpy(),
+                                       0.8 * np.ones([2, 2]),
+                                       rtol=1e-05)
 
     def test_three_level(self):
         with _test_eager_guard():
@@ -143,8 +143,9 @@ class TestBaseLayer(unittest.TestCase):
 
 
 class BufferLayer(fluid.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(BufferLayer, self).__init__()
         buffer_var = to_variable(np.zeros([2, 4]).astype('int32'))
         self.register_buffer("layer_buffer", buffer_var)
 
@@ -153,12 +154,13 @@ class BufferLayer(fluid.Layer):
 
 
 class BufferNet(fluid.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(BufferNet, self).__init__()
         self.buffer_layer = BufferLayer()
-        self.w1 = self.create_parameter(
-            shape=[2, 2], dtype='float32', is_bias=False
-        )
+        self.w1 = self.create_parameter(shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
         buffer_var = to_variable(np.ones([2, 4]).astype('int32'))
         self.register_buffer("net_buffer", buffer_var)
 
@@ -169,7 +171,9 @@ class BufferNet(fluid.Layer):
 
 
 class TestBuffer(unittest.TestCase):
+
     def func_test_buffers_and_named_buffers(self):
+
         def names(named_buffers):
             return [name for name, _ in named_buffers]
 
@@ -183,14 +187,11 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.buffers()), 3)
             self.assertEqual(
                 names(net.named_buffers()),
-                ['net_buffer', 'new_buffer', 'buffer_layer.layer_buffer'],
-            )
+                ['net_buffer', 'new_buffer', 'buffer_layer.layer_buffer'])
 
             self.assertEqual(len(net.buffers(include_sublayers=False)), 2)
-            self.assertEqual(
-                names(net.named_buffers(include_sublayers=False)),
-                ['net_buffer', 'new_buffer'],
-            )
+            self.assertEqual(names(net.named_buffers(include_sublayers=False)),
+                             ['net_buffer', 'new_buffer'])
 
     def test_buffers_and_named_buffers(self):
         with _test_eager_guard():
@@ -202,31 +203,25 @@ class TestBuffer(unittest.TestCase):
             net = fluid.Layer()
             var = to_variable(np.zeros([1]))
 
-            with self.assertRaisesRegexp(
-                TypeError, "name of buffer should be a string"
-            ):
+            with self.assertRaisesRegexp(TypeError,
+                                         "name of buffer should be a string"):
                 net.register_buffer(12, var)
 
-            with self.assertRaisesRegexp(
-                TypeError, "buffer should be a Paddle.Tensor"
-            ):
+            with self.assertRaisesRegexp(TypeError,
+                                         "buffer should be a Paddle.Tensor"):
                 if in_dygraph_mode():
-                    net.register_buffer(
-                        "buffer_name", EagerParamBase([2, 2], 'float32')
-                    )
+                    net.register_buffer("buffer_name",
+                                        EagerParamBase([2, 2], 'float32'))
                 else:
-                    net.register_buffer(
-                        "buffer_name", ParamBase([2, 2], 'float32')
-                    )
+                    net.register_buffer("buffer_name",
+                                        ParamBase([2, 2], 'float32'))
 
-            with self.assertRaisesRegexp(
-                KeyError, "name of buffer can not contain"
-            ):
+            with self.assertRaisesRegexp(KeyError,
+                                         "name of buffer can not contain"):
                 net.register_buffer("buffer.name", var)
 
-            with self.assertRaisesRegexp(
-                KeyError, "name of buffer can not be empty"
-            ):
+            with self.assertRaisesRegexp(KeyError,
+                                         "name of buffer can not be empty"):
                 net.register_buffer("", var)
 
             net.attr_name = 10
@@ -363,9 +358,8 @@ class TestBuffer(unittest.TestCase):
             net.register_buffer("buffer_var2", var2, persistable=False)
 
             self.assertEqual(len(net.state_dict()), 1)
-            self.assertEqual(
-                [name for name, _ in net.state_dict().items()], ["buffer_var1"]
-            )
+            self.assertEqual([name for name, _ in net.state_dict().items()],
+                             ["buffer_var1"])
 
             # load state_dict
             net_load = fluid.Layer()
@@ -385,8 +379,9 @@ class TestBuffer(unittest.TestCase):
 
 
 class BufferNetWithModification(paddle.nn.Layer):
+
     def __init__(self, shape):
-        super().__init__()
+        super(BufferNetWithModification, self).__init__()
 
         self.buffer1 = paddle.zeros(shape, 'int32')
         self.buffer2 = paddle.zeros(shape, 'int32')
@@ -402,6 +397,7 @@ class BufferNetWithModification(paddle.nn.Layer):
 
 
 class TestModifiedBuffer(unittest.TestCase):
+
     def funcsetUp(self):
         paddle.disable_static()
         self.prog_trans = ProgramTranslator()
@@ -422,9 +418,8 @@ class TestModifiedBuffer(unittest.TestCase):
         st_outs = self._run(True)
 
         for i in range(len(dy_outs)):
-            np.testing.assert_array_equal(
-                dy_outs[i].numpy(), st_outs[i].numpy()
-            )
+            np.testing.assert_array_equal(dy_outs[i].numpy(),
+                                          st_outs[i].numpy())
 
     def test_modified(self):
         with _test_eager_guard():
@@ -433,6 +428,7 @@ class TestModifiedBuffer(unittest.TestCase):
 
 
 class TestLayerTo(unittest.TestCase):
+
     def funcsetUp(self):
         paddle.disable_static()
         self.linear = paddle.nn.Linear(2, 2)
@@ -446,39 +442,30 @@ class TestLayerTo(unittest.TestCase):
 
     def func_test_to_api(self):
         self.linear.to(dtype='double')
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
             if in_dygraph_mode():
                 self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
+                    isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:
                 self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
 
@@ -489,11 +476,9 @@ class TestLayerTo(unittest.TestCase):
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
             self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
             self.assertTrue(
-                self.linear.weight._grad_ivar().place.is_gpu_place()
-            )
+                self.linear.weight._grad_ivar().place.is_gpu_place())
             self.assertEqual(
-                self.linear.weight._grad_ivar().place.gpu_device_id(), 0
-            )
+                self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
 
             self.linear.to(device='gpu:0')
             self.assertTrue(self.linear.weight.place.is_gpu_place())
@@ -501,20 +486,16 @@ class TestLayerTo(unittest.TestCase):
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
             self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
             self.assertTrue(
-                self.linear.weight._grad_ivar().place.is_gpu_place()
-            )
+                self.linear.weight._grad_ivar().place.is_gpu_place())
             self.assertEqual(
-                self.linear.weight._grad_ivar().place.gpu_device_id(), 0
-            )
+                self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
             for p in self.linear.parameters():
                 if in_dygraph_mode():
                     self.assertTrue(
-                        isinstance(p, paddle.fluid.framework.EagerParamBase)
-                    )
+                        isinstance(p, paddle.fluid.framework.EagerParamBase))
                 else:
                     self.assertTrue(
-                        isinstance(p, paddle.fluid.framework.ParamBase)
-                    )
+                        isinstance(p, paddle.fluid.framework.ParamBase))
 
         self.linear.to(device=paddle.CPUPlace())
         self.assertTrue(self.linear.weight.place.is_cpu_place())
@@ -532,77 +513,59 @@ class TestLayerTo(unittest.TestCase):
 
     def func_test_to_api_paddle_dtype(self):
         self.linear.to(dtype=paddle.float64)
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
             if in_dygraph_mode():
                 self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
+                    isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:
                 self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
 
     def func_test_to_api_numpy_dtype(self):
         self.linear.to(dtype=np.float64)
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.fluid.core.VarDesc.VarType.FP64
-        )
-        np.testing.assert_allclose(
-            self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
-        )
-        self.assertEqual(
-            self.linear.weight._grad_ivar().dtype,
-            paddle.fluid.core.VarDesc.VarType.FP64,
-        )
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
             if in_dygraph_mode():
                 self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
+                    isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:
                 self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
 
@@ -611,7 +574,7 @@ class TestLayerTo(unittest.TestCase):
         buffer = None
         model.register_buffer("buf_name", buffer, persistable=True)
         model.to(dtype='float64')
-        self.assertIsNone(model._buffers['buf_name'])
+        self.assertEqual(model._buffers['buf_name'], None)
 
     def test_main(self):
         with _test_eager_guard():

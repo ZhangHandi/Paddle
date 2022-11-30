@@ -19,9 +19,13 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
+
 namespace phi {
 /* --------------------------- */
-/*   From phi::DenseTensor    */
+/*   From framework::Tensor    */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
@@ -64,7 +68,9 @@ const Place& DenseTensor::place() const {
 
 paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
+void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
+  meta_.layout = layout;
+}
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
@@ -200,7 +206,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
 /* ------------------------------ */
-/*   From phi::DenseTensor    */
+/*   From framework::LoDTensor    */
 /* ------------------------------ */
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
@@ -344,7 +350,16 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
+dnnl::memory::desc DenseTensor::mem_desc() const {
+  return mem_desc_ ? mem_desc_
+                   : dnnl::memory::desc(phi::vectorize(meta_.dims),
+                                        phi::TransToOneDNNDataType(meta_.dtype),
+                                        format_);
+}
+
+dnnl::memory::format_tag DenseTensor::format() const {
+  return mem_desc_ ? paddle::platform::GetMKLDNNFormat(mem_desc_) : format_;
+}
 #endif
 
 // NOTE: For historical reasons, this interface has a special behavior,
@@ -357,10 +372,8 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.dtype = src.meta_.dtype;
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
-  meta_.use_gpudnn = src.meta_.use_gpudnn;
-  storage_properties_ =
-      std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN
+  format_ = src.format_;
   mem_desc_ = src.mem_desc_;
 #endif
   return *this;

@@ -31,10 +31,9 @@ namespace details {
 static constexpr double kMB = 1 / (1024 * 1024);
 
 static void GetTensors(Variable *var,
-                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
-  if (var->IsType<phi::DenseTensor>() &&
-      var->Get<phi::DenseTensor>().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<phi::DenseTensor>());
+                       std::unordered_set<Tensor *> *tensor_set) {
+  if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<LoDTensor>());
   } else if (var->IsType<phi::SelectedRows>() &&
              var->Get<phi::SelectedRows>().value().IsInitialized()) {
     tensor_set->insert(var->GetMutable<phi::SelectedRows>()->mutable_value());
@@ -48,8 +47,7 @@ static void GetTensors(Variable *var,
   }
 }
 
-static void GetTensors(Scope *scope,
-                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
+static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
   for (auto &var_name : scope->LocalVarNames()) {
     GetTensors(scope->FindVar(var_name), tensor_set);
   }
@@ -60,7 +58,7 @@ static void GetTensors(Scope *scope,
 }
 
 static size_t GetTensorMemorySize(Scope *scope, bool clear_cpu_tensor) {
-  std::unordered_set<phi::DenseTensor *> tensor_set;
+  std::unordered_set<Tensor *> tensor_set;
   GetTensors(scope, &tensor_set);
   size_t memory_size = 0;
   std::unordered_set<memory::Allocation *> allocation_set;

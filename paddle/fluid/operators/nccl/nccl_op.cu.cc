@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::LoDTensor;
+using framework::Tensor;
 using platform::Communicator;
 
 template <typename Type>
@@ -60,8 +62,8 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::PreconditionNotMet(
                           "This kernel only runs on GPU device."));
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
@@ -95,8 +97,8 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "This kernel only runs on GPU device."));
-    auto x = ctx.Input<phi::DenseTensor>("X");  // x0, x1, x2
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto x = ctx.Input<LoDTensor>("X");  // x0, x1, x2
+    auto out = ctx.Output<LoDTensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
@@ -142,7 +144,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
-      auto* x = ctx.Input<phi::DenseTensor>("X");
+      auto* x = ctx.Input<LoDTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
@@ -153,7 +155,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
           ctx.cuda_device_context().stream()));
       VLOG(3) << "gpu : " << gpu_id << " finished Bcast.";
     } else {
-      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      auto* out = ctx.Output<LoDTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << phi::product(out->dims());
       PADDLE_ENFORCE_GPU_SUCCESS(

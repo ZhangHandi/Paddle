@@ -18,6 +18,7 @@ limitations under the License. */
 
 using CPUPlace = paddle::platform::CPUPlace;
 using LoD = paddle::framework::LoD;
+using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
 template <typename T>
@@ -58,7 +59,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
   lod.push_back(level_1);
 
   // Ids
-  phi::DenseTensor tensor_id;
+  LoDTensor tensor_id;
   tensor_id.set_lod(lod);
   tensor_id.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -68,7 +69,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
   }
 
   // Scores
-  phi::DenseTensor tensor_score;
+  LoDTensor tensor_score;
   tensor_score.set_lod(lod);
   tensor_score.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -123,8 +124,8 @@ void BeamSearchDecodeTestFrame() {
 
   BeamSearchDecoder<T> helper(2, 1);  // beam_size = 2, end_id = 1
 
-  phi::DenseTensor id_tensor;
-  phi::DenseTensor score_tensor;
+  LoDTensor id_tensor;
+  LoDTensor score_tensor;
   helper.Backtrace(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();

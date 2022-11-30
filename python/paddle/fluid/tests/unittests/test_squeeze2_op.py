@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from __future__ import print_function
 import unittest
 
 import numpy as np
+import os
 from op_test import OpTest
-from test_attribute_var import UnittestBase
-
 import paddle
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import program_guard, Program
+
+from test_attribute_var import UnittestBase
 
 paddle.enable_static()
 
 
 # Correct: General.
 class TestSqueezeOp(OpTest):
+
     def setUp(self):
         self.op_type = "squeeze2"
         self.python_api = paddle.squeeze
@@ -38,7 +40,7 @@ class TestSqueezeOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float64"),
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -58,6 +60,7 @@ class TestSqueezeOp(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -66,6 +69,7 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -74,6 +78,7 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 # Correct: Just part of axes be squeezed.
 class TestSqueezeOp3(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)
@@ -81,6 +86,7 @@ class TestSqueezeOp3(TestSqueezeOp):
 
 
 class TestSqueeze2AxesTensor(UnittestBase):
+
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
@@ -97,7 +103,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
             # axes is a Variable
             axes = paddle.assign([0, 2])
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.squeeze(feat, axes)
+            out2 = paddle.fluid.layers.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -117,6 +123,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
 
 
 class TestSqueeze2AxesTensorList(UnittestBase):
+
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
@@ -133,10 +140,10 @@ class TestSqueeze2AxesTensorList(UnittestBase):
             # axes is a list[Variable]
             axes = [
                 paddle.full([1], 0, dtype='int32'),
-                paddle.full([1], 2, dtype='int32'),
+                paddle.full([1], 2, dtype='int32')
             ]
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.squeeze(feat, axes)
+            out2 = paddle.fluid.layers.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))

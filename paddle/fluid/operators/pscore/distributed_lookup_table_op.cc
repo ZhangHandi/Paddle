@@ -90,7 +90,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(phi::DenseTensor) Ids's type should be phi::DenseTensor"
+             "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
@@ -98,9 +98,8 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
 
-    AddOutput(
-        "Outputs",
-        "(phi::DenseTensor) The lookup results, which have the same type as W.")
+    AddOutput("Outputs",
+              "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);

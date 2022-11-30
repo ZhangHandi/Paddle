@@ -18,14 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ShapeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("Input");
-    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("Input");
+    auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({x->dims().size()});
     out_t->mutable_data<int32_t>(ctx.GetPlace());
 

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import paddle.fluid as fluid
+import unittest
 
 
 class TestLoDLevelShare(unittest.TestCase):
+
     def setUp(self):
         self.use_double_buffer = False
 
@@ -27,8 +27,7 @@ class TestLoDLevelShare(unittest.TestCase):
             shapes=([-1, 256], [-1, 512], [-1, 100]),
             dtypes=('float32', 'int64', 'double'),
             lod_levels=(1, 2, 0),
-            use_double_buffer=self.use_double_buffer,
-        )
+            use_double_buffer=self.use_double_buffer)
 
         x, y, z = fluid.layers.read_file(reader)
         self.assertEqual(x.lod_level, 1)
@@ -37,6 +36,7 @@ class TestLoDLevelShare(unittest.TestCase):
 
 
 class TestLoDLevelShare2(TestLoDLevelShare):
+
     def setUp(self):
         self.use_double_buffer = True
 

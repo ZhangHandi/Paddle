@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -27,6 +29,7 @@ SEED = 2021
 
 
 class TestElementwiseDiv(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -40,7 +43,7 @@ class TestElementwiseDiv(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -72,12 +75,13 @@ class TestElementwiseDiv(OpTest):
         )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set("Y")
-        )
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   no_grad_set=set("Y"))
 
 
 class TestElementwiseDivFp16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -91,7 +95,7 @@ class TestElementwiseDivFp16(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -108,6 +112,7 @@ class TestElementwiseDivFp16(OpTest):
 
 
 class TestElementwiseDivNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -126,14 +131,14 @@ class TestElementwiseDivNet(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
             d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64'
-            )
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
             f.stop_gradient = True
-            g = paddle.divide(e, f)
+            g = fluid.layers.elementwise_div(e, f)
 
             fc_1 = fluid.layers.fc(input=g, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
@@ -154,23 +159,18 @@ class TestElementwiseDivNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={
-                    "a": a_np,
-                    "b": b_np,
-                    "c": c_np,
-                    "d": d_np,
-                    "label": label_np,
-                },
-                fetch_list=[prediction, loss],
-            )
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "c": c_np,
+                                             "d": d_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
             if epoch % 10 == 0:
-                print(
-                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                        epoch, pred_res[0], loss_res
-                    )
-                )
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
 
         return pred_res, loss_res
 
@@ -183,6 +183,7 @@ class TestElementwiseDivNet(unittest.TestCase):
 
 
 class TestFloatStatus(unittest.TestCase):
+
     def test_overflow(self):
         paddle.disable_static()
         paddle.set_device('npu')
@@ -192,9 +193,9 @@ class TestFloatStatus(unittest.TestCase):
         self.assertEqual(flag.numpy().sum(), 0.0)
 
         x = paddle.to_tensor([12.564], stop_gradient=False)
-        y = paddle.to_tensor([2.0], stop_gradient=False)
+        y = paddle.to_tensor([2.], stop_gradient=False)
         z = x / y
-        out = 32768.0 * z
+        out = 32768. * z
 
         ops.get_float_status(flag, flag)
         self.assertEqual(flag.numpy().sum(), 0.0)

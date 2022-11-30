@@ -12,34 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
-
 import numpy as np
-
-import paddle.fluid.core as core
-from paddle import enable_static
 from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_softmax_op import (
-    TestSoftmaxOp,
-    TestSoftmaxOp2,
-    TestSoftmaxOp3,
-    TestSoftmaxOp4,
-    TestSoftmaxOp5,
-    TestSoftmaxOp6,
-)
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
+from paddle import enable_static
 
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.0)
+    shiftx = x - np.max(x).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
 
-@unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
-)
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [10, 10]
 
@@ -56,8 +49,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 
         x = np.random.uniform(0.1, 1, self.shape).astype(np.float64)
         out = convert_float_to_uint16(
-            np.apply_along_axis(stable_softmax, self.axis, x)
-        )
+            np.apply_along_axis(stable_softmax, self.axis, x))
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
@@ -74,26 +66,31 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 
 
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function, division
+
 import numpy as np
 import unittest
 import sys
@@ -24,6 +26,7 @@ paddle.enable_static()
 
 
 class TestMLUReciprocal(OpTest):
+
     def setUp(self):
         self.op_type = "reciprocal"
         self.set_mlu()
@@ -40,9 +43,9 @@ class TestMLUReciprocal(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=0.01
-        )
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.01)
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -53,6 +56,7 @@ class TestMLUReciprocal(OpTest):
 
 
 class TestMLUReciprocalFp16(TestMLUReciprocal):
+
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.MLUPlace(0)

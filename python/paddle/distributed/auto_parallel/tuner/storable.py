@@ -18,7 +18,8 @@
 import json
 
 
-class Storable:
+class Storable(object):
+
     def get_state(self):
         raise NotImplementedError
 

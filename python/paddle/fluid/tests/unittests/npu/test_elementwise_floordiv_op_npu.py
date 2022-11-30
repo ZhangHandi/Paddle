@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -24,6 +26,7 @@ paddle.enable_static()
 
 
 class TestElementwiseFloorDiv(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_floordiv"
         self.set_npu()
@@ -32,7 +35,7 @@ class TestElementwiseFloorDiv(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
         self.attrs = {}
         self.outputs = {'Out': self.out}
@@ -54,6 +57,7 @@ class TestElementwiseFloorDiv(OpTest):
 
 
 class TestElementwiseFloorDiv2(TestElementwiseFloorDiv):
+
     def init_dtype(self):
         self.dtype = "int32"
 

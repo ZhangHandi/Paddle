@@ -11,47 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Fliename:
-    test_image.py
-Description:
-    This scipt test image resize,flip and chw.
-"""
 
-import sys
+from __future__ import print_function
+
 import unittest
-
 import numpy as np
 
-from paddle.dataset import image
+import paddle.dataset.image as image
 
 __all__ = []
 
 
 class Image(unittest.TestCase):
-    """
-    This function is test image resize,flip and chw.
-    """
 
     def test_resize_flip_chw(self):
-        """resize"""
-        imgdir = sys.argv[0].replace('test_image.py', 'cat.jpg')
-        images = image.load_image(imgdir)
-        images = image.resize_short(images, 256)
-        self.assertEqual(256, min(images.shape[:2]))
-        self.assertEqual(3, images.shape[2])
+        # resize
+        im = image.load_image('cat.jpg')
+        im = image.resize_short(im, 256)
+        self.assertEqual(256, min(im.shape[:2]))
+        self.assertEqual(3, im.shape[2])
 
         # flip
-        images = image.left_right_flip(images)
-        images2 = np.flip(images, 1)
-        self.assertEqual(images.all(), images2.all())
+        im = image.left_right_flip(im)
+        im2 = np.flip(im, 1)
+        self.assertEqual(im.all(), im2.all())
 
         # to_chw
-        height, width, channel = images.shape
-        images = image.to_chw(images)
-        self.assertEqual(channel, images.shape[0])
-        self.assertEqual(height, images.shape[1])
-        self.assertEqual(width, images.shape[2])
+        h, w, c = im.shape
+        im = image.to_chw(im)
+        self.assertEqual(c, im.shape[0])
+        self.assertEqual(h, im.shape[1])
+        self.assertEqual(w, im.shape[2])
 
 
 if __name__ == '__main__':

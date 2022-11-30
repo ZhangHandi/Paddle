@@ -28,16 +28,17 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
 
 template <typename T, typename InfoT = int, typename OutT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
-                   const phi::DenseTensor &input,
-                   const phi::DenseTensor &tree_info,
-                   phi::DenseTensor *child,
-                   phi::DenseTensor *mask) {
+                   const LoDTensor &input,
+                   const LoDTensor &tree_info,
+                   LoDTensor *child,
+                   LoDTensor *mask) {
   auto child_nums = context.Attr<int>("child_nums");
   auto info_dims = tree_info.dims();
   int node_nums = info_dims[0];
@@ -113,7 +114,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *input_var = ctx.InputVar("X");
     auto *tree_info_var = ctx.InputVar("TreeInfo");
 
-    auto &input_tensor = input_var->Get<phi::DenseTensor>();
+    auto &input_tensor = input_var->Get<LoDTensor>();
     const auto &input_type =
         framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
@@ -129,7 +130,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    auto &tree_info_tensor = tree_info_var->Get<phi::DenseTensor>();
+    auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
     const auto &info_type =
         framework::TransToProtoVarType(tree_info_tensor.dtype());
     bool info_type_match = info_type == framework::proto::VarType::INT32 ||
@@ -148,8 +149,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
     auto *child_var = ctx.OutputVar("Child");
     auto *leaf_mask_var = ctx.OutputVar("LeafMask");
-    auto *child_tensor = child_var->GetMutable<phi::DenseTensor>();
-    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<phi::DenseTensor>();
+    auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
+    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
 
     auto output_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

@@ -7,4 +7,3 @@ cc_library(
   SRCS backward.cc
   DEPS meta_tensor convert_utils)
 add_subdirectory(strings)
-add_subdirectory(sparse)

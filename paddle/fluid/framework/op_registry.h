@@ -175,7 +175,7 @@ inline void RegisterKernelClass(const char* op_type,
   if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
                      platform::CustomPlace(library_type),
-                     phi::StringToDataLayout(data_layout),
+                     StringToDataLayout(data_layout),
                      LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -184,7 +184,7 @@ inline void RegisterKernelClass(const char* op_type,
 #endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   phi::StringToDataLayout(data_layout),
+                   StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;

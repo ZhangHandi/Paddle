@@ -31,7 +31,6 @@ def get_include():
 
     """
     import paddle
-
     return os.path.join(os.path.dirname(paddle.__file__), 'include')
 
 
@@ -49,5 +48,4 @@ def get_lib():
 
     """
     import paddle
-
     return os.path.join(os.path.dirname(paddle.__file__), 'libs')

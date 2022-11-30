@@ -22,7 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
@@ -248,12 +249,12 @@ template <typename T>
 class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* mask = ctx.Output<phi::DenseTensor>("Mask");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
     auto* out_transform_matrix =
-        ctx.Output<phi::DenseTensor>("TransformMatrix");
+        ctx.Output<framework::Tensor>("TransformMatrix");
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -267,7 +268,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
-    phi::DenseTensor roi2image;
+    framework::Tensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -396,10 +397,11 @@ template <typename T>
 class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
-    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
@@ -416,7 +418,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     const T* rois_data = rois->data<T>();
 
-    phi::DenseTensor roi2image;
+    framework::Tensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -503,7 +505,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
@@ -511,7 +513,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims[1],
         8,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -607,9 +609,9 @@ class ROIPerspectiveTransformOpMaker
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(phi::DenseTensor), "
+             "(LoDTensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+             "should be a 2-D LoDTensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"

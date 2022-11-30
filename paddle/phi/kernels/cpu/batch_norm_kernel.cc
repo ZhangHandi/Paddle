@@ -36,16 +36,17 @@ using ConstEigenVectorArrayMap =
 template <typename T, typename Context>
 void BatchNormKernel(const Context& ctx,
                      const DenseTensor& x,
-                     const DenseTensor& mean,
-                     const DenseTensor& variance,
                      const DenseTensor& scale,
                      const DenseTensor& bias,
-                     bool is_test,
+                     const DenseTensor& mean,
+                     const DenseTensor& variance,
                      float momentum,
                      float epsilon,
                      const std::string& data_layout_str,
+                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
+                     bool fuse_with_relu,
                      DenseTensor* y,
                      DenseTensor* mean_out,
                      DenseTensor* variance_out,
@@ -56,7 +57,7 @@ void BatchNormKernel(const Context& ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = phi::StringToDataLayout(data_layout_str);
+  auto data_layout = paddle::framework::StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(

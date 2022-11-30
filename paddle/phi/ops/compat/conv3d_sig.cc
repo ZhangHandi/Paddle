@@ -19,14 +19,15 @@ namespace phi {
 KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("conv3d",
                          {"Input", "Filter"},
-                         {
-                             "strides",
-                             "paddings",
-                             "padding_algorithm",
-                             "groups",
-                             "dilations",
-                             "data_format",
-                         },
+                         {"strides",
+                          "paddings",
+                          "padding_algorithm",
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
                          {"Output"});
 }
 
@@ -38,26 +39,30 @@ KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format"},
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
                          {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature Conv3dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv3d_double_grad",
+  return KernelSignature("conv3d_grad_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format"},
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
                          {"DInput", "DFilter", "DDOutput"});
 }
 
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(conv3d_grad_grad, conv3d_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(conv3d, phi::Conv3dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv3d_grad, phi::Conv3dGradOpArgumentMapping);

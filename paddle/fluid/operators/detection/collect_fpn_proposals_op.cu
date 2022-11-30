@@ -26,14 +26,15 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -49,7 +50,7 @@ static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
   CUDA_KERNEL_LOOP(i, nthreads) {
-    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
+    platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
 
@@ -57,9 +58,9 @@ template <typename DeviceContext, typename T>
 class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto roi_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelRois");
-    const auto score_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelScores");
-    auto fpn_rois = ctx.Output<phi::DenseTensor>("FpnRois");
+    const auto roi_ins = ctx.MultiInput<LoDTensor>("MultiLevelRois");
+    const auto score_ins = ctx.MultiInput<LoDTensor>("MultiLevelScores");
+    auto fpn_rois = ctx.Output<LoDTensor>("FpnRois");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     const int post_nms_topN = ctx.Attr<int>("post_nms_topN");
@@ -88,12 +89,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int lod_size;
     auto place = dev_ctx.GetPlace();
 
-    auto multi_rois_num = ctx.MultiInput<phi::DenseTensor>("MultiLevelRoIsNum");
+    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];
       if (multi_rois_num.size() > 0) {
-        phi::DenseTensor temp;
+        framework::Tensor temp;
         paddle::framework::TensorCopySync(
             *multi_rois_num[i], platform::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
@@ -249,7 +250,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasOutput("RoisNum")) {
-      auto* rois_num = ctx.Output<phi::DenseTensor>("RoisNum");
+      auto* rois_num = ctx.Output<Tensor>("RoisNum");
       int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
       memory::Copy(place,
                    rois_num_data,

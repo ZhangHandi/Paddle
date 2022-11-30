@@ -40,7 +40,7 @@ void InferenceOpReplacePass::RunImpl(Argument* argument) {
 }
 
 std::string InferenceOpReplacePass::repr() const {
-  return "inference_op_replace_pass";
+  return "inference-op-replace-pass";
 }
 
 }  // namespace analysis

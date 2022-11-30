@@ -19,7 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 void CvmComputeKernel(const bool use_cvm,
@@ -60,14 +61,14 @@ template <typename T>
 class CVMOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<phi::DenseTensor>("X");
+    const auto* x = context.Input<LoDTensor>("X");
     const T* x_data = x->data<T>();
 
     auto batch_size = x->dims()[0];
     auto item_size = x->numel() / batch_size;
     auto use_cvm = context.Attr<bool>("use_cvm");
 
-    auto* y = context.Output<phi::DenseTensor>("Y");
+    auto* y = context.Output<LoDTensor>("Y");
     T* y_data = y->mutable_data<T>(context.GetPlace());
 
     // for Input X do not have Lod Information.
@@ -101,14 +102,14 @@ template <typename T>
 class CVMGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = context.Output<LoDTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");
+    const Tensor* cvm = context.Input<Tensor>("CVM");
     const T* cvm_data = cvm->data<T>();
 
     const auto* dOut =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+        context.Input<framework::LoDTensor>(framework::GradVarName("Y"));
     const T* dout_data = dOut->data<T>();
 
     auto use_cvm = context.Attr<bool>("use_cvm");

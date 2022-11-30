@@ -128,18 +128,18 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<phi::DenseTensor>)"
+             "(vector<LoDTensor>)"
              "which are the input of graph inside the CinnLaunchOp"
              "excluding kNoNeedBufferX.")
         .AsDuplicable();
     AddInput(kNoNeedBufferX,
-             "(vector<phi::DenseTensor>)"
+             "(vector<LoDTensor>)"
              "which are the input of graph inside the CinnLaunchOp but"
              "their buffer are not needed.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput(kOutputs,
-              "(vector<phi::DenseTensor>)"
+              "(vector<LoDTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddAttr<int64_t>(

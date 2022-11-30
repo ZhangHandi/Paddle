@@ -43,7 +43,7 @@ class AssignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -79,19 +79,16 @@ class AssignInferVarType : public framework::VarTypeInference {
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The input "
-        "variable "
-        "could be phi::DenseTensor, SelectedRows or phi::DenseTensorArray.")
+    AddInput("X",
+             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
+             "could be LoDTensor, SelectedRows or LoDTensorArray.")
         .AsDispensable();
     AddOutput("Out",
-              "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The "
-              "type of output "
+              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");
     AddComment(R"DOC(Assign Operator
 
-Out = X,  when type in [phi::DenseTensor/SelectedRows/phi::DenseTensorArray]
+Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
 raise error if the type is not listed above.
 )DOC");
   }

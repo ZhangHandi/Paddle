@@ -23,7 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
@@ -74,9 +75,9 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(phi::DenseTensor), "
+             "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D phi::DenseTensor of shape (num_rois, 4)"
+             "should be a 2-D LoDTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
@@ -123,7 +124,7 @@ The operator has three steps:
 
 3. Copying these max values to the output buffer
 
-ROI Pooling for Faster-RCNN. The link below is a further introduction:
+ROI Pooling for Faster-RCNN. The link below is a further introduction: 
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
     )DOC");
   }

@@ -12,30 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import os
+import copy
+import pathlib
 
-from ..strategy import Strategy
+import paddle
+from paddle.distributed import fleet
 
 _tuning_supported_passes = ["sharding", "recompute"]
+_strategy_config_suffiex = "_configs"
 
 
 def _get_pass_config(strategy, pass_name):
-    config = getattr(strategy, pass_name)
+    config_name = pass_name + _strategy_config_suffiex
+    config = getattr(strategy, config_name)
     return config
 
 
-class TuningConfig:
+class TuningConfig(object):
     """
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass
-    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific
+    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific 
     """
 
     def __init__(self, user_config, strategy):
 
-        if not isinstance(strategy, Strategy):
-            raise TypeError("'strategy' must be object of class `Strategy`.")
+        if not isinstance(strategy, fleet.DistributedStrategy):
+            raise TypeError(
+                "'strategy' must be object of class `fleet.DistributedStrategy`."
+            )
 
         if not user_config:
             user_config = {}
@@ -109,14 +115,12 @@ class TuningConfig:
         self._project_dir = project_dir
 
         for p in _tuning_supported_passes:
-            if (
-                getattr(self._dist_strategy, p)
-                and _get_pass_config(self._dist_strategy, p).enable_tuning
-            ):
+            if getattr(self._dist_strategy, p) and _get_pass_config(
+                    self._dist_strategy, p)["enable_tuning"]:
                 # TODO distinguish different args of each passes
                 self._tuning_passes_name.add(p)
 
-                config_name = p
+                config_name = p + _strategy_config_suffiex
                 p_dict = getattr(self._dist_strategy, config_name)
                 self.__dict__[config_name] = p_dict
 

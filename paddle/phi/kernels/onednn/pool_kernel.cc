@@ -32,8 +32,7 @@ void Pool2dKernel(const Context& dev_ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
-  funcs::PoolingOneDNNHandler<T> handler(dev_ctx,
-                                         pooling_type,
+  funcs::PoolingOneDNNHandler<T> handler(pooling_type,
                                          kernel_size,
                                          strides,
                                          paddings,
@@ -42,11 +41,10 @@ void Pool2dKernel(const Context& dev_ctx,
                                          ceil_mode,
                                          exclusive,
                                          adaptive,
+                                         dev_ctx.GetEngine(),
+                                         dev_ctx.GetPlace(),
                                          &x,
                                          out);
-  bool is_test = dev_ctx.HasDnnAttr("is_test")
-                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-                     : false;
 
   auto src_memory = handler.AcquireSrcMemory(&x);
   auto dst_memory = handler.AcquireDstMemory(out);
@@ -54,7 +52,7 @@ void Pool2dKernel(const Context& dev_ctx,
   auto pool_p = handler.AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
-  if (is_test == false && pooling_type == "max") {
+  if (pooling_type == "max") {
     // Training
     auto workspace_memory = handler.AcquireWorkspaceMemory(dev_ctx, "Out");
     pool_p->execute(astream,
@@ -74,7 +72,7 @@ void Pool2dKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(pool2d,
                    OneDNN,
-                   ONEDNN,
+                   ALL_LAYOUT,
                    phi::Pool2dKernel,
                    float,
                    int8_t,

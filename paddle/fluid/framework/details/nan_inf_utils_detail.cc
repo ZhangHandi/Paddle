@@ -22,7 +22,6 @@
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace framework {
@@ -157,18 +156,18 @@ static void PrintNanInf(const T* value,
     }
 
     if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%zu index:%zu value:%f\n",
-             numel,
-             i,
+      printf("numel:%lu index:%lu value:%f\n",
+             static_cast<uint64_t>(numel),
+             static_cast<uint64_t>(i),
              static_cast<float>(value[i]));
     }
   }
   printf(
-      "In cpu, there has %zu,%zu,%zu nan,inf,num. "
+      "In cpu, there has %lu,%lu,%lu nan,inf,num. "
       "And in num, min_value is %f, max_value is %f\n",
-      nan_count,
-      inf_count,
-      num_count,
+      static_cast<uint64_t>(nan_count),
+      static_cast<uint64_t>(inf_count),
+      static_cast<uint64_t>(num_count),
       static_cast<double>(min_value),
       static_cast<double>(max_value));
   if (abort) {
@@ -332,7 +331,7 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
 template <>
 void tensor_check<phi::CPUContext>(const std::string& op_type,
                                    const std::string& var_name,
-                                   const phi::DenseTensor& tensor,
+                                   const framework::Tensor& tensor,
                                    const platform::Place& place) {
   TensorCheckerVisitor<phi::CPUContext> vistor(
       op_type, var_name, tensor, place);
@@ -348,9 +347,9 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       platform::errors::NotFound(
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
-  const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<phi::DenseTensor>()) {
-    tensor = &var->Get<phi::DenseTensor>();
+  const Tensor* tensor{nullptr};
+  if (var->IsType<framework::LoDTensor>()) {
+    tensor = &var->Get<framework::LoDTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -371,8 +370,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile with "
-        "GPU.",
+        "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
         var_name));
 #endif
     return;
@@ -401,13 +399,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         flag,
         true,
         platform::errors::Fatal(
-            "Operator %s output phi::DenseTensor %s contains Inf.",
-            op_type,
-            var_name));
+            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile with "
-        "XPU.",
+        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
         var_name));
 #endif
     return;
@@ -418,7 +413,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       return;
     }
 
-    phi::DenseTensor cpu_tensor;
+    framework::LoDTensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
     float* cpu_data = static_cast<float*>(
         cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
@@ -435,13 +430,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         flag,
         true,
         platform::errors::Fatal(
-            "Operator %s output phi::DenseTensor %s contains Inf.",
-            op_type,
-            var_name));
+            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use npu place. PaddlePaddle must compile with "
-        "NPU.",
+        "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
         var_name));
 #endif
     return;
@@ -450,7 +442,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -480,13 +472,13 @@ using NpuOpRunner = paddle::operators::NpuOpRunner;
 
 constexpr int FLOAT_STATUS_SIZE = 8;
 
-static phi::DenseTensor& npu_float_status() {
-  static phi::DenseTensor float_status;
+static framework::Tensor& npu_float_status() {
+  static framework::Tensor float_status;
   return float_status;
 }
 
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::Scope& scope,
+                                 const framework::ScopeBase& scope,
                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -501,7 +493,7 @@ void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
   flag.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   NpuOpRunner("NPUAllocFloatStatus", {}, {flag}).Run(stream);
 
-  phi::DenseTensor tmp;
+  framework::Tensor tmp;
   tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
 }
@@ -510,9 +502,9 @@ void PrintNpuVarInfo(const std::string& op_type,
                      const std::string& var_name,
                      const framework::Variable* var,
                      const platform::Place& place) {
-  const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<phi::DenseTensor>()) {
-    tensor = &var->Get<phi::DenseTensor>();
+  const Tensor* tensor{nullptr};
+  if (var->IsType<framework::LoDTensor>()) {
+    tensor = &var->Get<framework::LoDTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -535,7 +527,7 @@ void PrintNpuVarInfo(const std::string& op_type,
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
-  phi::DenseTensor cpu_tensor;
+  framework::Tensor cpu_tensor;
   cpu_tensor.Resize(tensor->dims());
   cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype());
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
@@ -555,7 +547,7 @@ void PrintNpuVarInfo(const std::string& op_type,
 }
 
 void PrintNPUOpValueInfo(const framework::OperatorBase& op,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const platform::Place& place) {
   LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
                << "), here we print some tensor value info of this op.";
@@ -573,7 +565,7 @@ void PrintNPUOpValueInfo(const framework::OperatorBase& op,
 }
 
 static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                                  const framework::Scope& scope,
+                                  const framework::ScopeBase& scope,
                                   const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -582,13 +574,13 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
   auto stream = dev_ctx->stream();
 
   auto& flag = npu_float_status();
-  phi::DenseTensor tmp;
+  Tensor tmp;
   tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   // NPUGetFloatStatus updates data on input in-place.
   // tmp is only placeholder.
   NpuOpRunner("NPUGetFloatStatus", {flag}, {tmp}).Run(stream);
 
-  phi::DenseTensor cpu_tensor;
+  framework::Tensor cpu_tensor;
   auto cpu_place = platform::CPUPlace();
   float* cpu_data = static_cast<float*>(
       cpu_tensor.mutable_data<float>({FLOAT_STATUS_SIZE}, cpu_place));
@@ -609,7 +601,7 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 #endif
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& exec_scope,
+                        const framework::ScopeBase& exec_scope,
                         const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 

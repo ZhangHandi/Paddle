@@ -115,6 +115,7 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
       {"ir_graph_build_pass",
+       "ir_graph_clean_pass",
        "ir_analysis_pass",
        "ir_params_sync_among_devices_pass",
        "adjust_cudnn_workspace_size_pass",
@@ -150,9 +151,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
 
   /// \brief Enable MKLDNN int8.
   virtual void EnableMkldnnInt8() {}
-
-  /// \brief Disable MKLDNN fc passes.
-  virtual void DisableMkldnnFcPasses() {}
 
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
@@ -207,7 +205,6 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
-    disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -227,18 +224,11 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN int8.
   void EnableMkldnnInt8() override;
 
-  /// \brief Disable MKLDNN fc passes.
-  void DisableMkldnnFcPasses() override;
-
  protected:
-  /// \brief Erase MKLDNN fc passes.
-  void EraseFcMkldnnPasses();
-
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
   bool use_mkldnn_int8_{false};
-  bool disable_mkldnn_fc_passes_{false};
   /// \endcond
 };
 
@@ -272,9 +262,6 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
-
-  /// \brief Disable MKLDNN fc passes.
-  void DisableMkldnnFcPasses() override;
 
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;

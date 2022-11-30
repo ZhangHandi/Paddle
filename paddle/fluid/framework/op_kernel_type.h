@@ -19,13 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/device_context.h"
 
 namespace paddle {
 namespace framework {
-
-using DataLayout = phi::DataLayout;
 
 class OpKernelType {
  public:
@@ -50,7 +48,7 @@ class OpKernelType {
         customized_type_value_(customized_type_value) {}
 
   OpKernelType(proto::VarType::Type data_type,
-               const phi::DeviceContext& dev_ctx,
+               const platform::DeviceContext& dev_ctx,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -102,8 +100,8 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
   // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
-  ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
-  ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
+  ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
+  ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
 #endif
   return ret;
 }

@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -295,9 +296,9 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Default 100.
 
                 .. note::
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                    will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
+                    1. If you fetch data when calling the 'run', the ParallelExecutor 
+                    will clean up the temp variables at the end of the current iteration. 
+                    2. In some NLP model, it may cause the GPU memory is insufficient, 
                     in this case, you should reduce `num_iteration_per_drop_scope`.
 
                 Examples:
@@ -858,7 +859,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines.
+                And only synchronous on one machine, not all machines. 
                 Default is False.
 
                 Examples:
@@ -896,9 +897,9 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
-                Default None. None means framework would choose to use or not use
-                this strategy automatically. Currently, None means that it is
-                enabled when GC is disabled, and disabled when GC is enabled.
+                Default None. None means framework would choose to use or not use 
+                this strategy automatically. Currently, None means that it is 
+                enabled when GC is disabled, and disabled when GC is enabled. 
                 True means enabling and False means disabling. Default is None.
 
                 Examples:
@@ -911,7 +912,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.memory_optimize = True
-
+                
                 )DOC")
       .def_property(
           "is_distribution",
@@ -1054,7 +1055,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

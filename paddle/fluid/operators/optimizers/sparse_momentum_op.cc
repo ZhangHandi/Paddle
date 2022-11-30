@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
 
 class SparseMomentumOpInferVarType : public framework::VarTypeInference {
  public:

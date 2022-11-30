@@ -14,12 +14,10 @@
 
 import copy
 
-import paddle
 from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
-import paddle
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 
@@ -49,7 +47,7 @@ class BasicGRUUnit(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will
+            If it is set to None or one attribute of ParamAttr, gru_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -76,34 +74,31 @@ class BasicGRUUnit(Layer):
 
     """
 
-    def __init__(
-        self,
-        name_scope,
-        hidden_size,
-        param_attr=None,
-        bias_attr=None,
-        gate_activation=None,
-        activation=None,
-        dtype='float32',
-    ):
-        super().__init__(name_scope, dtype)
+    def __init__(self,
+                 name_scope,
+                 hidden_size,
+                 param_attr=None,
+                 bias_attr=None,
+                 gate_activation=None,
+                 activation=None,
+                 dtype='float32'):
+        super(BasicGRUUnit, self).__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
-        self._full_name = unique_name.generate(
-            name_scope + "/" + self.__class__.__name__
-        )
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
         self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
-        self._activation = activation or paddle.tanh
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
         self._dtype = dtype
 
     def _build_once(self, input, pre_hidden):
         self._input_size = input.shape[-1]
-        assert self._input_size > 0
+        assert (self._input_size > 0)
 
         if self._param_attr is not None and self._param_attr.name is not None:
             gate_param_attr = copy.deepcopy(self._param_attr)
@@ -117,14 +112,12 @@ class BasicGRUUnit(Layer):
         self._gate_weight = self.create_parameter(
             attr=gate_param_attr,
             shape=[self._input_size + self._hiden_size, 2 * self._hiden_size],
-            dtype=self._dtype,
-        )
+            dtype=self._dtype)
 
         self._candidate_weight = self.create_parameter(
             attr=candidate_param_attr,
             shape=[self._input_size + self._hiden_size, self._hiden_size],
-            dtype=self._dtype,
-        )
+            dtype=self._dtype)
 
         if self._bias_attr is not None and self._bias_attr.name is not None:
             gate_bias_attr = copy.deepcopy(self._bias_attr)
@@ -135,35 +128,30 @@ class BasicGRUUnit(Layer):
             gate_bias_attr = self._bias_attr
             candidate_bias_attr = self._bias_attr
 
-        self._gate_bias = self.create_parameter(
-            attr=gate_bias_attr,
-            shape=[2 * self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self._candidate_bias = self.create_parameter(
-            attr=candidate_bias_attr,
-            shape=[self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True,
-        )
+        self._gate_bias = self.create_parameter(attr=gate_bias_attr,
+                                                shape=[2 * self._hiden_size],
+                                                dtype=self._dtype,
+                                                is_bias=True)
+        self._candidate_bias = self.create_parameter(attr=candidate_bias_attr,
+                                                     shape=[self._hiden_size],
+                                                     dtype=self._dtype,
+                                                     is_bias=True)
 
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
         gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
 
-        gate_input = paddle.add(gate_input, self._gate_bias)
+        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
         r, u = layers.split(gate_input, num_or_sections=2, dim=1)
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
-            layers.concat([input, r_hidden], 1), self._candidate_weight
-        )
-        candidate = paddle.add(candidate, self._candidate_bias)
+        candidate = layers.matmul(layers.concat([input, r_hidden], 1),
+                                  self._candidate_weight)
+        candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
@@ -171,22 +159,20 @@ class BasicGRUUnit(Layer):
         return new_hidden
 
 
-def basic_gru(
-    input,
-    init_hidden,
-    hidden_size,
-    num_layers=1,
-    sequence_length=None,
-    dropout_prob=0.0,
-    bidirectional=False,
-    batch_first=True,
-    param_attr=None,
-    bias_attr=None,
-    gate_activation=None,
-    activation=None,
-    dtype='float32',
-    name='basic_gru',
-):
+def basic_gru(input,
+              init_hidden,
+              hidden_size,
+              num_layers=1,
+              sequence_length=None,
+              dropout_prob=0.0,
+              bidirectional=False,
+              batch_first=True,
+              param_attr=None,
+              bias_attr=None,
+              gate_activation=None,
+              activation=None,
+              dtype='float32',
+              name='basic_gru'):
     r"""
     GRU implementation using basic operator, supports multiple layers and bidirectional gru.
 
@@ -200,8 +186,8 @@ def basic_gru(
             h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
 
     Args:
-        input (Variable): GRU input tensor,
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )
+        input (Variable): GRU input tensor, 
+                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
                        if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the GRU
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
@@ -213,7 +199,7 @@ def basic_gru(
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers,
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -228,7 +214,7 @@ def basic_gru(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will
+            If it is set to None or one attribute of ParamAttr, gru_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -249,7 +235,7 @@ def basic_gru(
 
     Examples:
         .. code-block:: python
-
+            
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_gru
 
@@ -287,16 +273,8 @@ def basic_gru(
         else:
             layer_bias_attr = bias_attr
         fw_unit_list.append(
-            BasicGRUUnit(
-                new_name,
-                hidden_size,
-                layer_param_attr,
-                layer_bias_attr,
-                gate_activation,
-                activation,
-                dtype,
-            )
-        )
+            BasicGRUUnit(new_name, hidden_size, layer_param_attr,
+                         layer_bias_attr, gate_activation, activation, dtype))
     if bidirectional:
         bw_unit_list = []
 
@@ -314,39 +292,32 @@ def basic_gru(
                 layer_bias_attr = bias_attr
 
             bw_unit_list.append(
-                BasicGRUUnit(
-                    new_name,
-                    hidden_size,
-                    layer_param_attr,
-                    layer_bias_attr,
-                    gate_activation,
-                    activation,
-                    dtype,
-                )
-            )
+                BasicGRUUnit(new_name, hidden_size, layer_param_attr,
+                             layer_bias_attr, gate_activation, activation,
+                             dtype))
 
     if batch_first:
-        input = paddle.transpose(input, [1, 0, 2])
+        input = layers.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
-        mask = layers.sequence_mask(
-            sequence_length, maxlen=max_seq_len, dtype='float32'
-        )
-        mask = paddle.transpose(mask, [1, 0])
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
+        mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
     if init_hidden:
-        init_hidden = paddle.reshape(
-            init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
-        )
+        init_hidden = layers.reshape(
+            init_hidden, shape=[num_layers, direc_num, -1, hidden_size])
 
-    def get_single_direction_output(
-        rnn_input, unit_list, mask=None, direc_index=0
-    ):
+    def get_single_direction_output(rnn_input,
+                                    unit_list,
+                                    mask=None,
+                                    direc_index=0):
         rnn = StaticRNN()
         with rnn.step():
             step_input = rnn.step_input(rnn_input)
@@ -358,26 +329,22 @@ def basic_gru(
                 if init_hidden:
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                 else:
-                    pre_hidden = rnn.memory(
-                        batch_ref=rnn_input,
-                        shape=[-1, hidden_size],
-                        ref_batch_dim_idx=1,
-                    )
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size],
+                                            ref_batch_dim_idx=1)
 
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
                     new_hidden = layers.elementwise_mul(
-                        new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
-                        pre_hidden, (step_mask - 1), axis=0
-                    )
+                        new_hidden, step_mask, axis=0) - layers.elementwise_mul(
+                            pre_hidden, (step_mask - 1), axis=0)
                 rnn.update_memory(pre_hidden, new_hidden)
 
                 rnn.step_output(new_hidden)
 
                 step_input = new_hidden
-                if dropout_prob is not None and dropout_prob > 0.0:
+                if dropout_prob != None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
@@ -395,37 +362,37 @@ def basic_gru(
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = paddle.reshape(
-            last_hidden_output, shape=[num_layers, -1, hidden_size]
-        )
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output
         # seq_len, batch_size, hidden_size
 
-    fw_rnn_out, fw_last_hidden = get_single_direction_output(
-        input, fw_unit_list, mask, direc_index=0
-    )
+    fw_rnn_out, fw_last_hidden = get_single_direction_output(input,
+                                                             fw_unit_list,
+                                                             mask,
+                                                             direc_index=0)
 
     if bidirectional:
-        bw_input = paddle.reverse(input, axis=[0])
+        bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = paddle.reverse(mask, axis=[0])
-        bw_rnn_out, bw_last_hidden = get_single_direction_output(
-            bw_input, bw_unit_list, bw_mask, direc_index=1
-        )
+            bw_mask = layers.reverse(mask, axis=[0])
+        bw_rnn_out, bw_last_hidden = get_single_direction_output(bw_input,
+                                                                 bw_unit_list,
+                                                                 bw_mask,
+                                                                 direc_index=1)
 
-        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
 
-        last_hidden = paddle.reshape(
-            last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
-        )
+        last_hidden = layers.reshape(
+            last_hidden, shape=[num_layers * direc_num, -1, hidden_size])
 
         if batch_first:
-            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden
     else:
 
@@ -433,29 +400,27 @@ def basic_gru(
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
 
-def basic_lstm(
-    input,
-    init_hidden,
-    init_cell,
-    hidden_size,
-    num_layers=1,
-    sequence_length=None,
-    dropout_prob=0.0,
-    bidirectional=False,
-    batch_first=True,
-    param_attr=None,
-    bias_attr=None,
-    gate_activation=None,
-    activation=None,
-    forget_bias=1.0,
-    dtype='float32',
-    name='basic_lstm',
-):
+def basic_lstm(input,
+               init_hidden,
+               init_cell,
+               hidden_size,
+               num_layers=1,
+               sequence_length=None,
+               dropout_prob=0.0,
+               bidirectional=False,
+               batch_first=True,
+               param_attr=None,
+               bias_attr=None,
+               gate_activation=None,
+               activation=None,
+               forget_bias=1.0,
+               dtype='float32',
+               name='basic_lstm'):
     r"""
     LSTM implementation using basic operators, supports multiple layers and bidirectional LSTM.
 
@@ -473,8 +438,8 @@ def basic_lstm(
            h_t &= o_t \odot tanh(c_t)
 
     Args:
-        input (Variable): lstm input tensor,
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )
+        input (Variable): lstm input tensor, 
+                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
                        if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
@@ -491,7 +456,7 @@ def basic_lstm(
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers,
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -506,7 +471,7 @@ def basic_lstm(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of LSTM unit.
-            If it is set to None or one attribute of ParamAttr, lstm_unit will
+            If it is set to None or one attribute of ParamAttr, lstm_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -532,7 +497,7 @@ def basic_lstm(
 
     Examples:
         .. code-block:: python
-
+            
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_lstm
 
@@ -570,17 +535,14 @@ def basic_lstm(
         else:
             layer_bias_attr = bias_attr
         fw_unit_list.append(
-            BasicLSTMUnit(
-                new_name,
-                hidden_size,
-                param_attr=layer_param_attr,
-                bias_attr=layer_bias_attr,
-                gate_activation=gate_activation,
-                activation=activation,
-                forget_bias=forget_bias,
-                dtype=dtype,
-            )
-        )
+            BasicLSTMUnit(new_name,
+                          hidden_size,
+                          param_attr=layer_param_attr,
+                          bias_attr=layer_bias_attr,
+                          gate_activation=gate_activation,
+                          activation=activation,
+                          forget_bias=forget_bias,
+                          dtype=dtype))
     if bidirectional:
         bw_unit_list = []
 
@@ -597,46 +559,42 @@ def basic_lstm(
             else:
                 layer_bias_attr = param_attr
             bw_unit_list.append(
-                BasicLSTMUnit(
-                    new_name,
-                    hidden_size,
-                    param_attr=layer_param_attr,
-                    bias_attr=layer_bias_attr,
-                    gate_activation=gate_activation,
-                    activation=activation,
-                    forget_bias=forget_bias,
-                    dtype=dtype,
-                )
-            )
+                BasicLSTMUnit(new_name,
+                              hidden_size,
+                              param_attr=layer_param_attr,
+                              bias_attr=layer_bias_attr,
+                              gate_activation=gate_activation,
+                              activation=activation,
+                              forget_bias=forget_bias,
+                              dtype=dtype))
 
     if batch_first:
-        input = paddle.transpose(input, [1, 0, 2])
+        input = layers.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
-        mask = layers.sequence_mask(
-            sequence_length, maxlen=max_seq_len, dtype='float32'
-        )
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
 
-        mask = paddle.transpose(mask, [1, 0])
+        mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
-        init_hidden = paddle.reshape(
-            init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
-        )
-        init_cell = paddle.reshape(
-            init_cell, shape=[num_layers, direc_num, -1, hidden_size]
-        )
+        init_hidden = layers.reshape(
+            init_hidden, shape=[num_layers, direc_num, -1, hidden_size])
+        init_cell = layers.reshape(
+            init_cell, shape=[num_layers, direc_num, -1, hidden_size])
 
     # forward direction
-    def get_single_direction_output(
-        rnn_input, unit_list, mask=None, direc_index=0
-    ):
+    def get_single_direction_output(rnn_input,
+                                    unit_list,
+                                    mask=None,
+                                    direc_index=0):
         rnn = StaticRNN()
         with rnn.step():
             step_input = rnn.step_input(rnn_input)
@@ -649,28 +607,21 @@ def basic_lstm(
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                     pre_cell = rnn.memory(init=init_cell[i, direc_index])
                 else:
-                    pre_hidden = rnn.memory(
-                        batch_ref=rnn_input, shape=[-1, hidden_size]
-                    )
-                    pre_cell = rnn.memory(
-                        batch_ref=rnn_input, shape=[-1, hidden_size]
-                    )
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size])
+                    pre_cell = rnn.memory(batch_ref=rnn_input,
+                                          shape=[-1, hidden_size])
 
-                new_hidden, new_cell = unit_list[i](
-                    step_input, pre_hidden, pre_cell
-                )
+                new_hidden, new_cell = unit_list[i](step_input, pre_hidden,
+                                                    pre_cell)
 
                 if mask:
                     new_hidden = layers.elementwise_mul(
-                        new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
-                        pre_hidden, (step_mask - 1), axis=0
-                    )
+                        new_hidden, step_mask, axis=0) - layers.elementwise_mul(
+                            pre_hidden, (step_mask - 1), axis=0)
                     new_cell = layers.elementwise_mul(
-                        new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
-                        pre_cell, (step_mask - 1), axis=0
-                    )
+                        new_cell, step_mask, axis=0) - layers.elementwise_mul(
+                            pre_cell, (step_mask - 1), axis=0)
 
                 rnn.update_memory(pre_hidden, new_hidden)
                 rnn.update_memory(pre_cell, new_cell)
@@ -679,12 +630,11 @@ def basic_lstm(
                 rnn.step_output(new_cell)
 
                 step_input = new_hidden
-                if dropout_prob is not None and dropout_prob > 0.0:
+                if dropout_prob != None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
-                    )
+                        dropout_implementation='upscale_in_train')
 
             rnn.step_output(step_input)
 
@@ -702,45 +652,39 @@ def basic_lstm(
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = paddle.reshape(
-            last_hidden_output, shape=[num_layers, -1, hidden_size]
-        )
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
         last_cell_output = layers.concat(last_cell_array, axis=0)
-        last_cell_output = paddle.reshape(
-            last_cell_output, shape=[num_layers, -1, hidden_size]
-        )
+        last_cell_output = layers.reshape(last_cell_output,
+                                          shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output, last_cell_output
         # seq_len, batch_size, hidden_size
 
     fw_rnn_out, fw_last_hidden, fw_last_cell = get_single_direction_output(
-        input, fw_unit_list, mask, direc_index=0
-    )
+        input, fw_unit_list, mask, direc_index=0)
 
     if bidirectional:
-        bw_input = paddle.reverse(input, axis=[0])
+        bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = paddle.reverse(mask, axis=[0])
+            bw_mask = layers.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
-            bw_input, bw_unit_list, bw_mask, direc_index=1
-        )
+            bw_input, bw_unit_list, bw_mask, direc_index=1)
 
-        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
-        last_hidden = paddle.reshape(
-            last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
-        )
+        last_hidden = layers.reshape(
+            last_hidden, shape=[num_layers * direc_num, -1, hidden_size])
 
         last_cell = layers.concat([fw_last_cell, bw_last_cell], axis=1)
-        last_cell = paddle.reshape(
-            last_cell, shape=[num_layers * direc_num, -1, hidden_size]
-        )
+        last_cell = layers.reshape(
+            last_cell, shape=[num_layers * direc_num, -1, hidden_size])
 
         if batch_first:
-            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden, last_cell
     else:
 
@@ -749,7 +693,7 @@ def basic_lstm(
         last_cell = fw_last_cell
 
         if batch_first:
-            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden, last_cell
 
@@ -796,7 +740,7 @@ class BasicLSTMUnit(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of LSTM unit.
-            If it is set to None or one attribute of ParamAttr, lstm_unit will
+            If it is set to None or one attribute of ParamAttr, lstm_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -825,66 +769,58 @@ class BasicLSTMUnit(Layer):
 
     """
 
-    def __init__(
-        self,
-        name_scope,
-        hidden_size,
-        param_attr=None,
-        bias_attr=None,
-        gate_activation=None,
-        activation=None,
-        forget_bias=1.0,
-        dtype='float32',
-    ):
-        super().__init__(name_scope, dtype)
+    def __init__(self,
+                 name_scope,
+                 hidden_size,
+                 param_attr=None,
+                 bias_attr=None,
+                 gate_activation=None,
+                 activation=None,
+                 forget_bias=1.0,
+                 dtype='float32'):
+        super(BasicLSTMUnit, self).__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
-        self._full_name = unique_name.generate(
-            name_scope + "/" + self.__class__.__name__
-        )
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
         self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
-        self._activation = activation or paddle.tanh
-        self._forget_bias = layers.fill_constant(
-            [1], dtype=dtype, value=forget_bias
-        )
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
+        self._forget_bias = layers.fill_constant([1],
+                                                 dtype=dtype,
+                                                 value=forget_bias)
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
 
     def _build_once(self, input, pre_hidden, pre_cell):
         self._input_size = input.shape[-1]
-        assert self._input_size > 0
+        assert (self._input_size > 0)
 
         self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=[self._input_size + self._hiden_size, 4 * self._hiden_size],
-            dtype=self._dtype,
-        )
+            dtype=self._dtype)
 
-        self._bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[4 * self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True,
-        )
+        self._bias = self.create_parameter(attr=self._bias_attr,
+                                           shape=[4 * self._hiden_size],
+                                           dtype=self._dtype,
+                                           is_bias=True)
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
         gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = paddle.add(gate_input, self._bias)
+        gate_input = layers.elementwise_add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = paddle.add(
-            paddle.multiply(
+        new_cell = layers.elementwise_add(
+            layers.elementwise_mul(
                 pre_cell,
-                paddle.nn.functional.sigmoid(paddle.add(f, self._forget_bias)),
-            ),
-            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
-        )
-        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
+                layers.sigmoid(layers.elementwise_add(f, self._forget_bias))),
+            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)))
+        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
 
         return new_hidden, new_cell

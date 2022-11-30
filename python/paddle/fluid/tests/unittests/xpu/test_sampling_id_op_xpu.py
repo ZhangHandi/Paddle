@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-
 import numpy as np
+import sys
 
 sys.path.append("..")
 
-import paddle
+from op_test import OpTest
+import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.fluid.op import Operator
+import paddle
 
 
 class TestSamplingIdShape(unittest.TestCase):
+
     def test_shape(self):
         paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')

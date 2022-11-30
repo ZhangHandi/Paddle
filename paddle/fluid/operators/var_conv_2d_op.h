@@ -19,7 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 class VarConv2dOP : public framework::OperatorWithKernel {

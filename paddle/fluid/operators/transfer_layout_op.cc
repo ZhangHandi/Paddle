@@ -49,7 +49,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
-    if (in_tensor->layout() != DataLayout::ONEDNN) {
+    if (in_tensor->layout() != DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -64,9 +64,11 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   expected_kernel_type.data_layout_);
   }
 };
 
@@ -94,9 +96,8 @@ class TransferLayoutKernel {
 class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(phi::DenseTensor) The input Tensor");
-    AddOutput("Out",
-              "(phi::DenseTensor) The Output Tensor with desired layout");
+    AddInput("X", "(LoDTensor) The input Tensor");
+    AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
     // NOTE(zhiqiu): in most case, the src_layout is not needed, the op can use
     // the layout
     // of input X. However, in some mkldnn kernel, the src layout computed by
