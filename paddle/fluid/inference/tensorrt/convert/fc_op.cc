@@ -196,12 +196,13 @@ class FcOpConverter : public OpConverter {
         // add conv layer
         float out_scale = 0;
         if (enable_int8) {
-          PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"),
-              true,
-              platform::errors::InvalidArgument(
-                  "must have out threshold in fc layers in int8 mode"));
-          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          //PADDLE_ENFORCE_EQ(
+          //    op_desc.HasAttr("out_threshold"),
+          //    true,
+          //    platform::errors::InvalidArgument(
+          //        "must have out threshold in fc layers in int8 mode"));
+          //out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          out_scale = 0;
         } else {
           out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
         }
@@ -216,7 +217,11 @@ class FcOpConverter : public OpConverter {
         fc_layer_int8->setName(
             ("fc_op_int8_conv1x1: Convolution (Output: " + output_name + ")")
                 .c_str());
-        engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
+        if (out_scale != 0) {
+          engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
+        } else {
+          LOG(ERROR) << "not set scale: " << output_name.c_str();
+        }
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
@@ -251,6 +256,7 @@ class FcOpConverter : public OpConverter {
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
+
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
@@ -332,9 +338,13 @@ class FcOpConverter : public OpConverter {
     }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
+    //std::cout << "x_dim nbdims: " << x_dim.nbDims << std::endl;
+    //std::cout << "x_num_col_dims: " << x_num_col_dims << std::endl;
     if (x_dim.nbDims == 4 && x_num_col_dims == 1) {
+      //std::cout << "fc in right place" << std::endl;
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
+        //LOG(ERROR) << "add conv1x1 layer";
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
                                                    Convolution,
@@ -344,6 +354,7 @@ class FcOpConverter : public OpConverter {
                                                    weight.get(),
                                                    bias.get());
         if (activation_type == "relu") {
+          //std::cout << "activation type = relu" << std::endl;
           fc_layer_int8->setName(
               ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
                   .c_str());
@@ -354,9 +365,11 @@ class FcOpConverter : public OpConverter {
                   "must have out threshold in fc layers in int8 mode"));
           float out_scale = 0;
           if (enable_int8) {
+            //std::cout << "enable int8" << std::endl;
             out_scale =
                 PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
           } else {
+            //std::cout << "disable int8" << std::endl;
             out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
           }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
@@ -371,15 +384,27 @@ class FcOpConverter : public OpConverter {
                                    {output_name},
                                    test_mode);
         } else {
+          //std::cout << "activation type not relu" << std::endl;
           RreplenishLayerAndOutput(fc_layer_int8,
                                    "ernie_fc_op_int8: Convolution",
                                    {output_name},
                                    test_mode);
         }
       } else {
+        //LOG(ERROR) << "add fc layer";
         // add fc layer
-        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
+
+        //auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
+        //    engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
+                                                   Convolution,
+                                                   *X,
+                                                   n_output,
+                                                   nv_ksize,
+                                                   weight.get(),
+                                                   bias.get());
+
         if (activation_type == "relu") {
           fc_layer_float->setName(
               ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
@@ -398,6 +423,7 @@ class FcOpConverter : public OpConverter {
         }
       }
     } else {  // need reshape input before and after fc
+      //std::cout << "fc in false place" << std::endl;
       PADDLE_ENFORCE_GT(
           x_dim.nbDims,
           x_num_col_dims,

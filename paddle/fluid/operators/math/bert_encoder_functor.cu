@@ -1312,6 +1312,93 @@ template class SkipLayerNormFunctor<float>;
 template class SkipLayerNormFunctor<half>;
 #endif
 
+template <int32_t TPB, int32_t VPT>
+__global__ void skiplnDQQ(const int32_t ld,
+                          const half *input1,
+                          const int8_t *input2,
+                          int8_t *output,
+                          const half *bias,
+                          const half *scale,
+                          const float input1_scale,
+                          const float input2_scale,
+                          const float output_scale,
+                          const int32_t total) {
+  const int32_t hinner = threadIdx.x % 4;
+  const int32_t houter = threadIdx.x / 4;
+  const int32_t tidx = threadIdx.x;
+  const int32_t bidx = blockIdx.x;
+  const int32_t idx = houter * total * 32 + bidx * 32 + hinner * VPT;
+  
+  half input1_local[VPT];
+  int8_t input2_local[VPT];
+  half dq_local[VPT];
+  half bias_local[VPT];
+  half scale_local[VPT];
+  
+  copy<sizeof(half) * VPT>(&input1[idx], input1_local);  
+  copy<sizeof(int8_t) * VPT>(&input2[idx], input2_local);
+  copy<sizeof(half) * VPT>(&bias[tidx * VPT], bias_local);
+  copy<sizeof(half) * VPT>(&scale[tidx * VPT], scale_local);
+ 
+  half2 stats_local = __floats2half2_rn(0.f, 0.f);
+  const half rld = half(1.f) / half(ld);
+  for (int32_t it = 0; it < VPT; it++) {
+    const float tmp_input1 = input1_local[it];
+    const float tmp_input2 = input2_local[it];
+    dq_local[it] = tmp_input1 + input2_scale * tmp_input2;
+    const half tmp = rld * dq_local[it];
+    const half2 tmp2 = __halves2half2(tmp, tmp * dq_local[it]);
+    stats_local = stats_local + tmp2; 
+  }
+  
+  using BlockReduce = cub::BlockReduce<half2, TPB>;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
+  __shared__ half mu;
+  __shared__ half rsigma;
+  const half2 sum2 = BlockReduce(temp_storage).Reduce(stats_local, cub::Sum());
+  
+  if (tidx == 0) {
+    mu = __low2half(sum2);
+    rsigma = rsqrtf(__high2half(sum2) - mu * mu);
+  }
+  __syncthreads();
+  
+  static_assert(VPT % 4 == 0, "");
+  uint32_t output_local[VPT/4];
+#pragma unroll
+  for (int it = 0; it < VPT / 4; it++) {
+    const float tmp0 = scale_local[it*4+0] * (dq_local[it*4+0] - mu) * rsigma + bias_local[it*4+0];
+    const float tmp1 = scale_local[it*4+1] * (dq_local[it*4+1] - mu) * rsigma + bias_local[it*4+1];
+    const float tmp2 = scale_local[it*4+2] * (dq_local[it*4+2] - mu) * rsigma + bias_local[it*4+2];
+    const float tmp3 = scale_local[it*4+3] * (dq_local[it*4+3] - mu) * rsigma + bias_local[it*4+3];
+    output_local[it] = float4_to_char4(tmp0 * output_scale, tmp1 * output_scale, tmp2 * output_scale, tmp3 * output_scale);
+  }
+  copy<sizeof(int8_t) * VPT>(output_local, &output[idx]);
+}
+//template <typename T, typename T2>
+void SkipLayerNormFunctorInt8::operator()(gpuStream_t stream,
+                              const int32_t ld,
+                              const int32_t total,
+                              const half *input1,
+                              const int8_t *input2,
+                              const half *bias,
+                              const half *scale,
+                              int8_t *output,
+                              const float input1_scale,
+                              const float input2_scale,
+                              const float output_scale) {
+  const int32_t gridSize = total;
+  constexpr int32_t VPT = 16 / sizeof(half);
+  constexpr int32_t TPB = 768 / VPT;
+  if (ld == 768) {
+    skiplnDQQ<TPB, VPT>
+        <<<gridSize, TPB, 0, stream>>>(ld, input1, input2, output, bias, scale, input1_scale, input2_scale, output_scale, total);
+  } else {
+    assert(false);
+  }
+}
+//template class SkipLayerNormFunctorInt8<half, int8_t>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

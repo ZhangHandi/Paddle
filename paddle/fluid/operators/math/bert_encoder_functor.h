@@ -132,7 +132,81 @@ class SkipLayerNormFunctor {
                   float eps,
                   gpuStream_t stream);
 };
+
+//template <typename T, typename T2>
+class SkipLayerNormFunctorInt8 {
+ public:
+  void operator()(gpuStream_t stream,
+                  const int32_t ld,
+                  const int32_t total,
+                  const half *input1,
+                  const int8_t *input2,
+                  const half *bias,
+                  const half *scale,
+                  int8_t *output,
+                  const float input1_scale,
+                  const float input2_scale,
+                  const float output_scale);
+};
 #endif
+
+template <int VPT>
+struct BytesToType;
+
+template <>
+struct BytesToType<2>
+{
+    using type = uint16_t;
+};
+template <>
+struct BytesToType<4>
+{
+    using type = uint32_t;
+};
+template <>
+struct BytesToType<8>
+{
+    using type = uint64_t;
+};
+template <>
+struct BytesToType<16>
+{
+    using type = float4;
+};
+
+template <int Bytes>
+__device__ inline void copy(const void* local, void* data)
+{
+    using T = typename BytesToType<Bytes>::type;
+
+    const T* in = static_cast<const T*>(local);
+    T* out = static_cast<T*>(data);
+    *out = *in;
+}
+
+static inline __device__ uint32_t float4_to_char4(float x,
+                                                  float y,
+                                                  float z,
+                                                  float w) {
+  uint32_t dst;
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 720
+  uint32_t a; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(a) : "f"(x));
+  uint32_t b; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(b) : "f"(y));
+  uint32_t c; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(c) : "f"(z));
+  uint32_t d; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(d) : "f"(w));
+
+  asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2,  0;\n" : "=r"(dst) : "r"(d), "r"(c));
+  asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, %0;\n" : "+r"(dst) : "r"(b), "r"(a));
+#else
+  char4 tmp;
+  tmp.x = x;
+  tmp.y = y;
+  tmp.z = z;
+  tmp.w = w;
+  dst = reinterpret_cast<const uint32_t&>(tmp);
+#endif
+  return dst;
+}
 
 }  // namespace math
 }  // namespace operators
