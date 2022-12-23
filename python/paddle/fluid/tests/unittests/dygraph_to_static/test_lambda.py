@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
 import numpy as np
-
+import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.nn.functional as F
+
+from paddle.fluid.dygraph import declarative
 
 
 def call_lambda_as_func(x):
@@ -48,7 +49,7 @@ def call_lambda_in_func(x):
 
     add_func = lambda x: x + 1
 
-    y = paddle.mean((lambda x: F.relu(x))(x))
+    y = paddle.mean((lambda x: fluid.layers.relu(x))(x))
     out = add_func(y) if y > 1 and y < 2 else (lambda x: x**2)(y)
 
     return out
@@ -80,23 +81,18 @@ def call_lambda_with_ifExpr2(x):
 
 
 class TestLambda(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
-        self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.init_func()
 
     def init_func(self):
         self.dyfuncs = [
-            call_lambda_as_func,
-            call_lambda_directly,
-            call_lambda_in_func,
-            call_lambda_with_ifExpr,
-            call_lambda_with_ifExpr2,
+            call_lambda_as_func, call_lambda_directly, call_lambda_in_func,
+            call_lambda_with_ifExpr, call_lambda_with_ifExpr2
         ]
 
     def run_static(self, func):
@@ -107,7 +103,7 @@ class TestLambda(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = paddle.jit.to_static(func)(x_v)
+                ret = declarative(func)(x_v)
             else:
                 ret = func(x_v)
             return ret.numpy()
@@ -115,8 +111,7 @@ class TestLambda(unittest.TestCase):
     def test_ast_to_func(self):
         for func in self.dyfuncs:
             self.assertTrue(
-                (self.run_dygraph(func) == self.run_static(func)).all()
-            )
+                (self.run_dygraph(func) == self.run_static(func)).all())
 
 
 if __name__ == '__main__':

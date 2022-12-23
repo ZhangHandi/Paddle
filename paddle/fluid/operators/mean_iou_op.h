@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+using Tensor = framework::Tensor;
 
 template <typename T,
           int D,
@@ -34,11 +34,11 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     auto& place =
         *ctx.template device_context<phi::CPUContext>().eigen_device();
     // get input and output tensor
-    auto* predictions = ctx.Input<phi::DenseTensor>("Predictions");
-    auto* labels = ctx.Input<phi::DenseTensor>("Labels");
-    auto* out_mean_iou = ctx.Output<phi::DenseTensor>("OutMeanIou");
-    auto* out_wrong = ctx.Output<phi::DenseTensor>("OutWrong");
-    auto* out_correct = ctx.Output<phi::DenseTensor>("OutCorrect");
+    auto* predictions = ctx.Input<Tensor>("Predictions");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
+    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
     int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // get data ptr
@@ -55,9 +55,9 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Tmp tensor
-    phi::DenseTensor denominator;
-    phi::DenseTensor valid_count;
-    phi::DenseTensor iou_sum;
+    Tensor denominator;
+    Tensor valid_count;
+    Tensor iou_sum;
 
     // get data ptr of tmp tensor
     int* denominator_data = denominator.mutable_data<int>(
@@ -76,16 +76,16 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     out_mean_iou_t = out_mean_iou_t.constant(0);
 
     // collect pre wrong, correct and mean_iou
-    auto in_mean_ious = ctx.MultiInput<phi::DenseTensor>("InMeanIou");
+    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
     for (size_t i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-    auto in_wrongs = ctx.MultiInput<phi::DenseTensor>("InWrongs");
+    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
     for (size_t i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
-    auto in_corrects = ctx.MultiInput<phi::DenseTensor>("InCorrects");
+    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
     for (size_t i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }

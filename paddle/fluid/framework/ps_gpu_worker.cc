@@ -164,7 +164,7 @@ void PSGPUWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr || !tensor->IsInitialized()) {
         continue;
       }

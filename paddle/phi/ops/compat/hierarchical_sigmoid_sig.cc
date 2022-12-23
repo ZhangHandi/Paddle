@@ -18,16 +18,22 @@ namespace phi {
 
 KernelSignature HierarchicalSigmoidOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("hsigmoid_loss",
-                         {"X", "Label", "W", "Bias", "PathTable", "PathCode"},
-                         {"num_classes", "remote_prefetch", "is_sparse"},
+  return KernelSignature("hierarchical_sigmoid",
+                         {"X", "W", "Label", "PathTable", "PathCode", "Bias"},
+                         {"num_classes",
+                          "remote_prefetch",
+                          "trainer_id",
+                          "height_sections",
+                          "epmap",
+                          "table_names",
+                          "is_sparse"},
                          {"Out", "PreOut", "W_Out"});
 }
 
 KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorOutput("W@GRAD")) {
-    return KernelSignature("hsigmoid_loss_grad",
+    return KernelSignature("hierarchical_sigmoid_grad",
                            {"X",
                             "W",
                             "Label",
@@ -36,10 +42,16 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes",
+                            "remote_prefetch",
+                            "trainer_id",
+                            "height_sections",
+                            "epmap",
+                            "table_names",
+                            "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else if (ctx.IsSelectedRowsOutput("W@GRAD")) {
-    return KernelSignature("hsigmoid_loss_grad_sr",
+    return KernelSignature("hierarchical_sigmoid_grad_sr",
                            {"X",
                             "W",
                             "Label",
@@ -48,7 +60,13 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes",
+                            "remote_prefetch",
+                            "trainer_id",
+                            "height_sections",
+                            "epmap",
+                            "table_names",
+                            "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
@@ -56,9 +74,6 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
 }
 
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(hierarchical_sigmoid, hsigmoid_loss);
-PD_REGISTER_BASE_KERNEL_NAME(hierarchical_sigmoid_grad, hsigmoid_loss_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(hierarchical_sigmoid,
                            phi::HierarchicalSigmoidOpArgumentMapping);

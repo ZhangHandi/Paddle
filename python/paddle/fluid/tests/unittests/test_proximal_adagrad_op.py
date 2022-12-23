@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
+import unittest
 import numpy as np
 from op_test import OpTest
 
 
 class TestProximalAdagradOp(OpTest):
+
     def setUp(self):
         self.op_type = "proximal_adagrad"
         w = np.random.random((102, 105)).astype("float32")

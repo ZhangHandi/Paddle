@@ -36,5 +36,4 @@ PD_REGISTER_KERNEL(subtract_raw,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
                    float,
-                   phi::dtype::float16,
-                   int64_t) {}
+                   phi::dtype::float16) {}

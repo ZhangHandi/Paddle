@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from paddle.fluid.core import CipherUtils
+from paddle.fluid.core import CipherFactory
+from paddle.fluid.core import Cipher
 
-from paddle.fluid.core import CipherFactory, CipherUtils
+import unittest
 
 
 class CipherUtilsTestCase(unittest.TestCase):
+
     def test_gen_key(self):
         key1 = CipherUtils.gen_key(256)
         key2 = CipherUtils.gen_key_to_file(256, "paddle_aes_test.keyfile")
@@ -29,6 +32,7 @@ class CipherUtilsTestCase(unittest.TestCase):
 
 
 class CipherTestCase(unittest.TestCase):
+
     def test_aes_cipher(self):
         plaintext = "hello world"
         key = CipherUtils.gen_key(256)

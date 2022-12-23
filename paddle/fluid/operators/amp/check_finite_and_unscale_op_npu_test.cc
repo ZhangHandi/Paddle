@@ -31,12 +31,14 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
+using Tensor = paddle::framework::Tensor;
+
 USE_OP_ITSELF(check_finite_and_unscale);
 USE_OP_DEVICE_KERNEL(check_finite_and_unscale, NPU);
 
 struct InputVars {
   std::string name;
-  phi::DenseTensor *tensor;
+  f::LoDTensor *tensor;
 };
 
 template <typename T>
@@ -46,15 +48,15 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
 
   // init input
   std::vector<InputVars> input_names = {
-      {"x", scope->Var("x")->GetMutable<phi::DenseTensor>()},
-      {"x1", scope->Var("x1")->GetMutable<phi::DenseTensor>()}};
+      {"x", scope->Var("x")->GetMutable<f::LoDTensor>()},
+      {"x1", scope->Var("x1")->GetMutable<f::LoDTensor>()}};
 
-  auto *scale = scope->Var("scale")->GetMutable<phi::DenseTensor>();
+  auto *scale = scope->Var("scale")->GetMutable<f::LoDTensor>();
 
   // init output
-  auto *out = scope->Var("out")->GetMutable<phi::DenseTensor>();
-  auto *out1 = scope->Var("out1")->GetMutable<phi::DenseTensor>();
-  auto *found_inf = scope->Var("found_inf")->GetMutable<phi::DenseTensor>();
+  auto *out = scope->Var("out")->GetMutable<f::LoDTensor>();
+  auto *out1 = scope->Var("out1")->GetMutable<f::LoDTensor>();
+  auto *found_inf = scope->Var("found_inf")->GetMutable<f::LoDTensor>();
 
   // Initialize input data
   const int num_inputs = input_names.size();
@@ -108,7 +110,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   ctx.Wait();
 
   // out found_inf
-  phi::DenseTensor found_inf_tensor;
+  Tensor found_inf_tensor;
   found_inf_tensor.Resize({1});
   bool *found_inf_data =
       found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());

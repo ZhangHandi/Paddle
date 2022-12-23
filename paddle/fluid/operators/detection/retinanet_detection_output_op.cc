@@ -18,6 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
 class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -407,10 +410,10 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void RetinanetDetectionOutput(const framework::ExecutionContext& ctx,
-                                const std::vector<phi::DenseTensor>& scores,
-                                const std::vector<phi::DenseTensor>& bboxes,
-                                const std::vector<phi::DenseTensor>& anchors,
-                                const phi::DenseTensor& im_info,
+                                const std::vector<Tensor>& scores,
+                                const std::vector<Tensor>& bboxes,
+                                const std::vector<Tensor>& anchors,
+                                const Tensor& im_info,
                                 std::vector<std::vector<T>>* nmsed_out,
                                 int* num_nmsed_out) const {
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
@@ -423,11 +426,11 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     std::map<int, std::vector<std::vector<T>>> preds;
     for (size_t l = 0; l < scores.size(); ++l) {
       // Fetch per level score
-      phi::DenseTensor scores_per_level = scores[l];
+      Tensor scores_per_level = scores[l];
       // Fetch per level bbox
-      phi::DenseTensor bboxes_per_level = bboxes[l];
+      Tensor bboxes_per_level = bboxes[l];
       // Fetch per level anchor
-      phi::DenseTensor anchors_per_level = anchors[l];
+      Tensor anchors_per_level = anchors[l];
 
       int64_t scores_num = scores_per_level.numel();
       int64_t bboxes_num = bboxes_per_level.numel();
@@ -468,7 +471,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
 
   void MultiClassOutput(const platform::DeviceContext& ctx,
                         const std::vector<std::vector<T>>& nmsed_out,
-                        phi::DenseTensor* outs) const {
+                        Tensor* outs) const {
     auto* odata = outs->data<T>();
     int count = 0;
     int64_t out_dim = 6;
@@ -484,15 +487,15 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto boxes = ctx.MultiInput<phi::DenseTensor>("BBoxes");
-    auto scores = ctx.MultiInput<phi::DenseTensor>("Scores");
-    auto anchors = ctx.MultiInput<phi::DenseTensor>("Anchors");
-    auto* im_info = ctx.Input<phi::DenseTensor>("ImInfo");
-    auto* outs = ctx.Output<phi::DenseTensor>("Out");
+    auto boxes = ctx.MultiInput<Tensor>("BBoxes");
+    auto scores = ctx.MultiInput<Tensor>("Scores");
+    auto anchors = ctx.MultiInput<Tensor>("Anchors");
+    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
+    auto* outs = ctx.Output<LoDTensor>("Out");
 
-    std::vector<phi::DenseTensor> boxes_list(boxes.size());
-    std::vector<phi::DenseTensor> scores_list(scores.size());
-    std::vector<phi::DenseTensor> anchors_list(anchors.size());
+    std::vector<Tensor> boxes_list(boxes.size());
+    std::vector<Tensor> scores_list(scores.size());
+    std::vector<Tensor> anchors_list(anchors.size());
     for (size_t j = 0; j < boxes_list.size(); ++j) {
       boxes_list[j] = *boxes[j];
       scores_list[j] = *scores[j];
@@ -510,8 +513,8 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     std::vector<size_t> batch_starts = {0};
     for (int i = 0; i < batch_size; ++i) {
       int num_nmsed_out = 0;
-      std::vector<phi::DenseTensor> box_per_batch_list(boxes_list.size());
-      std::vector<phi::DenseTensor> score_per_batch_list(scores_list.size());
+      std::vector<Tensor> box_per_batch_list(boxes_list.size());
+      std::vector<Tensor> score_per_batch_list(scores_list.size());
       for (size_t j = 0; j < boxes_list.size(); ++j) {
         const auto& score_dims = scores_list[j].dims();
         score_per_batch_list[j] = scores_list[j].Slice(i, i + 1);
@@ -519,7 +522,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
         box_per_batch_list[j] = boxes_list[j].Slice(i, i + 1);
         box_per_batch_list[j].Resize({score_dims[1], box_dim});
       }
-      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      Tensor im_info_slice = im_info->Slice(i, i + 1);
 
       std::vector<std::vector<T>> nmsed_out;
       RetinanetDetectionOutput(ctx,
@@ -542,7 +545,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
-          phi::DenseTensor out = outs->Slice(s, e);
+          Tensor out = outs->Slice(s, e);
           MultiClassOutput(dev_ctx, all_nmsed_out[i], &out);
         }
       }
@@ -561,8 +564,7 @@ class RetinanetDetectionOutputOpMaker
   void Make() override {
     AddInput("BBoxes",
              "(List) A list of tensors from multiple FPN levels. Each "
-             "element is a 3-D phi::DenseTensor with shape [N, Mi, 4] "
-             "represents the "
+             "element is a 3-D Tensor with shape [N, Mi, 4] represents the "
              "predicted locations of Mi bounding boxes, N is the batch size. "
              "Mi is the number of bounding boxes from i-th FPN level. Each "
              "bounding box has four coordinate values and the layout is "
@@ -570,24 +572,21 @@ class RetinanetDetectionOutputOpMaker
         .AsDuplicable();
     AddInput("Scores",
              "(List) A list of tensors from multiple FPN levels. Each "
-             "element is a 3-D phi::DenseTensor with shape [N, Mi, C] "
-             "represents the "
+             "element is a 3-D Tensor with shape [N, Mi, C] represents the "
              "predicted confidence from its FPN level. N is the batch size, "
              "C is the class number (excluding background), Mi is the number "
              "of bounding boxes from i-th FPN level. For each bounding box, "
              "there are total C scores.")
         .AsDuplicable();
-    AddInput(
-        "Anchors",
-        "(List) A list of tensors from multiple FPN levels. Each"
-        "element is a 2-D phi::DenseTensor with shape [Mi, 4] represents the "
-        "locations of Mi anchor boxes from i-th FPN level. Each "
-        "bounding box has four coordinate values and the layout is "
-        "[xmin, ymin, xmax, ymax].")
+    AddInput("Anchors",
+             "(List) A list of tensors from multiple FPN levels. Each"
+             "element is a 2-D Tensor with shape [Mi, 4] represents the "
+             "locations of Mi anchor boxes from i-th FPN level. Each "
+             "bounding box has four coordinate values and the layout is "
+             "[xmin, ymin, xmax, ymax].")
         .AsDuplicable();
     AddInput("ImInfo",
-             "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [N, 3] "
-             "represents the "
+             "(LoDTensor) A 2-D LoDTensor with shape [N, 3] represents the "
              "image information. N is the batch size, each image information "
              "includes height, width and scale.");
     AddAttr<float>("score_threshold",
@@ -610,8 +609,7 @@ class RetinanetDetectionOutputOpMaker
         "Number of total bounding boxes to be kept per image after NMS "
         "step.");
     AddOutput("Out",
-              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
-              "represents the "
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax]"
               "No is the total number of detections in this mini-batch."
@@ -642,7 +640,7 @@ where `tx`, `ty`, `tw`, `th` denote the predicted box's center coordinates, widt
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 anchor's center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the anchor box and `ox`, `oy`, `ow`, `oh` denote the
-decoded coordinates, width and height.
+decoded coordinates, width and height. 
 
 Then the top decoded prediction from all levels are merged followed by NMS.
 In the NMS step, this operator prunes away boxes that have high IOU
@@ -652,7 +650,7 @@ After NMS step, at most keep_top_k number of total bounding boxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
+image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bounding box for this image. If there is no detected boxes
 for all images, all the elements in LoD are set to 0, and the output tensor is

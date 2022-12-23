@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import timeit
+import logging
 from collections import OrderedDict
 
 
-class Stack:
+class Stack(object):
     """
     The stack in a Last-In/First-Out (LIFO) manner. New element is added at
     the end and an element is removed from that end.
@@ -41,7 +42,7 @@ class Stack:
             return None
 
 
-class Event:
+class Event(object):
     """
     A Event is used to record the cost of every step and the cost of
     the total steps except skipped steps.
@@ -126,33 +127,25 @@ class Event:
         else:
             speed_avg = float(self.total_iters) / self.batch_records['total']
 
-        reader_summary = dict(
-            max=self.reader_records['max'],
-            min=self.reader_records['min'],
-            avg=reader_avg,
-        )
-        batch_summary = dict(
-            max=self.batch_records['max'],
-            min=self.batch_records['min'],
-            avg=batch_avg,
-        )
-        ips_summary = dict(
-            max=self.speed_records['max'],
-            min=self.speed_records['min'],
-            avg=speed_avg,
-        )
+        reader_summary = dict(max=self.reader_records['max'],
+                              min=self.reader_records['min'],
+                              avg=reader_avg)
+        batch_summary = dict(max=self.batch_records['max'],
+                             min=self.batch_records['min'],
+                             avg=batch_avg)
+        ips_summary = dict(max=self.speed_records['max'],
+                           min=self.speed_records['min'],
+                           avg=speed_avg)
         reader_ratio = (reader_avg / batch_avg) * 100
-        summary = dict(
-            reader_summary=reader_summary,
-            batch_summary=batch_summary,
-            ips_summary=ips_summary,
-            reader_ratio=reader_ratio,
-        )
+        summary = dict(reader_summary=reader_summary,
+                       batch_summary=batch_summary,
+                       ips_summary=ips_summary,
+                       reader_ratio=reader_ratio)
 
         return summary
 
 
-class Hook:
+class Hook(object):
     """
     As the base class. All types of hooks should inherit from it.
     """
@@ -176,7 +169,7 @@ class Hook:
 class TimerHook(Hook):
     """
     A hook for recording real-time performance and the summary
-    performance of total steps.
+    performance of total steps. 
     """
 
     def __init__(self):
@@ -213,11 +206,8 @@ class TimerHook(Hook):
         """
 
         reader_cost = timeit.default_timer() - self.start_reader
-        if (
-            (benchmark.current_event is None)
-            or (not benchmark.current_event.need_record)
-            or (reader_cost == 0)
-        ):
+        if (benchmark.current_event is None) or (
+                not benchmark.current_event.need_record) or (reader_cost == 0):
             return
         benchmark.current_event.record_reader(reader_cost)
 
@@ -231,9 +221,8 @@ class TimerHook(Hook):
 
         """
 
-        if (benchmark.current_event is None) or (
-            not benchmark.current_event.need_record
-        ):
+        if (benchmark.current_event is
+                None) or (not benchmark.current_event.need_record):
             return
         batch_cost = timeit.default_timer() - self.start_time
         benchmark.current_event.record_batch(batch_cost, benchmark.num_samples)
@@ -262,20 +251,10 @@ class TimerHook(Hook):
         print('Perf Summary'.center(100, '='))
         if summary['reader_ratio'] != 0:
             print('Reader Ratio: ' + '%.3f' % (summary['reader_ratio']) + '%')
-        print(
-            'Time Unit: s, IPS Unit: %s' % (benchmark.current_event.speed_unit)
-        )
-        print(
-            '|',
-            ''.center(15),
-            '|',
-            'avg'.center(15),
-            '|',
-            'max'.center(15),
-            '|',
-            'min'.center(15),
-            '|',
-        )
+        print('Time Unit: s, IPS Unit: %s' %
+              (benchmark.current_event.speed_unit))
+        print('|', ''.center(15), '|', 'avg'.center(15), '|', 'max'.center(15),
+              '|', 'min'.center(15), '|')
         # if DataLoader is not called, reader_summary is unnecessary.
         if summary['reader_summary']['avg'] != 0:
             self._print_stats('reader_cost', summary['reader_summary'])
@@ -286,20 +265,11 @@ class TimerHook(Hook):
         avg_str = '%.5f' % (message_dict['avg'])
         max_str = '%.5f' % (message_dict['max'])
         min_str = '%.5f' % (message_dict['min'])
-        print(
-            '|',
-            item.center(15),
-            '|',
-            avg_str.center(15),
-            '|',
-            max_str.center(15),
-            '|',
-            min_str.center(15),
-            '|',
-        )
+        print('|', item.center(15), '|', avg_str.center(15), '|',
+              max_str.center(15), '|', min_str.center(15), '|')
 
 
-class TimeAverager:
+class TimeAverager(object):
     """
     Record the cost of every step and count the average.
     """
@@ -346,7 +316,7 @@ class TimeAverager:
         return float(self._total_iters) / self._total_time
 
 
-class Benchmark:
+class Benchmark(object):
     """
     A tool for the statistics of model performance. The `before_reader`
     and `after_reader` are called in the DataLoader to count the cost
@@ -388,10 +358,8 @@ class Benchmark:
             message += ' %s: %.5f s' % ('batch_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' ips: %.3f %s' % (
-                speed_average,
-                self.current_event.speed_unit,
-            )
+            message += ' ips: %.3f %s' % (speed_average,
+                                          self.current_event.speed_unit)
         self.current_event.reset()
         return message
 
@@ -422,10 +390,8 @@ class Benchmark:
             # set reader for the current event at the first iter
             if self.current_event.reader is None:
                 self.current_event.reader = reader
-            elif (
-                self.current_event.reader.__dict__['_dataset']
-                != reader.__dict__['_dataset']
-            ):
+            elif self.current_event.reader.__dict__[
+                    '_dataset'] != reader.__dict__['_dataset']:
                 # enter a new task but not calling beign() to record it.
                 # we pause the timer until the end of new task, so that
                 # the cost of new task is not added to the current event.
@@ -433,10 +399,8 @@ class Benchmark:
                 self.current_event.need_record = False
         else:
             # when the new task exits, continue timing for the current event.
-            if (
-                self.current_event.reader.__dict__['_dataset']
-                == reader.__dict__['_dataset']
-            ):
+            if self.current_event.reader.__dict__[
+                    '_dataset'] == reader.__dict__['_dataset']:
                 self.current_event.need_record = True
                 self.hooks['timer_hook'].start_time = timeit.default_timer()
 

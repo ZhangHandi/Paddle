@@ -19,27 +19,7 @@ namespace phi {
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // if input is Tensor Array
   if (ctx.IsDenseTensorVectorInput("Input")) {
-    const char* starts_name = "starts";
-    if (ctx.HasInput("StartsTensor")) {
-      starts_name = "StartsTensor";
-    } else if (ctx.InputSize("StartsTensorList") > 0) {
-      starts_name = "StartsTensorList";
-    }
-    const char* ends_name = "ends";
-    if (ctx.HasInput("EndsTensor")) {
-      ends_name = "EndsTensor";
-    } else if (ctx.InputSize("EndsTensorList") > 0) {
-      ends_name = "EndsTensorList";
-    }
-
-    if (paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis")).size() >
-        0) {
-      return KernelSignature(
-          "slice_array_dense", {"Input"}, {starts_name}, {"Out"});
-    } else {
-      return KernelSignature(
-          "slice_array", {"Input"}, {starts_name, ends_name}, {"Out"});
-    }
+    return KernelSignature("unregistered", {}, {}, {});
   }
 
   if (ctx.HasInput("StartsTensor")) {
@@ -119,30 +99,7 @@ KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorVectorInput("Input")) {
-    const char* starts_name = "starts";
-    if (ctx.HasInput("StartsTensor")) {
-      starts_name = "StartsTensor";
-    } else if (ctx.InputSize("StartsTensorList") > 0) {
-      starts_name = "StartsTensorList";
-    }
-    const char* ends_name = "ends";
-    if (ctx.HasInput("EndsTensor")) {
-      ends_name = "EndsTensor";
-    } else if (ctx.InputSize("EndsTensorList") > 0) {
-      ends_name = "EndsTensorList";
-    }
-    if (paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis")).size() >
-        0) {
-      return KernelSignature("slice_array_dense_grad",
-                             {"Input", "Out@GRAD"},
-                             {starts_name},
-                             {"Input@GRAD"});
-    } else {
-      return KernelSignature("slice_array_grad",
-                             {"Input", "Out@GRAD"},
-                             {starts_name, ends_name},
-                             {"Input@GRAD"});
-    }
+    return KernelSignature("unregistered", {}, {}, {});
   }
 
   if (ctx.HasInput("StartsTensor")) {

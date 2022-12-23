@@ -22,6 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 // NOTE(zhiqiu): The CheckFiniteAndUnscaleNPUKernel is different from CUDA.
 // On NPU, we do not really check the data of input tensors,
 // but use NPUGetFloatStatus to check whether the nan/inf occurs on device,
@@ -32,11 +34,11 @@ template <typename T>
 class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    const auto xs = ctx.MultiInput<phi::DenseTensor>("X");
-    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
-    const auto* float_status = ctx.Input<phi::DenseTensor>("FloatStatus");
-    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
-    auto* found_inf = ctx.Output<phi::DenseTensor>("FoundInfinite");
+    const auto xs = ctx.MultiInput<framework::Tensor>("X");
+    const auto* scale = ctx.Input<framework::Tensor>("Scale");
+    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
     found_inf->mutable_data<bool>(ctx.GetPlace());
 
@@ -45,13 +47,13 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // step1: inverse scale
-    phi::DenseTensor const_tensor;
+    Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
 
     // Inverse(1.0/scale)
-    phi::DenseTensor* tmp_inverse_out = const_cast<phi::DenseTensor*>(scale);
-    phi::DenseTensor inverse_out(scale->type());
+    Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
+    Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
     inverse_out.mutable_data<T>(ctx.GetPlace());
     const auto& runner_inverse =
@@ -60,7 +62,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     tmp_inverse_out = &inverse_out;
 
     // NOTE(zhiqiu):
-    phi::DenseTensor tmp;
+    Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
@@ -71,7 +73,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
-    phi::DenseTensor sum;
+    Tensor sum;
     sum.mutable_data<float>({1}, ctx.GetPlace());
     const auto& runner_reduce_sum =
         NpuOpRunner("ReduceSumD",

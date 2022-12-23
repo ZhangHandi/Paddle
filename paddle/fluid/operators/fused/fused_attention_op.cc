@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -255,7 +257,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto input = ctx.Input<Tensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -430,8 +432,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
-  // @input: [batch_size, seq_len, embed_dim]
-  // @final_out: [batch_size, seq_len, num_heads, head_dim]
+  // @input: [batch_size, seq_len, embed_dim] 
+  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -445,7 +447,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);
-
+                
   }
   // out linear
   out = linear(out);
@@ -545,10 +547,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("QKOut"));
     ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
                       ctx->GetInputDim("SoftmaxOut"));
-    if (ctx->HasOutput(framework::GradVarName("AttnDropoutOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
-                        ctx->GetInputDim("AttnDropoutOut"));
-    }
+    ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
+                      ctx->GetInputDim("AttnDropoutOut"));
 
     if (ctx->HasOutput(framework::GradVarName("SrcMaskOut"))) {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
@@ -567,7 +567,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto input = ctx.Input<Tensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -704,14 +704,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
-                                    "QKVBiasOut",
-                                    "QKVOut",
-                                    "QKOut",
-                                    "QKTVOut",
-                                    "OutLinearOut",
-                                    "SrcMask");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -721,9 +713,7 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_attention_grad,
-                  ops::FusedAttentionGradOp,
-                  ops::FusedAttentionGradNoNeedBufferInferer);
+REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

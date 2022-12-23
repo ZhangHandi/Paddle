@@ -32,14 +32,14 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 }
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const phi::DenseTensor& src) {
+    const paddle::framework::Tensor& src) {
   return std::make_unique<phi::DenseTensor>(src);
 }
 
 phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
-  if (variable.IsType<phi::DenseTensor>()) {
-    const auto& tensor = variable.Get<phi::DenseTensor>();
+  if (variable.IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(
         tensor.numel(),
         1UL,
@@ -48,7 +48,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
                                           "value, it contains `%d` values.",
                                           tensor.numel()));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
-      phi::DenseTensor tmp_tensor;
+      framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return {tmp_tensor};
     } else {
@@ -62,11 +62,13 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-phi::IntArray MakePhiIntArray(const phi::DenseTensor& src) { return {src}; }
+phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src) {
+  return {src};
+}
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
-  if (variable.IsType<phi::DenseTensor>()) {
-    const auto& tensor = variable.Get<phi::DenseTensor>();
+  if (variable.IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.Get<framework::LoDTensor>();
     return MakePhiIntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -89,24 +91,24 @@ phi::IntArray MakePhiIntArrayFromVarList(
 
   for (auto* var : variable_list) {
     paddle::experimental::DataType data_type;
-    if (var->IsType<phi::DenseTensor>()) {
-      const auto& tensor = var->Get<phi::DenseTensor>();
+    if (var->IsType<framework::LoDTensor>()) {
+      const auto& tensor = var->Get<framework::LoDTensor>();
       data_type = tensor.dtype();
       if (data_type == paddle::experimental::DataType::INT64) {
-        const auto& tensor = var->Get<phi::DenseTensor>();
+        const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
-          phi::DenseTensor tmp_tensor;
+          framework::LoDTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
       } else if (data_type == paddle::experimental::DataType::INT32) {
-        const auto& tensor = var->Get<phi::DenseTensor>();
+        const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
-          phi::DenseTensor tmp_tensor;
+          framework::LoDTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {

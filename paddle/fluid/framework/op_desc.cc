@@ -148,8 +148,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       auto *out_var = block_.FindVarRecursive(out_var_names[i]);
       if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
           in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-        VLOG(3) << "input " << in
-                << " is not phi::DenseTensor or LoDTensorArray.";
+        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
         return;
       }
       out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -186,8 +185,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "input " << in
-              << " is not phi::DenseTensor or LoDTensorArray.";
+      VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
       return;
     }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -364,7 +362,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = phi::make_ddim(shape);
+      res = shape.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -792,11 +790,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
   auto it = attrs_.find(name);
   if (it == attrs_.end()) {
     it = runtime_attrs_.find(name);
-    PADDLE_ENFORCE_NE(
-        it,
-        runtime_attrs_.end(),
-        platform::errors::NotFound("Attribute %s is not found.", name));
   }
+  PADDLE_ENFORCE_NE(
+      it,
+      attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   if (!with_attr_var) {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),
@@ -885,10 +883,6 @@ void OpDesc::RenameOutput(const std::string &old_name,
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
-  if (dist_attr_) {
-    dist_attr_->rename_output(old_name, new_name);
-  }
-
   need_update_ = true;
 }
 
@@ -902,10 +896,6 @@ void OpDesc::RenameInput(const std::string &old_name,
   if (it != attrs_.end()) {
     auto &op_vars = PADDLE_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
-  }
-
-  if (dist_attr_) {
-    dist_attr_->rename_input(old_name, new_name);
   }
 
   need_update_ = true;
@@ -979,7 +969,7 @@ struct SetAttrDescVisitor {
 };
 
 void OpDesc::Flush() {
-  VLOG(8) << "Flush "
+  VLOG(4) << "Flush "
           << " " << Type() << " " << need_update_;
   if (need_update_) {
     this->desc_.mutable_inputs()->Clear();
@@ -1008,25 +998,16 @@ void OpDesc::Flush() {
 
     std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
                                                                 attrs_.end()};
-
-    std::vector<std::pair<std::string, Attribute>> sorted_runtime_attrs{
-        runtime_attrs_.begin(), runtime_attrs_.end()};
-
     std::sort(
         sorted_attrs.begin(),
         sorted_attrs.end(),
         [](std::pair<std::string, Attribute> a,
            std::pair<std::string, Attribute> b) { return a.first < b.first; });
-    std::sort(
-        sorted_runtime_attrs.begin(),
-        sorted_runtime_attrs.end(),
-        [](std::pair<std::string, Attribute> a,
-           std::pair<std::string, Attribute> b) { return a.first < b.first; });
 
-    for (auto &attr : sorted_runtime_attrs) {
+    for (auto &attr : sorted_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
-    for (auto &attr : sorted_attrs) {
+    for (auto &attr : runtime_attrs_) {
       set_attr_desc(attr.first, attr.second);
     }
 
@@ -1103,10 +1084,6 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     InferVarTypeContext context(this, block);
     info.infer_var_type_(&context);
   }
-}
-
-const OperatorDistAttr *OpDesc::DistAttr() const {
-  return dist_attr_ ? dist_attr_.get() : nullptr;
 }
 
 OperatorDistAttr *OpDesc::MutableDistAttr() {
@@ -1241,12 +1218,17 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
   if (output_names.empty()) {
     return false;
   }
-  if (!allow_null) {
+  if (allow_null) {
+    for (auto &output : output_names) {
+      if (block_.HasVarRecursive(output)) return true;
+    }
+    return false;
+  } else {
     for (auto &output : output_names) {
       if (!block_.HasVarRecursive(output)) return false;
     }
+    return true;
   }
-  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
@@ -1272,7 +1254,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(phi::make_ddim(s));
+      res.push_back(s.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";

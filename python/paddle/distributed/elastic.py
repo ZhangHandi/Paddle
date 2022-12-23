@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import argparse
+import six
 import os
 
 
-class Command:
+class Command(object):
+
     def __init__(self, server, name):
         import etcd3
 
@@ -28,10 +30,10 @@ class Command:
         self.np_path = self.prefix + '/np'
 
     def set_np(self, np):
-        self.etcd.put(self.np_path, '{}'.format(np).encode('latin-1'))
+        self.etcd.put(self.np_path, six.b('{}'.format(np)))
 
     def scale_np(self, np):
-        if self.etcd.get(self.np_path)[0] is not None:
+        if self.etcd.get(self.np_path)[0] != None:
             self.set_np(np)
             return True
         return False
@@ -46,15 +48,14 @@ class Command:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Elastic Command')
-    parser.add_argument(
-        "--elastic_server", type=str, help="etcd server host:port"
-    )
+    parser.add_argument("--elastic_server",
+                        type=str,
+                        help="etcd server host:port")
     parser.add_argument("--job_id", type=str, help="job unique id")
     parser.add_argument(
         "--np",
         type=str,
-        help="job pod/node number, need to be 'MIN' or 'MIN:MAX' format",
-    )
+        help="job pod/node number, need to be 'MIN' or 'MIN:MAX' format")
     parser.add_argument("action", type=str, help="action to take")
 
     args = parser.parse_args()

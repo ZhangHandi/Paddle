@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import sys
 import unittest
 import numpy as np
@@ -28,6 +30,7 @@ paddle.enable_static()
 
 
 class TestOneHotOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -55,6 +58,7 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_non_lod(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -78,6 +82,7 @@ class TestOneHotOp_non_lod(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -90,9 +95,8 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
-            'float32'
-        )
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
+                              depth)).astype('float32')
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -106,6 +110,7 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -133,6 +138,7 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -145,9 +151,8 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
-            'float32'
-        )
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
+                              depth)).astype('float32')
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -161,6 +166,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_out_of_range(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -183,6 +189,7 @@ class TestOneHotOp_out_of_range(OpTest):
 
 
 class TestOneHotOp_dtype_int64(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -205,6 +212,7 @@ class TestOneHotOp_dtype_int64(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
+
     def test_api(self):
         depth = 10
         self._run(depth)
@@ -215,32 +223,27 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def test_api_with_dygraph(self):
         depth = 10
-        label = np.array(
-            [np.random.randint(0, depth - 1) for i in range(6)]
-        ).reshape([6, 1])
+        label = np.array([np.random.randint(0, depth - 1)
+                          for i in range(6)]).reshape([6, 1])
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
             one_hot_label = fluid.one_hot(
-                input=fluid.dygraph.to_variable(label), depth=depth
-            )
+                input=fluid.dygraph.to_variable(label), depth=depth)
 
     def _run(self, depth):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.NPUPlace(0)
-        label_data = np.array(
-            [np.random.randint(0, 10 - 1) for i in range(6)]
-        ).reshape([6, 1])
+        label_data = np.array([np.random.randint(0, 10 - 1)
+                               for i in range(6)]).reshape([6, 1])
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={
-                'label': label_data,
-            },
-            fetch_list=[one_hot_label],
-            return_numpy=False,
-        )
+        ret = exe.run(feed={
+            'label': label_data,
+        },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
 
 
 if __name__ == '__main__':

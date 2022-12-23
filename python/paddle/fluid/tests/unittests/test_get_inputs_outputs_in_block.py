@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
-
-import numpy as np
-
 import paddle
+import numpy as np
 from paddle.fluid.layers import utils
 
 paddle.enable_static()
 
 
 class TestGetInputsOutputsInBlock(unittest.TestCase):
+
     def test_ordered(self):
         # Program variable names may be different when test order is different
         # This helper makes the test ordered.
@@ -50,8 +51,7 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
 
         sub_block = main_program.block(1)
         inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
-            sub_block
-        )
+            sub_block)
         # 'assign_0.tmp_0', 'assign_1.tmp_0' are name of i and ten in program
         self.assertTrue(inner_inputs == {'assign_0.tmp_0', 'assign_1.tmp_0'})
         # 'tmp_0', 'assign_0.tmp_0' are name of i < ten and i in program
@@ -68,11 +68,10 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
 
         sub_block = main_program.block(1)
         inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
-            sub_block
-        )
-        # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
+            sub_block)
+        #'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
-        # '_generated_var_1', is name of a + c
+        #'_generated_var_1', is name of a + c
         self.assertTrue(inner_outputs == {'_generated_var_1'})
 
 

@@ -38,7 +38,7 @@ std::string KernelFrame::DumpArgTypes() const {
     DUMP(tensor::DenseHostTensor);
     DUMP(float);
     DUMP(int);
-    DUMP(::Tensor);
+    DUMP(::phi::DenseTensor);
     DUMP(::phi::MetaTensor);
     DUMP(::phi::CPUContext);
     DUMP(host_context::None);

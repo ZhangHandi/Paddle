@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -31,7 +31,7 @@ namespace ir {
 
 class Graph;
 
-void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
+void InterpolateMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -70,4 +70,4 @@ void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(interpolate_mkldnn_pass,
-              paddle::framework::ir::InterpolateOneDNNPass);
+              paddle::framework::ir::InterpolateMKLDNNPass);

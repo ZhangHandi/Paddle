@@ -43,6 +43,7 @@ from .common import Dropout  # noqa: F401
 from .common import Dropout2D  # noqa: F401
 from .common import Dropout3D  # noqa: F401
 from .common import AlphaDropout  # noqa: F401
+from .common import Upsample  # noqa: F401
 from .common import UpsamplingBilinear2D  # noqa: F401
 from .common import UpsamplingNearest2D  # noqa: F401
 from .common import Fold
@@ -82,7 +83,6 @@ from .loss import HingeEmbeddingLoss  # noqa: F401
 from .loss import TripletMarginWithDistanceLoss
 from .loss import TripletMarginLoss
 from .loss import SoftMarginLoss
-from .loss import MultiMarginLoss
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401

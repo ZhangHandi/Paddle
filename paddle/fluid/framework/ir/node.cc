@@ -18,9 +18,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 // msvc15 don't support constexpr in correct way.
-// static constexpr member implies inline since CXX17 and may cause multiple
-// definition.
-#if !defined(_WIN32) && (__cplusplus < 201703L)
+#if !defined(_WIN32)
 constexpr char Node::kControlDepVarName[];
 #else
 const char Node::kControlDepVarName[] = "__control_var";

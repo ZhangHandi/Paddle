@@ -16,12 +16,10 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -39,7 +37,7 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   //  in operator impl, which is not elegant enough.
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place());
@@ -56,7 +54,7 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SaveCombine operator
 
-This operator will serialize and write a list of input phi::DenseTensor variables
+This operator will serialize and write a list of input LoDTensor variables
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
@@ -72,7 +70,7 @@ to a file on disk.
     AddAttr<std::string>(
         "file_path",
         "(string)"
-        "The \"file_path\" where the phi::DenseTensor variables will be saved.")
+        "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
     AddAttr<bool>("save_to_memory",
@@ -104,22 +102,10 @@ REGISTER_OPERATOR(save_combine,
                   ops::SaveCombineOpProtoMaker,
                   ops::SaveCombineOpInferVarType);
 
-PD_REGISTER_KERNEL(save_combine_tensor,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::SaveCombineTensorKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(save_combine_vocab,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::SaveCombineVocabKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
+REGISTER_OP_CPU_KERNEL(
+    save_combine,
+    ops::SaveCombineOpKernel<phi::CPUContext, float>,
+    ops::SaveCombineOpKernel<phi::CPUContext, double>,
+    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);

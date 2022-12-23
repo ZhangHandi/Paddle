@@ -37,14 +37,8 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
  private:
 #ifdef PADDLE_WITH_ASCEND_CL
   void CopyParamsToNpu(Argument *argument);
-#endif
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#else
   void CopyParamsToGpu(Argument *argument);
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  void CopyParamsToCustomDevice(Argument *argument);
 #endif
 };
 

@@ -14,14 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
-#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
-#include "paddle/phi/kernels/sparse/empty_kernel.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace sparse {
@@ -50,10 +45,8 @@ namespace sparse {
                                          const SparseCsrTensor& y) { \
     DenseTensor crows;                                               \
     DenseTensor cols;                                                \
-    DenseTensor values;                                              \
-    SparseCsrTensor out(crows, cols, values, x.dims());              \
-    MetaTensor meta_out(out);                                        \
-    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
+    DenseTensor non_zero_elements;                                   \
+    SparseCsrTensor out(crows, cols, non_zero_elements, x.dims());   \
     ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
@@ -64,10 +57,8 @@ namespace sparse {
                                          const SparseCooTensor& x,   \
                                          const SparseCooTensor& y) { \
     DenseTensor indices;                                             \
-    DenseTensor values;                                              \
-    SparseCooTensor out(indices, values, x.dims());                  \
-    MetaTensor meta_out(out);                                        \
-    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
+    DenseTensor non_zero_elements;                                   \
+    SparseCooTensor out(indices, non_zero_elements, x.dims());       \
     ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
@@ -81,22 +72,6 @@ DEFINE_ELEMENTWISE_KERNEL_FUNC(Add)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Subtract)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Multiply)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Divide)
-
-template <typename T, typename Context>
-void ElementWiseAddDenseKernel(const Context& dev_ctx,
-                               const SparseCooTensor& x,
-                               const DenseTensor& y,
-                               SparseCooTensor* out) {
-  // TODO(zhangkaiuo): to support universal sparse + dense
-  if (y.dims().size() == 1 && y.dims()[0] == x.dims()[x.dims().size() - 1]) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-    phi::AddKernel<T, Context>(dev_ctx, x.values(), y, out->mutable_values());
-    out->SetIndicesDict(x.GetIndicesDict());
-  } else {
-    PADDLE_THROW(
-        errors::Unimplemented("Not support Sparse + Dense in GPU mode"));
-  }
-}
 
 }  // namespace sparse
 }  // namespace phi

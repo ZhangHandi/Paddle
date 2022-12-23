@@ -20,22 +20,20 @@ namespace paddle {
 namespace platform {
 
 TEST(TensorDescriptor, Empty) {
-  phi::backends::gpu::ActivationDescriptor a;
-  phi::backends::gpu::TensorDescriptor t;
-  phi::backends::gpu::TensorDescriptor t1;
-  phi::backends::gpu::TensorDescriptor *t11 =
-      new phi::backends::gpu::TensorDescriptor();
+  ActivationDescriptor a;
+  TensorDescriptor t;
+  TensorDescriptor t1;
+  TensorDescriptor *t11 = new TensorDescriptor();
   delete t11;
-  std::unique_ptr<phi::backends::gpu::TensorDescriptor> tt(
-      new phi::backends::gpu::TensorDescriptor());
+  std::unique_ptr<TensorDescriptor> tt(new TensorDescriptor());
 }
 
 TEST(TensorDescriptor, Normal) {
-  phi::DenseTensor tt;
+  framework::Tensor tt;
   tt.Resize({2, 3, 4});
-  tt.mutable_data<float>(phi::CPUPlace());
+  tt.mutable_data<float>(platform::CPUPlace());
 
-  phi::backends::gpu::TensorDescriptor desc;
+  TensorDescriptor desc;
   desc.set(tt);
   EXPECT_TRUE(desc.desc() != nullptr);
 }

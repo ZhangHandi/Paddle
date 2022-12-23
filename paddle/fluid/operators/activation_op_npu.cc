@@ -24,12 +24,14 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class PowNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto factor = ctx.Attr<float>("factor");
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -52,9 +54,9 @@ template <typename DeviceContext, typename T>
 class PowGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto factor = ctx.Attr<float>("factor");
 
     auto x_dims = x->dims();
@@ -67,7 +69,7 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // NOTE(liym27): dx = dout * factor * x.pow(factor-1)
 
     // Step1: Compute x_pow = x.pow(factor-1)
-    phi::DenseTensor x_pow(x->type());
+    Tensor x_pow(x->type());
     x_pow.mutable_data<T>(x->dims(), place);
     const auto& runner_pow = NpuOpRunner(
         "Power", {*x}, {x_pow}, {{"power", factor - static_cast<float>(1)}});
@@ -76,13 +78,13 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // Step 2: Construct a broadcast factor, which has the same shape with x.
 
     // 2.1 Get a factor tensor with shape [1].
-    phi::DenseTensor factor_tensor(experimental::DataType::FLOAT32);
+    Tensor factor_tensor(experimental::DataType::FLOAT32);
     factor_tensor.mutable_data<float>({1}, place);
     FillNpuTensorWithConstant<float>(&factor_tensor, factor);
 
     // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
-    phi::DenseTensor factor_bc_tensor(experimental::DataType::FLOAT32);
+    Tensor factor_bc_tensor(experimental::DataType::FLOAT32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
     const auto& runner_bc = NpuOpRunner("FillD",
                                         {factor_tensor},
@@ -91,7 +93,7 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
-    phi::DenseTensor x_power_mul_factor(x->type());
+    Tensor x_power_mul_factor(x->type());
     x_power_mul_factor.mutable_data<T>(x->dims(), place);
     const auto& runner_mul_1 =
         NpuOpRunner("Mul", {factor_bc_tensor, x_pow}, {x_power_mul_factor}, {});
@@ -109,8 +111,8 @@ template <typename DeviceContext, typename T>
 class ReluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -132,9 +134,9 @@ template <typename DeviceContext, typename T>
 class ReluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -151,8 +153,8 @@ template <typename DeviceContext, typename T>
 class Relu6NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -174,9 +176,9 @@ template <typename DeviceContext, typename T>
 class Relu6GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -193,9 +195,9 @@ template <typename DeviceContext, typename T>
 class SqrtNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -214,8 +216,8 @@ template <typename DeviceContext, typename T>
 class LeakyReluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto alpha = ctx.Attr<float>("alpha");
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -234,9 +236,9 @@ template <typename DeviceContext, typename T>
 class LeakyReluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto alpha = ctx.Attr<float>("alpha");
 
     auto stream =
@@ -255,10 +257,10 @@ template <typename DeviceContext, typename T>
 class SqrtGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -277,9 +279,9 @@ template <typename DeviceContext, typename T>
 class LogNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -289,12 +291,12 @@ class LogNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    phi::DenseTensor one(x->type());
+    Tensor one(x->type());
     one.mutable_data<T>(x->dims(), place);
     const auto& runner_one = NpuOpRunner("OnesLike", {*x}, {one}, {});
     runner_one.Run(stream);
 
-    phi::DenseTensor sub(x->type());
+    Tensor sub(x->type());
     sub.mutable_data<T>(x->dims(), place);
     const auto& runner_sub = NpuOpRunner("Sub", {*x, one}, {sub}, {});
     runner_sub.Run(stream);
@@ -308,10 +310,10 @@ template <typename DeviceContext, typename T>
 class LogGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -329,9 +331,9 @@ template <typename DeviceContext, typename T>
 class TanhNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -350,10 +352,10 @@ template <typename DeviceContext, typename T>
 class TanhGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
 
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -372,9 +374,9 @@ template <typename DeviceContext, typename T>
 class SquareNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -393,9 +395,9 @@ template <typename DeviceContext, typename T>
 class SquareGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto factor = static_cast<float>(2.0);
 
@@ -404,7 +406,7 @@ class SquareGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     // Step 1: Compute x_muls_factor = factor * x
-    phi::DenseTensor x_muls_factor(x->type());
+    Tensor x_muls_factor(x->type());
     x_muls_factor.mutable_data<T>(x->dims(), place);
     const auto& runner_muls_1 =
         NpuOpRunner("Muls", {*x}, {x_muls_factor}, {{"value", factor}});
@@ -422,9 +424,9 @@ template <typename DeviceContext, typename T>
 class SigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -443,10 +445,10 @@ template <typename DeviceContext, typename T>
 class SigmoidGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
 
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -467,8 +469,8 @@ template <typename T>
 class SwishNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     float beta = ctx.Attr<float>("beta");
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -492,9 +494,9 @@ template <typename T>
 class SwishGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     float beta = ctx.Attr<float>("beta");
 
     dx->mutable_data<T>(ctx.GetPlace());
@@ -502,7 +504,7 @@ class SwishGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    phi::DenseTensor beta_x, sigmoid_out, swish_out;
+    Tensor beta_x, sigmoid_out, swish_out;
     beta_x.mutable_data<T>(x->dims(), ctx.GetPlace());
     sigmoid_out.mutable_data<T>(x->dims(), ctx.GetPlace());
     swish_out.mutable_data<T>(x->dims(), ctx.GetPlace());
@@ -541,8 +543,8 @@ template <typename T>
 class HardSwishNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
@@ -556,25 +558,25 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    phi::DenseTensor tensor_offset(x->type());
+    Tensor tensor_offset(x->type());
     tensor_offset.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
 
-    phi::DenseTensor add_offset_val(x->type());
+    Tensor add_offset_val(x->type());
     add_offset_val.mutable_data<T>(x->dims(), place);
     const auto& runner_add =
         NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
 
-    phi::DenseTensor tensor_threshold(x->type());
+    Tensor tensor_threshold(x->type());
     tensor_threshold.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_threshold, static_cast<T>(threshold));
 
-    phi::DenseTensor tensor_zero(x->type());
+    Tensor tensor_zero(x->type());
     tensor_zero.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_zero, static_cast<T>(0.0));
 
-    phi::DenseTensor clip_val(x->type());
+    Tensor clip_val(x->type());
     clip_val.mutable_data<T>(x->dims(), place);
     const auto& runner_clip =
         NpuOpRunner("ClipByValue",
@@ -582,10 +584,10 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
                     {clip_val});
     runner_clip.Run(stream);
 
-    phi::DenseTensor tensor_scale_tmp(x->type());
+    Tensor tensor_scale_tmp(x->type());
     tensor_scale_tmp.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_scale_tmp, static_cast<T>(scale));
-    phi::DenseTensor tensor_scale(x->type());
+    Tensor tensor_scale(x->type());
     tensor_scale.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD",
@@ -594,7 +596,7 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
                     {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    phi::DenseTensor div_val(x->type());
+    Tensor div_val(x->type());
     div_val.mutable_data<T>(x->dims(), place);
     const auto& runner_div =
         NpuOpRunner("Div", {clip_val, tensor_scale}, {div_val});
@@ -609,9 +611,9 @@ template <typename T>
 class HardSwishGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
@@ -625,23 +627,23 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    phi::DenseTensor tensor_offset(x->type());
+    Tensor tensor_offset(x->type());
     tensor_offset.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
 
-    phi::DenseTensor add_offset_val(x->type());
+    Tensor add_offset_val(x->type());
     add_offset_val.mutable_data<T>(x->dims(), place);
     const auto& runner_add =
         NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
 
-    phi::DenseTensor tmp1(x->type());
+    Tensor tmp1(x->type());
     tmp1.mutable_data<T>(x->dims(), place);
     const auto& runner_pow1 = NpuOpRunner(
         "Power", {*x}, {tmp1}, {{"scale", 2.0f}, {"shift", offset}});
     runner_pow1.Run(stream);
 
-    phi::DenseTensor tmp2(x->type());
+    Tensor tmp2(x->type());
     tmp2.mutable_data<T>(x->dims(), place);
     const auto& runner_ht_grad =
         NpuOpRunner("HardtanhGrad",
@@ -650,17 +652,17 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"min_val", 0.0f}, {"max_val", threshold}});
     runner_ht_grad.Run(stream);
 
-    phi::DenseTensor tmp3(x->type());
+    Tensor tmp3(x->type());
     tmp3.mutable_data<T>(x->dims(), place);
     const auto& runner_pow2 = NpuOpRunner(
         "Power", {tmp2}, {tmp3}, {{"scale", 1.0f / scale}, {"shift", 1.0f}});
     runner_pow2.Run(stream);
 
-    phi::DenseTensor tensor_threshold_tmp(x->type());
+    Tensor tensor_threshold_tmp(x->type());
     tensor_threshold_tmp.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
                                  static_cast<T>(threshold));
-    phi::DenseTensor tensor_threshold(x->type());
+    Tensor tensor_threshold(x->type());
     tensor_threshold.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD",
@@ -669,12 +671,12 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    phi::DenseTensor tmp_bool(experimental::DataType::BOOL);
+    Tensor tmp_bool(experimental::DataType::BOOL);
     tmp_bool.mutable_data<bool>(x->dims(), place);
     const auto& runner_less =
         NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});
     runner_less.Run(stream);
-    phi::DenseTensor tmp4(x->type());
+    Tensor tmp4(x->type());
     tmp4.mutable_data<T>(x->dims(), place);
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
@@ -685,7 +687,7 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast.Run(stream);
 
-    phi::DenseTensor tmp5(x->type());
+    Tensor tmp5(x->type());
     tmp5.mutable_data<T>(x->dims(), place);
     const auto& runner_sub = NpuOpRunner("Sub", {tmp3, tmp4}, {tmp5});
     runner_sub.Run(stream);
@@ -699,8 +701,8 @@ template <typename DeviceContext, typename T>
 class HardSigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     float slope = ctx.Attr<float>("slope");
     float offset = ctx.Attr<float>("offset");
 
@@ -722,10 +724,10 @@ template <typename DeviceContext, typename T>
 class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
 
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     float slope = ctx.Attr<float>("slope");
     float offset = ctx.Attr<float>("offset");
@@ -749,8 +751,8 @@ template <typename DeviceContext, typename T>
 class ReciprocalNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     auto stream =
@@ -765,9 +767,9 @@ template <typename DeviceContext, typename T>
 class ReciprocalGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
     auto stream =
@@ -783,8 +785,8 @@ template <typename DeviceContext, typename T>
 class CosNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
@@ -802,14 +804,14 @@ template <typename DeviceContext, typename T>
 class CosGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
 
-    phi::DenseTensor sin_out(x->type());  // Temporary phi::DenseTensor
+    Tensor sin_out(x->type());  // Temporary Tensor
     sin_out.Resize(x->dims());
     sin_out.mutable_data<T>(place);
 
@@ -822,7 +824,7 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
     const auto& runner_dx = NpuOpRunner("Mul", {*dout, sin_out}, {*dx}, {});
     runner_dx.Run(stream);
 
-    phi::DenseTensor tmp(x->type());  // Temporary phi::DenseTensor
+    Tensor tmp(x->type());  // Temporary Tensor
     tmp.Resize(phi::make_ddim({1, 1}));
     tmp.mutable_data<T>(place);
     float factor = -1.;
@@ -838,8 +840,8 @@ template <typename DeviceContext, typename T>
 class AtanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     const auto& runner = NpuOpRunner("Atan", {*x}, {*out}, {});
@@ -854,9 +856,9 @@ template <typename DeviceContext, typename T>
 class AtanGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
     auto stream =
@@ -871,8 +873,8 @@ template <typename DeviceContext, typename T>
 class ExpNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     const auto& runner = NpuOpRunner("Exp", {*x}, {*out}, {});
     auto stream =
@@ -886,9 +888,9 @@ template <typename DeviceContext, typename T>
 class ExpGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -902,9 +904,9 @@ template <typename DeviceContext, typename T>
 class SinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
 

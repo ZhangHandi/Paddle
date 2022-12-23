@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -30,6 +31,7 @@ SEED = 2049
 
 
 class TestExpNPUOP(OpTest):
+
     def setUp(self):
 
         self.set_npu()
@@ -62,6 +64,7 @@ class TestExpNPUOP(OpTest):
 
 
 class TestExpNPUOPFloat64(TestExpNPUOP):
+
     def init_dtype(self):
         self.dtype = np.float64
 

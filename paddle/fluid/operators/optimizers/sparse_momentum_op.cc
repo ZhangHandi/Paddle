@@ -19,6 +19,8 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class SparseMomentumOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
@@ -34,31 +36,30 @@ class SparseMomentumOpInferVarType : public framework::VarTypeInference {
 
 void SparseMomentumOpMaker::Make() {
   AddInput("Param",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input parameter that has to be updated");
   AddInput("Grad",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input gradient of the parameter");
   AddInput("Velocity",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input velocity (corresponding to the parameter) "
            "that has to be updated");
   AddInput("Index",
-           "(phi::DenseTensor, default phi::DenseTensor<int>) "
+           "(Tensor, default Tensor<int>) "
            "Input index of Param to do update operation");
   AddInput("Axis",
-           "The phi::DenseTensor which contains the axis that we do update "
-           "operation.")
+           "The Tensor which contains the axis that we do update operation.")
       .AsDispensable();
   AddInput("LearningRate",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input learning rate");
   AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
   AddOutput("ParamOut",
-            "(phi::DenseTensor) This output is updated parameter. "
+            "(Tensor) This output is updated parameter. "
             "It shared memory with Input(Param).");
   AddOutput("VelocityOut",
-            "(phi::DenseTensor) This output is updated velocity. "
+            "(Tensor) This output is updated velocity. "
             "It shared memory with Input(Velocity).");
   AddOutput("MasterParamOut",
             "The updated FP32 master weight for AMP. "

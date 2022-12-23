@@ -15,16 +15,11 @@
 from functools import reduce
 
 import paddle
-from paddle import _C_ops
-from paddle.fluid.framework import (
-    _dygraph_tracer,
-    _varbase_creator,
-    dygraph_only,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import dygraph_only, _dygraph_tracer, _varbase_creator, in_dygraph_mode
+from paddle import _C_ops, _legacy_C_ops
 
 
-# input==output, inplace strategy of reshape has no cost almostly
+#input==output, inplace strategy of reshape has no cost almostly
 def _inplace_reshape_dygraph(x, shape):
     x_shape = _varbase_creator(dtype='int64')
     if in_dygraph_mode():
@@ -32,13 +27,14 @@ def _inplace_reshape_dygraph(x, shape):
             tmp_out = _C_ops.reshape(x, shape)
             tmp_out._share_underline_tensor_to(x)
     else:
-        _dygraph_tracer().trace_op(
-            type="reshape2",
-            inputs={'X': x},
-            outputs={'Out': x, 'XShape': x_shape},
-            attrs={'shape': shape},
-            stop_gradient=True,
-        )
+        _dygraph_tracer().trace_op(type="reshape2",
+                                   inputs={'X': x},
+                                   outputs={
+                                       'Out': x,
+                                       'XShape': x_shape
+                                   },
+                                   attrs={'shape': shape},
+                                   stop_gradient=True)
 
 
 @dygraph_only
@@ -48,7 +44,7 @@ def _stride_column(param):
 
     Args:
         param(Tensor]): The param that will be strided according to 'columns'.
-
+    
     Examples:
        .. code-block:: python
 
@@ -86,7 +82,7 @@ def parameters_to_vector(parameters, name=None):
 
     Returns:
         A 1-D Tensor, which represents the parameters of a Layer.
-
+    
 
     Examples:
        .. code-block:: python
@@ -110,13 +106,11 @@ def parameters_to_vector(parameters, name=None):
             tmp = _C_ops.concat(parameters, 0)
             tmp._share_underline_tensor_to(out)
     else:
-        _dygraph_tracer().trace_op(
-            type='concat',
-            inputs={'X': parameters},
-            outputs={'Out': [out]},
-            attrs={'axis': 0},
-            stop_gradient=True,
-        )
+        _dygraph_tracer().trace_op(type='concat',
+                                   inputs={'X': parameters},
+                                   outputs={'Out': [out]},
+                                   attrs={'axis': 0},
+                                   stop_gradient=True)
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
     return out
@@ -167,13 +161,14 @@ def vector_to_parameters(vec, parameters, name=None):
             for i in range(0, len(parameters)):
                 res[i]._share_underline_tensor_to(parameters[i])
     else:
-        _dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': [vec]},
-            outputs={'Out': parameters},
-            attrs={'axis': 0, 'sections': sections},
-            stop_gradient=True,
-        )
+        _dygraph_tracer().trace_op(type='split',
+                                   inputs={'X': [vec]},
+                                   outputs={'Out': parameters},
+                                   attrs={
+                                       'axis': 0,
+                                       'sections': sections
+                                   },
+                                   stop_gradient=True)
 
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])

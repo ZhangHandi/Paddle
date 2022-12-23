@@ -18,7 +18,6 @@
 
 #include <cub/cub.cuh>
 #include "cublas_v2.h"
-#include "paddle/fluid/platform/device_context.h"
 
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;
@@ -146,153 +145,60 @@ __device__ inline void layerNorm(const kvp<R>& threadData,
   }
 }
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
-namespace plugin {
-// Helper Functions for multihead related plugins
-template <typename T>
-__global__ void transpose(T *src,
-                          T *dst,
-                          const int batch_size,
-                          const int seq_len,
-                          const int head_num,
-                          const int size_per_head) {
-  int batch_id = blockIdx.x / (head_num * seq_len);
-  int seq_id = blockIdx.x % seq_len;
-  int head_id = (blockIdx.x % (head_num * seq_len)) / seq_len;
-  dst[batch_id * (head_num * seq_len * size_per_head) +
-      seq_id * head_num * size_per_head + head_id * size_per_head +
-      threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
+template <int VPT>
+struct BytesToType;
+
+template <>
+struct BytesToType<2>
+{
+    using type = uint16_t;
+};
+template <>
+struct BytesToType<4>
+{
+    using type = uint32_t;
+};
+template <>
+struct BytesToType<8>
+{
+    using type = uint64_t;
+};
+template <>
+struct BytesToType<16>
+{
+    using type = float4;
+};
+
+template <int Bytes>
+__device__ inline void copy(const void* local, void* data)
+{
+    using T = typename BytesToType<Bytes>::type;
+
+    const T* in = static_cast<const T*>(local);
+    T* out = static_cast<T*>(data);
+    *out = *in;
 }
 
-template <typename T>
-__global__ void TransposeQkvKernel(const int H, const T *input, T *output) {
-  // Input: BxSx3xNxH
-  // Bias: 3xSxB
-  // Output: 3xBxNxSxH
-  int n = threadIdx.y;
-  int s = blockIdx.x;
-  int b = blockIdx.y;
-  int m = blockIdx.z;
+static inline __device__ uint32_t float4_to_char4(float x,
+                                                  float y,
+                                                  float z,
+                                                  float w) {
+  uint32_t dst;
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 720
+  uint32_t a; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(a) : "f"(x));
+  uint32_t b; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(b) : "f"(y));
+  uint32_t c; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(c) : "f"(z));
+  uint32_t d; asm volatile("cvt.rni.sat.s32.f32 %0, %1;\n" : "=r"(d) : "f"(w));
 
-  const int N = blockDim.y;
-  const int S = gridDim.x;
-  const int B = gridDim.y;
-
-  const int NH = N * H;
-  const int NHS = NH * S;
-  const int in_offset = n * H + m * NH + s * 3 * NH + b * NHS * 3;
-  const int out_offset = s * H + n * S * H + b * NHS + m * NHS * B;
-
-  const int i = threadIdx.x;
-  output[out_offset + i] = input[in_offset + i];
-}
-
-inline void TransposeQKV(const int batch,
-                         const int seq_len,
-                         const int head_size,
-                         const int head_num,
-                         const float *input,
-                         float *output,
-                         cudaStream_t stream) {
-  int scratch_size = batch * head_num * seq_len * seq_len;
-  const dim3 grid(seq_len, batch, 3);
-  if (head_size % 4 == 0 && scratch_size % 4 == 0) {
-    const int h = head_size / 4;
-    const float4 *input4 = reinterpret_cast<const float4 *>(input);
-    float4 *output4 = reinterpret_cast<float4 *>(output);
-    const dim3 block(h, head_num, 1);
-    // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 4));
-    TransposeQkvKernel<float4><<<grid, block, 0, stream>>>(h, input4, output4);
-  } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
-    const int h = head_size / 2;
-    const float2 *input2 = reinterpret_cast<const float2 *>(input);
-    float2 *output2 = reinterpret_cast<float2 *>(output);
-    const dim3 block(h, head_num, 1);
-    // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 2));
-    TransposeQkvKernel<float2><<<grid, block, 0, stream>>>(h, input2, output2);
-  } else {
-    const dim3 block(head_size, head_num, 1);
-    // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(head_size * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024));
-    TransposeQkvKernel<float>
-        <<<grid, block, 0, stream>>>(head_size, input, output);
-  }
-}
-
-inline void TransposeQKV(const int batch,
-                         const int seq_len,
-                         const int head_size,
-                         const int head_num,
-                         const half *input,
-                         half *output,
-                         cudaStream_t stream) {
-  int scratch_size = batch * head_num * seq_len * seq_len;
-  const dim3 grid(seq_len, batch, 3);
-  if (head_size % 8 == 0 && scratch_size % 8 == 0) {
-    int h = head_size / 8;
-    const int4 *input4 = reinterpret_cast<const int4 *>(input);
-    int4 *output4 = reinterpret_cast<int4 *>(output);
-    dim3 block(h, head_num, 1);
-    // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 8));
-    TransposeQkvKernel<int4><<<grid, block, 0, stream>>>(h, input4, output4);
-  } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
-    const int h = head_size / 2;
-    const half2 *input2 = reinterpret_cast<const half2 *>(input);
-    half2 *output2 = reinterpret_cast<half2 *>(output);
-    const dim3 block(h, head_num, 1);
-    // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 2));
-    TransposeQkvKernel<half2><<<grid, block, 0, stream>>>(h, input2, output2);
-  } else {
-    const dim3 block(head_size, head_num, 1);
-    // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(head_size * head_num,
-                      1024,
-                      platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024));
-    TransposeQkvKernel<half>
-        <<<grid, block, 0, stream>>>(head_size, input, output);
-  }
-}
-}
-}
-}
+  asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2,  0;\n" : "=r"(dst) : "r"(d), "r"(c));
+  asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, %0;\n" : "+r"(dst) : "r"(b), "r"(a));
+#else
+  char4 tmp;
+  tmp.x = x;
+  tmp.y = y;
+  tmp.z = z;
+  tmp.w = w;
+  dst = reinterpret_cast<const uint32_t&>(tmp);
+#endif
+  return dst;
 }

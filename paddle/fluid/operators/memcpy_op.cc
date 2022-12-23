@@ -56,7 +56,7 @@ class MemcpyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -100,9 +100,9 @@ class MemcpyKernel {
 class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(phi::DenseTensor) The input variable ");
+    AddInput("X", "(LoDTensor) The input variable ");
     AddOutput("Out",
-              "(phi::DenseTensor) The type of output "
+              "(LoDTensor) The type of output "
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -118,11 +118,11 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "6: dst is on CustomDevicePlace");
     AddComment(R"DOC(
     Memcpy Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or 
     NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 
-Out = X,  when type in [phi::DenseTensor]
+Out = X,  when type in [LoDTensor]
 raise error if the type is not listed above.
 )DOC");
   }

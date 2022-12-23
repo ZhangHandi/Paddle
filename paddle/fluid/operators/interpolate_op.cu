@@ -14,12 +14,13 @@
 
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(const T* in,
@@ -126,7 +127,7 @@ __global__ void KeNearestNeighborInterpBw(T* in,
                    in_img_idx * num_channels + channel_id];
     }
     const T out_pos = out[out_id_h * output_w + out_id_w];
-    phi::CudaAtomicAdd(in_pos, out_pos);
+    platform::CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -243,11 +244,12 @@ __global__ void KeLinearInterpBw(T* in,
     const T* out_pos = &out[out_id_w];
 
     if (data_layout == DataLayout::kNCHW) {
-      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
     } else {
-      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id * num_channels], w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                              w1lambda * out_pos[0]);
     }
   }
 }
@@ -407,19 +409,19 @@ __global__ void KeBilinearInterpBw(T* in,
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
     if (data_layout == DataLayout::kNCHW) {
-      phi::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[h_id * in_img_w],
-                         h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[h_id * in_img_w + w_id],
-                         h1lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w],
+                              h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w + w_id],
+                              h1lambda * w1lambda * out_pos[0]);
     } else {
-      phi::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                         h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[h_id * in_img_w * num_channels],
-                         h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(
+      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                              h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w * num_channels],
+                              h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(
           &in_pos[h_id * in_img_w * num_channels + w_id * num_channels],
           h1lambda * w1lambda * out_pos[0]);
     }
@@ -637,22 +639,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      phi::CudaAtomicAdd(&in_pos1[0],
-                         d2lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[w_id],
-                         d2lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
-                         d2lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
-                         d2lambda * h1lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[0],
-                         d1lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[w_id],
-                         d1lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
-                         d1lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
-                         d1lambda * h1lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[0],
+                              d2lambda * h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[w_id],
+                              d2lambda * h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
+                              d2lambda * h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
+                              d2lambda * h1lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[0],
+                              d1lambda * h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[w_id],
+                              d1lambda * h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
+                              d1lambda * h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
+                              d1lambda * h1lambda * w1lambda * out_pos[0]);
     } else {
       int in_pos1_idx = out_id_h * input_w +
                         in_img_idt * in_img_h * in_img_w * num_channels +
@@ -665,22 +667,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      phi::CudaAtomicAdd(&in_pos1[0],
-                         d2lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[w_id * num_channels],
-                         d2lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
-                         d2lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(
+      platform::CudaAtomicAdd(&in_pos1[0],
+                              d2lambda * h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[w_id * num_channels],
+                              d2lambda * h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
+                              d2lambda * h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
           d2lambda * h1lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[0],
-                         d1lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[w_id * num_channels],
-                         d1lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
-                         d1lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(
+      platform::CudaAtomicAdd(&in_pos2[0],
+                              d1lambda * h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[w_id * num_channels],
+                              d1lambda * h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
+                              d1lambda * h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
           d1lambda * h1lambda * w1lambda * out_pos[0]);
     }
@@ -902,8 +904,8 @@ __global__ void KeBicubicInterpBw(T* in,
           in_pos = &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                        access_x * num_channels + channel_id];
         }
-        phi::CudaAtomicAdd(&in_pos[0],
-                           (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
+        platform::CudaAtomicAdd(&in_pos[0],
+                                (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
       }
     }
   }
@@ -911,12 +913,12 @@ __global__ void KeBicubicInterpBw(T* in,
 
 template <typename T>
 static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const phi::DenseTensor& input,
-                                 phi::DenseTensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -926,14 +928,14 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
     out_w = new_size[0];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -943,9 +945,9 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     if (scale > 0) {
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+    auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
-      phi::DenseTensor sizes;
+      Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_w = size_data[0];
@@ -1003,12 +1005,12 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const phi::DenseTensor& input,
-                                 phi::DenseTensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1019,7 +1021,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
@@ -1027,7 +1029,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[1];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -1038,9 +1040,9 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+    auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
-      phi::DenseTensor sizes;
+      Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
@@ -1155,12 +1157,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const phi::DenseTensor& input,
-                                 phi::DenseTensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1172,7 +1174,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
@@ -1181,7 +1183,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[2];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -1193,9 +1195,9 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+    auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
-      phi::DenseTensor sizes;
+      Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_d = size_data[0];
@@ -1287,11 +1289,11 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
-                                 phi::DenseTensor* input_grad,
-                                 const phi::DenseTensor output_grad) {
-  auto* input = ctx.Input<phi::DenseTensor>("X");
+                                 Tensor* input_grad,
+                                 const Tensor output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1301,7 +1303,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1312,14 +1314,14 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+  auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
-    phi::DenseTensor sizes;
+    Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
   }
-  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1378,11 +1380,11 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
-                                 phi::DenseTensor* input_grad,
-                                 const phi::DenseTensor output_grad) {
-  auto* input = ctx.Input<phi::DenseTensor>("X");
+                                 Tensor* input_grad,
+                                 const Tensor output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1393,7 +1395,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1405,15 +1407,15 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+  auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
-    phi::DenseTensor sizes;
+    Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
   }
-  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1524,11 +1526,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
-                                 phi::DenseTensor* input_grad,
-                                 const phi::DenseTensor& output_grad) {
-  auto* input = ctx.Input<phi::DenseTensor>("X");
+                                 Tensor* input_grad,
+                                 const Tensor& output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1540,7 +1542,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1553,16 +1555,16 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
+  auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
-    phi::DenseTensor sizes;
+    Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];
     out_w = size_data[2];
   }
-  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1649,8 +1651,8 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
-    auto* input = ctx.Input<phi::DenseTensor>("X");
-    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
 
     auto input_dims = input->dims();
     if (input_dims.size() == 3) {  // 1D interpolation
@@ -1671,10 +1673,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
-    auto* input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
     if (output_grad_dims.size() == 3) {  // 1D interpolation

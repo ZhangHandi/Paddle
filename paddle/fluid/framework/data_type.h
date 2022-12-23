@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace framework {

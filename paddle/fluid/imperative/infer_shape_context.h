@@ -109,14 +109,21 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
-    if (!allow_null) {
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) {
+          return true;
+        }
+      }
+      return false;
+    } else {
       for (auto& output : it->second) {
         if (output == nullptr) {
           return false;
         }
       }
+      return true;
     }
-    return true;
   }
 
   framework::AttrReader Attrs() const override {
@@ -162,7 +169,6 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     return vec_res;
   }
-
   std::string GetInputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
@@ -223,9 +229,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                       platform::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
-    if (in_var->IsType<phi::DenseTensor>()) {
-      auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
+    if (in_var->IsType<framework::LoDTensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       auto& in_sele_rows = in_var->Get<phi::SelectedRows>();
@@ -251,7 +257,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override {
     return (op_kernel_type_ &&
-            (op_kernel_type_->data_layout_ == phi::DataLayout::ONEDNN));
+            (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
   }
 
   paddle::small_vector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
@@ -281,11 +287,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         var_map_out_->end(),
         platform::errors::NotFound("Can not find [%s] in outputs.", name));
     for (auto& var : it->second) {
-      if (var) {
-        res.emplace_back(var->MutableVar());
-      } else {
-        res.emplace_back(framework::InferShapeVarPtr());
-      }
+      res.emplace_back(var->MutableVar());
     }
     return res;
   }
@@ -439,8 +441,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::PreconditionNotMet(
                                 "Input variable should not be null"));
-    if (var->IsType<phi::DenseTensor>()) {
-      return var->Get<phi::DenseTensor>().dims();
+    if (var->IsType<framework::LoDTensor>()) {
+      return var->Get<framework::LoDTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {
@@ -457,8 +459,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   void SetDim(framework::Variable* var, const DDim& dim) {
-    if (var->IsType<phi::DenseTensor>()) {
-      var->GetMutable<phi::DenseTensor>()->Resize(dim);
+    if (var->IsType<framework::LoDTensor>()) {
+      var->GetMutable<framework::LoDTensor>()->Resize(dim);
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {

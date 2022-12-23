@@ -28,6 +28,9 @@
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
   HOSTDEVICE SequenceMaskForRangeFunctor(const Tx *x, Ty *y, int maxlen)
@@ -47,11 +50,8 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
-  SequenceMaskFunctor(const DeviceContext &ctx,
-                      const Tx *x,
-                      phi::DenseTensor *y,
-                      int limits,
-                      int maxlen)
+  SequenceMaskFunctor(
+      const DeviceContext &ctx, const Tx *x, Tensor *y, int limits, int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
@@ -64,26 +64,28 @@ struct SequenceMaskFunctor {
  private:
   const DeviceContext &ctx_;
   const Tx *x_;
-  phi::DenseTensor *y_;
+  Tensor *y_;
   int limits_;
   int maxlen_;
 };
 
 template <typename DeviceContext, typename Tx>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
+  using Tensor = framework::LoDTensor;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<phi::DenseTensor>("X");
-    auto *y = ctx.Output<phi::DenseTensor>("Y");
+    auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
-      auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
+      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
-        phi::DenseTensor temp;
+        framework::Tensor temp;
         paddle::framework::TensorCopySync(
             *max_len_tensor, platform::CPUPlace(), &temp);
         maxlen = *temp.data<int32_t>();

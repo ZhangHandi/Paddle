@@ -75,9 +75,9 @@ template <typename T>
 class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* anchors = ctx.Output<phi::DenseTensor>("Anchors");
-    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
+    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
+    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
+    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx.Attr<std::vector<float>>("aspect_ratios");
@@ -101,13 +101,13 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     anchors->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    phi::DenseTensor ar;
+    framework::Tensor ar;
     framework::TensorFromVector(aspect_ratios, ctx.device_context(), &ar);
 
-    phi::DenseTensor as;
+    framework::Tensor as;
     framework::TensorFromVector(anchor_sizes, ctx.device_context(), &as);
 
-    phi::DenseTensor sd;
+    framework::Tensor sd;
     framework::TensorFromVector(stride, ctx.device_context(), &sd);
 
     GenAnchors<T><<<grid, block, 0, stream>>>(anchors->data<T>(),
@@ -121,7 +121,7 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
                                               width,
                                               offset);
 
-    phi::DenseTensor v;
+    framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);
     grid = (box_num * 4 + block - 1) / block;
     SetVariance<T><<<grid, block, 0, stream>>>(

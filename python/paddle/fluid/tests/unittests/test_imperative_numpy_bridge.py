@@ -16,22 +16,20 @@ import unittest
 import warnings
 
 import numpy as np
-
 import paddle.fluid as fluid
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
-    def test_tensor_from_numpy(self):
+
+    def func_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 var = fluid.dygraph.to_variable(data_np, zero_copy=True)
-                assert (
-                    "Currently, zero_copy is not supported, and it will be discarded."
-                    in str(w[-1].message)
-                )
+                assert "Currently, zero_copy is not supported, and it will be discarded." in str(
+                    w[-1].message)
             # Temporally diable zero_copy
             # var = fluid.dygraph.to_variable(data_np, zero_copy=True)
             # np.testing.assert_array_equal(var.numpy(), data_np)
@@ -51,6 +49,11 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             else:
                 self.assertNotEqual(var2[0][0].numpy()[0], -1)
             self.assertFalse(np.array_equal(var2.numpy(), data_np))
+
+    def test_func_tensor_from_numpy(self):
+        with _test_eager_guard():
+            self.func_tensor_from_numpy()
+        self.func_tensor_from_numpy()
 
 
 if __name__ == '__main__':

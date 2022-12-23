@@ -16,7 +16,8 @@
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 void TemporalShiftBwNCHW(const T* output_grad,
@@ -90,14 +91,13 @@ template <typename T>
 class TemporalShiftGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_format_str);
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]

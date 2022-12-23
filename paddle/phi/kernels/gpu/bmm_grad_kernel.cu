@@ -24,4 +24,4 @@ PD_REGISTER_KERNEL(bmm_grad,
                    phi::BmmGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   paddle::platform::float16) {}

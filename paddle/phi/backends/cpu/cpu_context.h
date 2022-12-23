@@ -24,8 +24,7 @@ limitations under the License. */
 
 namespace phi {
 
-class PADDLE_API CPUContext : public DeviceContext,
-                              public TypeInfoTraits<DeviceContext, CPUContext> {
+class PADDLE_API CPUContext : public DeviceContext {
  public:
   CPUContext();
   CPUContext(CPUContext&&);
@@ -34,8 +33,6 @@ class PADDLE_API CPUContext : public DeviceContext,
   virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
   const Place& GetPlace() const override;
-
-  static const char* name() { return "CPUContext"; }
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.

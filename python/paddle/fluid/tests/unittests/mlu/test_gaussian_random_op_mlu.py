@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import paddle
@@ -29,6 +31,7 @@ paddle.enable_static()
 
 
 class TestGaussianRandomOp(OpTest):
+
     def setUp(self):
         self.op_type = "gaussian_random"
         self.place = paddle.device.MLUPlace(0)
@@ -47,7 +50,7 @@ class TestGaussianRandomOp(OpTest):
 
     def set_attrs(self):
         self.mean = 1.0
-        self.std = 2.0
+        self.std = 2.
 
     def test_check_output(self):
         self.check_output_with_place_customized(self.verify_output, self.place)
@@ -66,6 +69,7 @@ class TestGaussianRandomOp(OpTest):
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
+
     def set_attrs(self):
         self.mean = 1
         self.std = 2

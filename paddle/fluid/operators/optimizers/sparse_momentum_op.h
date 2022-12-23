@@ -36,6 +36,8 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
@@ -303,7 +305,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
-    auto index = ctx.Input<phi::DenseTensor>("Index");
+    auto index = ctx.Input<framework::Tensor>("Index");
     const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (multi_precision) {
       if (use_nesterov) {
@@ -369,8 +371,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     // get axis from tensor
     if (ctx.HasInput("Axis")) {
-      phi::DenseTensor cpu_axis;
-      const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
+      Tensor cpu_axis;
+      const Tensor* axis_tensor = ctx.Input<Tensor>("Axis");
       framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
       const auto& axis_type =
           framework::TransToProtoVarType(axis_tensor->dtype());
@@ -386,12 +388,12 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("The axis of sparse_momentum_op only "
                                           "support axis=0 or axis=1 now."));
 
-    auto learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
-    auto param = ctx.Input<phi::DenseTensor>("Param");
-    auto param_out = ctx.Output<phi::DenseTensor>("ParamOut");
-    auto velocity = ctx.Input<phi::DenseTensor>("Velocity");
-    auto velocity_out = ctx.Output<phi::DenseTensor>("VelocityOut");
-    auto index = ctx.Input<phi::DenseTensor>("Index");
+    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto param = ctx.Input<framework::Tensor>("Param");
+    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto velocity = ctx.Input<framework::Tensor>("Velocity");
+    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+    auto index = ctx.Input<framework::Tensor>("Index");
     int64_t num_index = index->numel();
 
     // check index of shape 1-D
@@ -410,8 +412,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
                             " the second dimension should be 1."));
     }
 
-    const phi::DenseTensor* master_param = nullptr;
-    phi::DenseTensor* master_param_out = nullptr;
+    const framework::Tensor* master_param = nullptr;
+    framework::Tensor* master_param_out = nullptr;
     if (multi_precision) {
       bool has_master =
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
@@ -421,8 +423,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
-      master_param = ctx.Input<phi::DenseTensor>("MasterParam");
-      master_param_out = ctx.Output<phi::DenseTensor>("MasterParamOut");
+      master_param = ctx.Input<framework::Tensor>("MasterParam");
+      master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
     }
 
     param_out->mutable_data<T>(ctx.GetPlace());
@@ -433,7 +435,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         multi_precision ? master_param_out->mutable_data<MT>(ctx.GetPlace())
                         : nullptr;
 
-    auto grad = ctx.Input<phi::DenseTensor>("Grad");
+    auto grad = ctx.Input<framework::Tensor>("Grad");
 
     platform::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()),
@@ -453,7 +455,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
                           "The Grad's rank of sparse_momentum_op"
                           " must be 2 now."));
 
-    phi::DenseTensor sorted_index, grad_index, sort_value;
+    Tensor sorted_index, grad_index, sort_value;
     auto sorted_index_ptr =
         sorted_index.mutable_data<IndexT>({num_index}, ctx.GetPlace());
     auto grad_index_ptr =

@@ -17,16 +17,12 @@ import sys
 import os
 
 __all__ = [
-    'TrainerDesc',
-    'MultiTrainer',
-    'DistMultiTrainer',
-    'PipelineTrainer',
-    'HeterXpuTrainer',
-    'HeterPipelineTrainer',
+    'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
+    'HeterXpuTrainer', 'HeterPipelineTrainer'
 ]
 
 
-class TrainerDesc:
+class TrainerDesc(object):
     '''
     Set proto from python to c++.
     Can be initialized from train_desc.
@@ -47,10 +43,8 @@ class TrainerDesc:
             sys.path.append(cur_path + "/proto")
 
         from proto import trainer_desc_pb2
-
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
-
         # set default thread num == cpu count
         self.proto_desc.thread_num = mp.cpu_count()
         self._fleet_desc = None
@@ -59,26 +53,26 @@ class TrainerDesc:
         self._infer = False
 
     def _set_heter_info(self, ret):
-        # ret = = fu.split_program_by_device(program)
-        # start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
-        # if len(start_list) != 3:
+        #ret = = fu.split_program_by_device(program)
+        #start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
+        #if len(start_list) != 3:
         #    print("start_list len=", len(start_list), " will not set heter info")
         #    return
-        # for i in start_list[0]:
+        #for i in start_list[0]:
         #    self.proto_desc.op_run_start_idx.append(i)
-        # for i in end_list[0]:
+        #for i in end_list[0]:
         #    self.proto_desc.op_run_end_idx.append(i)
-        # for i in send_list[0]:
+        #for i in send_list[0]:
         #    self.proto_desc.op_run_send_list.append(i)
-        # for i in recv_list[0]:
+        #for i in recv_list[0]:
         #    self.proto_desc.op_run_recv_list.append(i)
         if ret is None:
             return
-        # for i in ret[0]: # start_list[1]:
+        #for i in ret[0]: # start_list[1]:
         #    self.proto_desc.xpu_start_idx.append(i)
         self.proto_desc.xpu_start_idx = ret[0]
 
-        # for i in ret[1]:  #end_list[1]:
+        #for i in ret[1]:  #end_list[1]:
         #    self.proto_desc.o_end_idx.append(i)
         self.proto_desc.xpu_end_idx = ret[1]
         for i in ret[2]:  # send_list[1]:
@@ -86,13 +80,13 @@ class TrainerDesc:
         for i in ret[3]:  # recv_list[1]:
             self.proto_desc.xpu_recv_list.append(i)
 
-        # for i in start_list[2]:
+        #for i in start_list[2]:
         #    self.proto_desc.op_run_end_start_idx.append(i)
-        # for i in end_list[2]:
+        #for i in end_list[2]:
         #    self.proto_desc.op_run_end_idx.append(i)
-        # for i in send_list[2]:
+        #for i in send_list[2]:
         #    self.proto_desc.op_run_end_send_list.append(i)
-        # for i in recv_list[2]:
+        #for i in recv_list[2]:
         #    self.proto_desc.op_run_end_recv_list.append(i)
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
@@ -101,8 +95,7 @@ class TrainerDesc:
         for i, v in enumerate(fetch_vars):
             self.proto_desc.fetch_config.fetch_var_names.extend([v.name])
             self.proto_desc.fetch_config.fetch_var_str_format.extend(
-                [fetch_info[i]]
-            )
+                [fetch_info[i]])
         self.proto_desc.fetch_config.print_period = print_period
 
     def _set_debug(self, debug):
@@ -121,7 +114,6 @@ class TrainerDesc:
         self._fleet_desc = fleet_desc
         ## serialize fleet_desc
         from google.protobuf import text_format
-
         fleet_desc_str = text_format.MessageToString(fleet_desc)
         self.proto_desc.fleet_desc = fleet_desc_str
 
@@ -145,11 +137,8 @@ class TrainerDesc:
         self.proto_desc.no_cvm = no_cvm
 
     def _set_scale_sparse_grad_with_batch_size(
-        self, scale_sparse_gradient_with_batch_size=True
-    ):
-        self.proto_desc.scale_sparse_gradient_with_batch_size = (
-            scale_sparse_gradient_with_batch_size
-        )
+            self, scale_sparse_gradient_with_batch_size=True):
+        self.proto_desc.scale_sparse_gradient_with_batch_size = scale_sparse_gradient_with_batch_size
 
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
@@ -214,21 +203,16 @@ class TrainerDesc:
             self.proto_desc.loss_names.append(loss)
 
     def _set_adjust_ins_weight(self, config_dict):
-        self.proto_desc.adjust_ins_weight_config.need_adjust = config_dict.get(
-            "need_adjust", False
-        )
-        self.proto_desc.adjust_ins_weight_config.nid_slot = config_dict.get(
-            "nid_slot", ""
-        )
-        self.proto_desc.adjust_ins_weight_config.nid_adjw_threshold = (
-            config_dict.get("nid_adjw_threshold", 0.0)
-        )
-        self.proto_desc.adjust_ins_weight_config.nid_adjw_ratio = (
-            config_dict.get("nid_adjw_ratio", 0.0)
-        )
-        self.proto_desc.adjust_ins_weight_config.ins_weight_slot = (
-            config_dict.get("ins_weight_slot", "")
-        )
+        self.proto_desc.adjust_ins_weight_config.need_adjust = \
+                config_dict.get("need_adjust", False)
+        self.proto_desc.adjust_ins_weight_config.nid_slot = \
+                config_dict.get("nid_slot", "")
+        self.proto_desc.adjust_ins_weight_config.nid_adjw_threshold = \
+                config_dict.get("nid_adjw_threshold", 0.0)
+        self.proto_desc.adjust_ins_weight_config.nid_adjw_ratio = \
+                config_dict.get("nid_adjw_ratio", 0.0)
+        self.proto_desc.adjust_ins_weight_config.ins_weight_slot = \
+                config_dict.get("ins_weight_slot", "")
 
     def _set_copy_table_config(self, config_dict):
         config = self.proto_desc.copy_table_config
@@ -243,9 +227,9 @@ class TrainerDesc:
             dest_sparse_tables = [dest_sparse_tables]
         if len(src_sparse_tables) != len(dest_sparse_tables):
             raise ValueError(
-                "len(src_sparse_tables) != len(dest_sparse_tables),"
-                " %s vs %s" % (len(src_sparse_tables), len(dest_sparse_tables))
-            )
+                "len(src_sparse_tables) != len(dest_sparse_tables)," \
+                " %s vs %s" % (len(src_sparse_tables), \
+                len(dest_sparse_tables)))
         for i in src_sparse_tables:
             config.src_sparse_tables.append(i)
         for i in dest_sparse_tables:
@@ -259,9 +243,9 @@ class TrainerDesc:
             dest_dense_tables = [dest_dense_tables]
         if len(src_dense_tables) != len(dest_dense_tables):
             raise ValueError(
-                "len(src_dense_tables) != len(dest_dense_tables),"
-                " %s vs %s" % (len(src_dense_tables), len(dest_dense_tables))
-            )
+                "len(src_dense_tables) != len(dest_dense_tables)," \
+                " %s vs %s" % (len(src_dense_tables), \
+                len(dest_dense_tables)))
         for i in src_dense_tables:
             config.src_dense_tables.append(i)
         for i in dest_dense_tables:
@@ -277,9 +261,8 @@ class TrainerDesc:
             dest_var_list = [dest_var_list]
         if len(src_var_list) != len(dest_var_list):
             raise ValueError(
-                "len(src_var_list) != len(dest_var_list), %s vs"
-                " %s" % (len(src_var_list), len(dest_var_list))
-            )
+                "len(src_var_list) != len(dest_var_list), %s vs" \
+                " %s" % (len(src_var_list), len(dest_var_list)))
         for i in src_var_list:
             config.src_var_list.append(i)
         for i in dest_var_list:
@@ -296,22 +279,19 @@ class TrainerDesc:
                 raise ValueError("dependency len %s != 1" % len(values))
             for value in values:
                 m.values.append(value)
-        config.dense_pull_after_copy = config_dict.get(
-            "dense_pull_after_copy", True
-        )
-        config.enable_dependency = config_dict.get("enable_dependency", False)
-        config.sparse_copy_by_feasign = config_dict.get(
-            "sparse_copy_by_feasign", True
-        )
+        config.dense_pull_after_copy = \
+            config_dict.get("dense_pull_after_copy", True)
+        config.enable_dependency = \
+            config_dict.get("enable_dependency", False)
+        config.sparse_copy_by_feasign = \
+            config_dict.get("sparse_copy_by_feasign", True)
 
     def _desc(self):
         from google.protobuf import text_format
-
         return self.proto_desc.SerializeToString()
 
     def __str__(self):
         from google.protobuf import text_format
-
         return text_format.MessageToString(self.proto_desc)
 
 
@@ -322,15 +302,15 @@ class MultiTrainer(TrainerDesc):
     '''
 
     def __init__(self):
-        super().__init__()
+        super(MultiTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(MultiTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(MultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -344,17 +324,17 @@ class DistMultiTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super().__init__()
+        super(DistMultiTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(DistMultiTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
-        if self._program is None:
+        if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -368,17 +348,17 @@ class HeterXpuTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super().__init__()
+        super(HeterXpuTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(HeterXpuTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(HeterXpuTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "HeterXpuTrainer"
-        if self._program is None:
+        if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -392,17 +372,17 @@ class PSGPUTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super().__init__()
+        super(PSGPUTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(PSGPUTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(PSGPUTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "PSGPUTrainer"
-        if self._program is None:
+        if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -416,17 +396,17 @@ class HeterPipelineTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super().__init__()
+        super(HeterPipelineTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(HeterPipelineTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(HeterPipelineTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "HeterPipelineTrainer"
-        if self._program is None:
+        if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -440,17 +420,17 @@ class PipelineTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super().__init__()
+        super(PipelineTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super()._set_program(program)
+        super(PipelineTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
+        super(PipelineTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "PipelineTrainer"
-        if self._program is None:
+        if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)

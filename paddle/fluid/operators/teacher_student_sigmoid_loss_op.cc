@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -199,17 +201,15 @@ class TeacherStudentSigmoidLossOpMaker
  public:
   void Make() override {
     AddInput("X",
-             "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
-             "tensor with shape [N x 1],"
+             "(Tensor, default Tensor<float>), a 2-D tensor with shape [N x 1],"
              " where N is the batch size and D is the output. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
     AddInput("Label",
-             "(phi::DenseTensor), the ground truth which is a 2-D tensor. "
-             "Label is a phi::DenseTensor<float> with shape [N x 1]. ");
+             "(Tensor), the ground truth which is a 2-D tensor. "
+             "Label is a Tensor<float> with shape [N x 1]. ");
     AddOutput("Y",
-              "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
-              "tensor with shape "
+              "(Tensor, default Tensor<float>), a 2-D tensor with shape "
               "[N x 1]. The teacher student sigmoid loss.");
     AddAttr<float>(
         "soft_max_up_bound",
@@ -226,7 +226,7 @@ It's similarity to SigmoidCrossEntropyWithLogits Operator. The difference is tha
 we add another label(z') to original.
         loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
         z is click or not
-        z' is teacher value
+        z' is teacher value 
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;

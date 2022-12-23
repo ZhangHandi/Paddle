@@ -71,7 +71,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     return nccl_ctxs_;
   }
 
-  ncclComm_t GetComm() const {
+  const ncclComm_t GetComm() const {
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,
@@ -81,10 +81,6 @@ class NCCLOpHandleBase : public OpHandleBase {
                       0,
                       platform::errors::Unimplemented(
                           "Not supported use_hierarchical_allreduce_ now"));
-    PADDLE_ENFORCE_NOT_NULL(
-        nccl_ctxs_,
-        platform::errors::NotFound("Can't get flat %d nccl contexts.",
-                                   run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = places_[0].device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);

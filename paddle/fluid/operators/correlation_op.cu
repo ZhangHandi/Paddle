@@ -31,6 +31,8 @@ namespace operators {
 #endif
 #define FULL_MASK 0xffffffff
 
+using framework::Tensor;
+
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {
   for (int offset = 16; offset > 0; offset /= 2) {
@@ -184,8 +186,8 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "Correlation only supports GPU now."));
 
-    auto *input1 = ctx.Input<phi::DenseTensor>("Input1");
-    auto *input2 = ctx.Input<phi::DenseTensor>("Input2");
+    auto *input1 = ctx.Input<Tensor>("Input1");
+    auto *input2 = ctx.Input<Tensor>("Input2");
     int pad_size = ctx.Attr<int>("pad_size");
     int kernel_size = ctx.Attr<int>("kernel_size");
     int stride1 = ctx.Attr<int>("stride1");
@@ -193,7 +195,7 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     int max_displacement = ctx.Attr<int>("max_displacement");
     int corr_type_multiply = ctx.Attr<int>("corr_type_multiply");
 
-    auto *output = ctx.Output<phi::DenseTensor>("Output");
+    auto *output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
@@ -207,11 +209,11 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    phi::DenseTensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    phi::DenseTensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 
@@ -451,10 +453,10 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "Correlation only supports GPU now."));
-    const auto *input1 = ctx.Input<phi::DenseTensor>("Input1");
-    const auto *input2 = ctx.Input<phi::DenseTensor>("Input2");
+    const auto *input1 = ctx.Input<Tensor>("Input1");
+    const auto *input2 = ctx.Input<Tensor>("Input2");
     const auto *grad_output =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
     const int pad_size = ctx.Attr<int>("pad_size");
     const int kernel_size = ctx.Attr<int>("kernel_size");
     const int stride1 = ctx.Attr<int>("stride1");
@@ -462,11 +464,9 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     const int max_displacement = ctx.Attr<int>("max_displacement");
     const int corr_type_multiply = ctx.Attr<int>("corr_type_multiply");
 
-    auto *grad_input1 =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input1"));
+    auto *grad_input1 = ctx.Output<Tensor>(framework::GradVarName("Input1"));
     grad_input1->mutable_data<T>(ctx.GetPlace());
-    auto *grad_input2 =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input2"));
+    auto *grad_input2 = ctx.Output<Tensor>(framework::GradVarName("Input2"));
     grad_input2->mutable_data<T>(ctx.GetPlace());
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
@@ -479,11 +479,11 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    phi::DenseTensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    phi::DenseTensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 

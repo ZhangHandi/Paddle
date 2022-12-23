@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
+import unittest
+import numpy as np
 import numpy.random as random
+import sys
+import math
 from op_test import OpTest
 
 
 class TestIOUSimilarityOp(OpTest):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -34,9 +39,7 @@ class TestIOUSimilarityOp(OpTest):
         self.attrs = {"box_normalized": self.box_normalized}
         self.outputs = {'Out': self.output}
 
-    def _compute_iou(
-        self,
-    ):
+    def _compute_iou(self, ):
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -66,11 +69,12 @@ class TestIOUSimilarityOp(OpTest):
 
 
 class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
-        super().setUp()
+        super(TestIOUSimilarityOpWithLoD, self).setUp()
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = False
@@ -82,11 +86,12 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
 
 class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
-        super().setUp()
+        super(TestIOUSimilarityOpWithBoxNormalized, self).setUp()
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = True

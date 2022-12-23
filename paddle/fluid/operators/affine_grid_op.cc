@@ -28,6 +28,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -132,8 +134,15 @@ class AffineGridOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), framework::DataLayout::kAnyLayout, library);
   }
 };
 
@@ -168,7 +177,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
                   [x_14, x_15, x_16]]
                  [[x_21, x_22, x_23]
                   [x_24, x_25, x_26]]]
-
+    
         OutputShape = [2, 3, 5, 5]
 
     Step 1:
@@ -176,12 +185,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         Generate relative coordinates according to OutputShape.
         The values of relative coordinates are in the interval between -1 and 1.
         The shape of the relative coordinates is [2, H, W] as below:
-
+    
         C = [[[-1.  -1.  -1.  -1.  -1. ]
               [-0.5 -0.5 -0.5 -0.5 -0.5]
               [ 0.   0.   0.   0.   0. ]
               [ 0.5  0.5  0.5  0.5  0.5]
-              [ 1.   1.   1.   1.   1. ]]
+              [ 1.   1.   1.   1.   1. ]] 
              [[-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
@@ -189,7 +198,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]]]
         C[0] is the coordinates in height axis and  C[1] is the coordinates in
         width axis.
-
+    
     Step2:
         Tanspose and reshape C to shape [H * W, 2] and append ones to last
         dimension. The we get:
@@ -243,9 +252,17 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Output"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Output")),
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kAnyLayout,
+                                   library_);
   }
 };
 

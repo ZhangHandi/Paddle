@@ -18,8 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -94,9 +95,12 @@ void GPUGather(const phi::GPUContext& ctx,
   }
 
   // index size
-  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
+  int64_t index_size = index.dims()[0];
+  if (index_size == 0) return;
 
   auto src_dims = src.dims();
+  phi::DDim output_dims(src_dims);
+  output_dims[0] = index_size;
 
   // slice size
   int64_t slice_size = 1;
@@ -109,7 +113,7 @@ void GPUGather(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);
@@ -151,7 +155,7 @@ void GPUGatherNd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
                                                                   g_input_dims,
@@ -214,7 +218,7 @@ __global__ void GatherGradGPUKernel(const T* input,
     int64_t out_index =
         inner_dim_index * (outer_dim_size * out_index_dim_size) +
         index[index_dim_index] * outer_dim_size + out_dim_index;
-    phi::CudaAtomicAdd(out + out_index, *(input + idx));
+    paddle::platform::CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
 
@@ -243,9 +247,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
     inner_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  if (index->dims().size() != 0) {
-    out_dim_vec.push_back(index_size);
-  }
+  out_dim_vec.push_back(index_size);
   for (int i = axis_index + 1; i < input_dim.size(); i++) {
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);

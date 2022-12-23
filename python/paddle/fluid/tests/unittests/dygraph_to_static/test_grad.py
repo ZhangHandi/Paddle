@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import tempfile
-import unittest
+from __future__ import print_function
 
 import numpy as np
-
 import paddle
+import unittest
+import os
+import tempfile
 
 
 class GradLayer(paddle.nn.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(GradLayer, self).__init__()
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -34,8 +35,9 @@ class GradLayer(paddle.nn.Layer):
 
 
 class GradLinearLayer(paddle.nn.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(GradLinearLayer, self).__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static
@@ -45,15 +47,17 @@ class GradLinearLayer(paddle.nn.Layer):
         for i in range(10):
             tmp = self.linear(tmp)
         out = tmp
-        dx = paddle.grad(
-            [out], [x], None, create_graph=True, allow_unused=False
-        )[0]
+        dx = paddle.grad([out], [x],
+                         None,
+                         create_graph=True,
+                         allow_unused=False)[0]
         return dx
 
 
 class NoGradLinearLayer(paddle.nn.Layer):
+
     def __init__(self):
-        super().__init__()
+        super(NoGradLinearLayer, self).__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static
@@ -68,6 +72,7 @@ class NoGradLinearLayer(paddle.nn.Layer):
 
 
 class TestGrad(unittest.TestCase):
+
     def setUp(self):
         self.func = GradLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
@@ -87,18 +92,17 @@ class TestGrad(unittest.TestCase):
 
 
 class TestGradLinear(TestGrad):
+
     def setUp(self):
         self.func = GradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.infer_model_path = os.path.join(
-            self.temp_dir.name, 'double_grad_infer_model'
-        )
-        self.train_model_path = os.path.join(
-            self.temp_dir.name, 'double_grad_train_model'
-        )
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_train_model')
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -116,11 +120,9 @@ class TestGradLinear(TestGrad):
 
     def test_save_train_program(self):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=0.01,
-            grad_clip=grad_clip,
-            parameters=self.func.parameters(),
-        )
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                         grad_clip=grad_clip,
+                                         parameters=self.func.parameters())
         for i in range(10):
             out = self.func(self.x)
             avg_loss = paddle.mean(paddle.abs(out - 1))
@@ -138,18 +140,17 @@ class TestGradLinear(TestGrad):
 
 
 class TestNoGradLinear(TestGradLinear):
+
     def setUp(self):
         self.func = NoGradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.infer_model_path = os.path.join(
-            self.temp_dir.name, 'no_grad_infer_model'
-        )
-        self.train_model_path = os.path.join(
-            self.temp_dir.name, 'no_grad_train_model'
-        )
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_train_model')
 
     def tearDown(self):
         self.temp_dir.cleanup()

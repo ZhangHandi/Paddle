@@ -102,13 +102,9 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
+      config_.EnableMemoryOptim(false);
     }
-    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
-    if (trt_identifier > 0) {
-      predictor_id_ = -trt_identifier;
-    } else {
-      predictor_id_ = inference::GetUniqueId();
-    }
+    predictor_id_ = inference::GetUniqueId();
   }
   ///
   /// \brief Destroy the Analysis Predictor object
@@ -147,13 +143,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return input names
   ///
-  std::vector<std::string> GetInputNames() override;
+  std::vector<std::string> GetInputNames();
   ///
   /// \brief Get the output names
   ///
   /// \return output names
   ///
-  std::vector<std::string> GetOutputNames() override;
+  std::vector<std::string> GetOutputNames();
 
   ///
   /// \brief Get the Input Tensor object
@@ -231,7 +227,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
-  void ClearIntermediateTensor() override;
+  void ClearIntermediateTensor();
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
@@ -249,7 +245,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the argument obtained by config
   ///
-  Argument &analysis_argument() { return *argument_; }
+  Argument &analysis_argument() { return argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
@@ -275,23 +271,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
-
-  ///
-  /// \brief Get the fusion_statis_t
-  ///
-  /// \return the fusion_statis_t
-  ///
-  Argument::fusion_statis_t fusion_statis() { return fusion_statis_; }
-
-  ///
-  /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
-  /// The hook function signature is void(const std::string&, const
-  /// std::string&, const Tensor&>). Here, the first parameter is op's
-  /// type, the second param is output var name of the op, and the third
-  /// parameter is output tensor with the var name.
-  ///
-  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -374,7 +353,8 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
+  void GetFetchOne(const framework::LoDTensor &fetchs,
+                   PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -403,7 +383,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void MkldnnPostReset();
 
-#ifdef PADDLE_WITH_TENSORRT
+#if PADDLE_WITH_TENSORRT
   ///
   /// \brief save calibration table
   ///
@@ -491,8 +471,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  std::unique_ptr<Argument> argument_;
-  Argument::fusion_statis_t fusion_statis_;
+  Argument argument_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
@@ -520,7 +499,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<phi::DenseTensor> feed_tensors_;
+  std::vector<framework::LoDTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
@@ -530,16 +509,12 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
-  int root_predictor_id_{-1};
 
  private:
-  std::vector<Exp_OutputHookFunc> hookfuncs_;
-
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
-  std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
   static int clone_num_;
 
   bool private_context_{false};

@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/shard_index_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void ShardIndexInner(const T* in_data,
@@ -33,15 +33,7 @@ __global__ void ShardIndexInner(const T* in_data,
   int shard_size = (index_num + nshards - 1) / nshards;
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < numel) {
-    PADDLE_ENFORCE(in_data[idx] >= 0,
-                   "The input_index for Op(shard_index) must be "
-                   "greater or equal to 0, but the value given is %d.",
-                   in_data[idx]);
-    PADDLE_ENFORCE(in_data[idx] < index_num,
-                   "The input_index for Op(shard_index) must be less "
-                   "than index_num (%d), but the value given is %d.",
-                   index_num,
-                   in_data[idx]);
+    assert(in_data[idx] >= 0 && in_data[idx] < index_num);
     if (in_data[idx] / shard_size == shard_id) {
       out_data[idx] = in_data[idx] % shard_size;
     } else {

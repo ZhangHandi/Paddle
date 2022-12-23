@@ -20,6 +20,8 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -529,6 +531,7 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_Y, grad_node);
       grad_node->SetGradInMeta(Y, 19);
       egr::EagerUtils::CheckAndRetainGrad(Y);
+
       auto QKVOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKVOut, 0);
@@ -572,17 +575,15 @@ fused_attention_dygraph_function(
       egr::EagerUtils::CheckAndRetainGrad(SoftmaxOut);
       grad_node->SetGradOutMeta(SoftmaxOut, 19);
 
-      if (AttnDropoutOut.initialized()) {
-        auto AttnDropoutOut_accumulation_node =
-            std::make_shared<egr::GradNodeAccumulation>(
-                p_autograd_AttnDropoutOut);
-        egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
-        egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
-                                    AttnDropoutOut_accumulation_node);
-        AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
-        egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
-        grad_node->SetGradOutMeta(AttnDropoutOut, 20);
-      }
+      auto AttnDropoutOut_accumulation_node =
+          std::make_shared<egr::GradNodeAccumulation>(
+              p_autograd_AttnDropoutOut);
+      egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
+      egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
+                                  AttnDropoutOut_accumulation_node);
+      AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
+      egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
+      grad_node->SetGradOutMeta(AttnDropoutOut, 20);
 
       auto FMHAOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_FMHAOut);

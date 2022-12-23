@@ -104,8 +104,7 @@ DenseTensor Diagonal(const DeviceContext& context,
     DenseTensor diag;
     DDim diag_dims = phi::make_ddim(ret_dims);
     auto dig_stride = phi::stride(diag_dims);
-    diag.Resize(diag_dims);
-    auto diag_data = context.template Alloc<T>(&diag);
+    auto diag_data = diag.mutable_data<T>(diag_dims, context.GetPlace());
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
@@ -156,58 +155,58 @@ __global__ void DiagonalCuda(const T* data1,
                              int64_t* x_stride,
                              int64_t* out_stride,
                              int64_t numel,
-                             int64_t out_numel,
                              bool is_grad) {
-  CUDA_KERNEL_LOOP(idx, out_numel) {
-    int64_t idx_dim[OUT_DIM_SIZE] = {0};
+  CUDA_KERNEL_LOOP(idx, numel) {
+    int64_t idx_dim[X_DIM_SIZE] = {0};
     int64_t temp = 0;
-    for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
-      idx_dim[i] = (idx - temp) / out_stride[i];
-      temp = temp + idx_dim[i] * out_stride[i];
+    for (size_t i = 0; i < X_DIM_SIZE - 1; i++) {
+      idx_dim[i] = (idx - temp) / x_stride[i];
+      temp = temp + idx_dim[i] * x_stride[i];
     }
-    idx_dim[OUT_DIM_SIZE - 1] = idx - temp;
-    int64_t tmp = idx - temp;
-    int64_t list[9];
-    int64_t p = 0;
-    for (size_t j = 0; j < X_DIM_SIZE; j++) {
-      if (j == axis1_ || j == axis2_) {
-        list[j] = 0;
-      } else {
-        list[j] = idx_dim[p];
-        p += 1;
-      }
-    }
-    int64_t l = min(axis1_, axis2_);
-    int64_t r = max(axis1_, axis2_);
-    if (offset_ == 0) {
-      list[l] = tmp;
-      list[r] = tmp;
-    } else if (offset_ > 0) {
-      if (axis1_ < axis2_) {
-        list[l] = tmp;
-        list[r] = tmp + offset_;
-      } else {
-        list[l] = tmp + offset_;
-        list[r] = tmp;
-      }
-    } else if (offset_ < 0) {
-      if (axis1_ < axis2_) {
-        list[l] = tmp - offset_;
-        list[r] = tmp;
-      } else {
-        list[l] = tmp;
-        list[r] = tmp - offset_;
-      }
-    }
-    int64_t input_offset = 0;
+    idx_dim[X_DIM_SIZE - 1] = idx - temp;
 
-    for (size_t i = 0; i < X_DIM_SIZE; i++) {
-      input_offset = input_offset + list[i] * x_stride[i];
+    int64_t axis1_dim = idx_dim[axis1_];
+    int64_t axis2_dim = idx_dim[axis2_];
+
+    int64_t out_dim[OUT_DIM_SIZE] = {0};
+    int temp_pos = 0;
+    for (int i = 0; i < X_DIM_SIZE; i++) {
+      if (i != axis1_ && i != axis2_) {
+        out_dim[temp_pos] = idx_dim[i];
+        temp_pos++;
+      }
+    }
+    bool flag = false;
+    if (offset_ == 0 && axis1_dim == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis2_dim;
+      flag = true;
     }
     if (!is_grad) {
-      data2[idx] = data1[input_offset];
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx_output] = data1[idx];
+      }
     } else {
-      data2[input_offset] = data1[idx];
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx] = data1[idx_output];
+      } else {
+        data2[idx] = static_cast<T>(0);
+      }
     }
   }
 }

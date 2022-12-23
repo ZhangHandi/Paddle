@@ -1,1 +1,0 @@
-cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc)

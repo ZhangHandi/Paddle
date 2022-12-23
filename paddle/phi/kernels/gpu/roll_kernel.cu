@@ -21,7 +21,7 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
@@ -82,7 +82,6 @@ PD_REGISTER_KERNEL(roll,
                    GPU,
                    ALL_LAYOUT,
                    phi::RollKernel,
-                   phi::dtype::float16,
                    float,
                    double,
                    int,

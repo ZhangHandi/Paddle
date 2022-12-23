@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 TEST(scatter, ScatterUpdate) {
-  phi::DenseTensor src;
-  phi::DenseTensor index;
-  phi::DenseTensor output;
+  paddle::framework::Tensor src;
+  paddle::framework::Tensor index;
+  paddle::framework::Tensor output;
 
   auto* p_src = src.mutable_data<float>(phi::make_ddim({1, 4}),
                                         paddle::platform::CPUPlace());

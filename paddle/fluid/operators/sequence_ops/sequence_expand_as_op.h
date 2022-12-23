@@ -28,27 +28,27 @@ template <typename DeviceContext, typename T>
 struct SequenceExpandAsFunctor {
   void operator()(
       const DeviceContext &ctx,
-      const phi::DenseTensor &x,
+      const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out);
+      framework::LoDTensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
   void operator()(
       const DeviceContext &ctx,
-      const phi::DenseTensor &dout,
+      const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *dx);
+      framework::LoDTensor *dx);
 };
 
 template <typename T>
 struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
-      const phi::DenseTensor &x,
+      const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out) {
+      framework::LoDTensor *out) {
     int64_t height = x.dims()[0];
     int64_t width = phi::product(x.dims()) / height;
 
@@ -74,9 +74,9 @@ template <typename DeviceContext, typename T>
 class SequenceExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<phi::DenseTensor>("X");
-    auto *y = context.Input<phi::DenseTensor>("Y");
-    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *x = context.Input<framework::LoDTensor>("X");
+    auto *y = context.Input<framework::LoDTensor>("Y");
+    auto *out = context.Output<framework::LoDTensor>("Out");
 
     PADDLE_ENFORCE_EQ(
         y->lod().empty(),
@@ -124,9 +124,9 @@ template <typename T>
 struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
-      const phi::DenseTensor &dout,
+      const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *dx) {
+      framework::LoDTensor *dx) {
     int64_t height = dx->dims()[0];
     int64_t width = phi::product(dx->dims()) / height;
 
@@ -153,9 +153,10 @@ class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *g_out =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto *y = context.Input<phi::DenseTensor>("Y");
-    auto *g_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *y = context.Input<framework::LoDTensor>("Y");
+    auto *g_x =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     g_x->mutable_data<T>(context.GetPlace());
 

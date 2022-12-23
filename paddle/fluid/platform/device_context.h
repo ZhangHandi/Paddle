@@ -130,7 +130,7 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
-constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
+constexpr DeviceType kCUSOTM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
@@ -144,9 +144,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
-class IPUDeviceContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, IPUDeviceContext> {
+class IPUDeviceContext : public DeviceContext {
  public:
   IPUDeviceContext() = delete;
   explicit IPUDeviceContext(IPUPlace place);
@@ -155,8 +153,6 @@ class IPUDeviceContext
   const Place& GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-
-  static const char* name() { return "IPUDeviceContext"; }
 
  private:
   IPUPlace place_;
@@ -192,9 +188,7 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-class NPUDeviceContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, NPUDeviceContext> {
+class NPUDeviceContext : public DeviceContext {
  public:
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
@@ -230,8 +224,6 @@ class NPUDeviceContext
 
   // void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
-  static const char* name() { return "NPUDeviceContext"; }
-
  private:
   NPUPlace place_;
   aclrtContext context_;
@@ -256,9 +248,7 @@ struct DefaultDeviceContextType<platform::NPUPlace> {
 };
 
 // Currently, NPUPinnedDeviceContext is only used to data copying.
-class NPUPinnedDeviceContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, NPUPinnedDeviceContext> {
+class NPUPinnedDeviceContext : public DeviceContext {
  public:
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
@@ -266,8 +256,6 @@ class NPUPinnedDeviceContext
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
-
-  static const char* name() { return "NPUPinnedDeviceContext"; }
 
  private:
   NPUPinnedPlace place_;
@@ -288,9 +276,7 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
-class CUDAPinnedDeviceContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, CUDAPinnedDeviceContext> {
+class CUDAPinnedDeviceContext : public DeviceContext {
  public:
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
@@ -298,8 +284,6 @@ class CUDAPinnedDeviceContext
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
-
-  static const char* name() { return "CUDAPinnedDeviceContext"; }
 
  private:
   CUDAPinnedPlace place_;
@@ -310,6 +294,11 @@ template <>
 struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
   using TYPE = CUDAPinnedDeviceContext;
 };
+#endif
+
+#ifdef PADDLE_WITH_MKLDNN
+using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
+using MKLDNNDeviceContext = phi::OneDNNContext;
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -350,14 +339,24 @@ void EmplaceDeviceContexts(
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  static DeviceContextPool& Instance();
+  static DeviceContextPool& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
+    return *pool;
+  }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new DeviceContextPool(places);
+    }
+    return *pool;
+  }
 
-  static bool IsInitialized();
+  static bool IsInitialized() { return pool != nullptr; }
 
-  static void SetPool(DeviceContextPool* dev_pool);
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -381,6 +380,7 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
+  static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

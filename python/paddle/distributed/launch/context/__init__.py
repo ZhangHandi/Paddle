@@ -17,11 +17,13 @@ from paddle.distributed.launch import plugins
 from .node import Node
 from .status import Status
 from .args_envs import parse_args, fetch_envs, env_args_mapping
+import six
 
 import logging
 
 
-class Context:
+class Context(object):
+
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
@@ -41,7 +43,7 @@ class Context:
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
-        for arg, value in sorted(vars(self.args).items()):
+        for arg, value in sorted(six.iteritems(vars(self.args))):
             self.logger.info("%s: %s" % (arg, value))
         self.logger.info("--------------------------------------------------")
 
@@ -53,9 +55,8 @@ class Context:
             return False
 
         if len(self.unknown_args) > 0:
-            self.logger.warning(
-                "Compatible mode enable with args {}".format(self.unknown_args)
-            )
+            self.logger.warning("Compatible mode enable with args {}".format(
+                self.unknown_args))
             return True
 
         return False
@@ -75,8 +76,7 @@ class Context:
         logger = logging.getLogger("LAUNCH")
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
-            fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
-        )
+            fmt='%(name)s %(levelname)s %(asctime)s %(message)s')
         ch = logging.StreamHandler()
         ch.setFormatter(formatter)
         logger.addHandler(ch)

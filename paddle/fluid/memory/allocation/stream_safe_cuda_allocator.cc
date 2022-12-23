@@ -16,10 +16,9 @@
 #include <thread>
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
 
 namespace paddle {
@@ -44,12 +43,9 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
     return;
   }
 
-  std::call_once(once_flag_,
-                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
-
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
     return;
   }
@@ -61,14 +57,11 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();
   }
 #endif
-
-  std::call_once(once_flag_,
-                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
 
   RecordGraphCapturingStreams();
 
@@ -265,8 +258,6 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   ProcessUnfreedAllocations();
   return underlying_allocator_->Release(place_);
 }
-
-thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
 std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;

@@ -66,7 +66,7 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const;
 
   void ConvertFromINT8ToFP32(const std::vector<float>& scales,
-                             phi::DenseTensor* weight_tensor,
+                             Tensor* weight_tensor,
                              int8_t* int8_weight_data,
                              float* fp32_weight_data,
                              const std::string& weight_var_name) const;
@@ -106,7 +106,7 @@ class QuantDequantMkldnnPass : public FusePassBase {
                     Scope* scope,
                     const std::string& weight_name) const;
 
-  void TransposeWeight(phi::DenseTensor* input) const;
+  void TransposeWeight(Tensor* input) const;
 
   void DequantizeOpWeights(
       Node* op_node,
@@ -125,8 +125,7 @@ class QuantDequantMkldnnPass : public FusePassBase {
       Scope* scope,
       const std::string& weight_name,
       const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds,
-      std::vector<std::string>* dequantized_weights_names) const;
+          weight_thresholds) const;
 
   void DequantizeWeights(
       ir::Graph* graph,

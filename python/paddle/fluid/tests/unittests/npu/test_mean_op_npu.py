@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -27,6 +29,7 @@ SEED = 2021
 
 
 class TestMean(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -54,6 +57,7 @@ class TestMean(OpTest):
 
 
 class TestMeanFP16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)

@@ -37,26 +37,27 @@ namespace infrt {
 namespace kernel {
 namespace phi {
 
-::Tensor CreateDenseTensor(
+::phi::DenseTensor CreateDenseTensor(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision) {
-  return ::Tensor(const_cast<::phi::Allocator*>(&context.GetAllocator()),
-                  ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
-                                         ::phi::make_ddim(dims.get()),
-                                         ConvertLayoutToPhi(layout.get()),
-                                         {}));
+  return ::phi::DenseTensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
+                             ::phi::make_ddim(dims.get()),
+                             ConvertLayoutToPhi(layout.get()),
+                             {}));
 }
 
-::Tensor CreateInitedDenseTensorF32(
+::phi::DenseTensor CreateInitedDenseTensorF32(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<float> value) {
-  ::Tensor dense_tensor(
+  ::phi::DenseTensor dense_tensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
       ::phi::DenseTensorMeta(
           ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
@@ -70,13 +71,13 @@ namespace phi {
   return dense_tensor;
 }
 
-::Tensor CreateHostInitedDenseTensorF32(
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<std::vector<float>> values) {
-  ::Tensor dense_tensor(
+  ::phi::DenseTensor dense_tensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
       ::phi::DenseTensorMeta(
           ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
@@ -91,20 +92,21 @@ namespace phi {
   return dense_tensor;
 }
 
-::Tensor CreateGPUDenseTensor(
+::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision) {
-  return ::Tensor(const_cast<::phi::Allocator*>(&context.GetAllocator()),
-                  ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
-                                         ::phi::make_ddim(dims.get()),
-                                         ConvertLayoutToPhi(layout.get()),
-                                         {}));
+  return ::phi::DenseTensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
+                             ::phi::make_ddim(dims.get()),
+                             ConvertLayoutToPhi(layout.get()),
+                             {}));
 }
 
-void FillDenseTensorF32(::Tensor* dense_tensor,
+void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<float>> value) {
   auto place = dense_tensor->place();
   float* a_data = dense_tensor->mutable_data<float>(place);
@@ -125,7 +127,7 @@ void FillDenseTensorF32(::Tensor* dense_tensor,
   }
 }
 
-void PrintDenseTensor(::Tensor* dense_tensor) {
+void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 #ifndef INFRT_WITH_GPU
 #define PRINT_META_DATA(PHI_DATATYPE, DTYPE)                \
   case ::phi::DataType::PHI_DATATYPE: {                     \
@@ -202,7 +204,8 @@ void PrintDenseTensor(::Tensor* dense_tensor) {
     std::ifstream param_file(param_path, std::ios::binary);
     switch (var.type().type()) {
       case ::paddle::framework::proto::VarType_Type_LOD_TENSOR: {
-        std::unique_ptr<::Tensor> tensor{std::make_unique<::Tensor>()};
+        std::unique_ptr<::phi::DenseTensor> tensor{
+            std::make_unique<::phi::DenseTensor>()};
         ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
         map.SetDenseTensor(var.name(), std::move(tensor));
       } break;
@@ -250,7 +253,8 @@ void PrintDenseTensor(::Tensor* dense_tensor) {
   ctx.SetHostAllocator(allocator_ptr);
   ctx.SetZeroAllocator(allocator_ptr);
   for (auto& var : tmp) {
-    std::unique_ptr<::Tensor> tensor{std::make_unique<::Tensor>()};
+    std::unique_ptr<::phi::DenseTensor> tensor{
+        std::make_unique<::phi::DenseTensor>()};
     ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
@@ -285,7 +289,8 @@ void PrintDenseTensor(::Tensor* dense_tensor) {
   ctx.PartialInitWithoutAllocator();
 
   for (auto& var : tmp) {
-    std::unique_ptr<::Tensor> tensor{std::make_unique<::Tensor>()};
+    std::unique_ptr<::phi::DenseTensor> tensor{
+        std::make_unique<::phi::DenseTensor>()};
     ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
@@ -300,8 +305,9 @@ void PrintDenseTensor(::Tensor* dense_tensor) {
   return LoadCombinedParameters(model_path.get(), params_path.get());
 }
 
-::Tensor TensorMapGetTensor(const ::infrt::phi::DenseTensorMap& map,
-                            host_context::Attribute<std::string> name) {
+::phi::DenseTensor TensorMapGetTensor(
+    const ::infrt::phi::DenseTensorMap& map,
+    host_context::Attribute<std::string> name) {
   auto* tensor = map.GetDenseTensor(name.get());
   CHECK(tensor);
   return *tensor;
@@ -342,10 +348,10 @@ inline size_t SizeOfDataType(::phi::DataType data_type) {
   }
   return 0;
 }
-void GpuMemCpy(const ::Tensor& input,
+void GpuMemCpy(const ::phi::DenseTensor& input,
                const ::phi::GPUContext& context,
                bool d2h,
-               ::Tensor* output) {
+               ::phi::DenseTensor* output) {
   if (d2h) {
     CHECK(input.place().GetType() == ::phi::AllocationType::GPU);
 

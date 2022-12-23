@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -26,6 +28,7 @@ SEED = 1024
 
 
 class TestAtan(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "atan"
@@ -56,7 +59,7 @@ class TestAtan(OpTest):
             out = paddle.atan(data, name='Y')
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
-            (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = np.arctan(np_x)
             self.assertEqual(result, expected)
 
@@ -73,11 +76,13 @@ class TestAtan(OpTest):
 
 
 class TestAtanShape(TestAtan):
+
     def set_attrs(self):
         self.shape = [12, 23, 10]
 
 
 class TestAtanFloat16(TestAtan):
+
     def set_attrs(self):
         self.dtype = np.float16
 

@@ -38,6 +38,11 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void EmbeddingInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        MetaTensor* out);
+
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -69,12 +74,8 @@ void CompareAllInferMeta(const MetaTensor& x,
 
 void CompareInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
+                      int axis,
                       MetaTensor* out);
-
-void CompareRawInferMeta(const MetaTensor& x,
-                         const MetaTensor& y,
-                         int axis,
-                         MetaTensor* out);
 
 void ComplexInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
@@ -84,23 +85,26 @@ void ConvInferMeta(const MetaTensor& input,
                    const MetaTensor& filter,
                    const std::vector<int>& strides,
                    const std::vector<int>& paddings,
-                   const std::string& padding_algorithm,
-                   const std::vector<int>& dilations,
+                   const std::string& paddding_algorithm,
                    int groups,
+                   const std::vector<int>& dilations,
                    const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
-void Conv3DInferMeta(const MetaTensor& input,
-                     const MetaTensor& filter,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::string& padding_algorithm,
-                     int groups,
-                     const std::vector<int>& dilations,
-                     const std::string& data_format,
-                     MetaTensor* out,
-                     MetaConfig config = MetaConfig());
+void ConvInferInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
 
 void ConvTransposeInferMeta(const MetaTensor& x,
                             const MetaTensor& filter,
@@ -143,17 +147,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       MetaTensor* softmax,
                                       MetaTensor* loss,
                                       MetaConfig config = MetaConfig());
-
-void DepthwiseConvInferMeta(const MetaTensor& input,
-                            const MetaTensor& filter,
-                            const std::vector<int>& strides,
-                            const std::vector<int>& paddings,
-                            const std::string& padding_algorithm,
-                            int groups,
-                            const std::vector<int>& dilations,
-                            const std::string& data_format,
-                            MetaTensor* out,
-                            MetaConfig config = MetaConfig());
 
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
@@ -208,6 +201,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
+                        bool sparse,
                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,

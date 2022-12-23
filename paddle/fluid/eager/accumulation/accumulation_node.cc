@@ -15,9 +15,7 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,25 +30,17 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t,
                             bool is_fake_empty) {
   if (is_fake_empty) {
-    VLOG(3) << "Move Tensor ptr: " << t.impl();
     *tensor = t;
   } else {
     if (!tensor->defined() || !tensor->initialized()) {
       // Simply copy tensor->impl
-      VLOG(3) << "Move Tensor ptr: " << t.impl();
       *tensor = t;
     } else {
-      VLOG(3) << "Add Tensor ptr: " << t.impl()
-              << " with Tensor ptr: " << tensor->impl();
       // Accumulation
       if (LIKELY(t.is_dense_tensor())) {
         if (LIKELY(tensor->is_dense_tensor())) {
-          if (t.is_custom_device()) {
-            *tensor = add_ad_func(t, *tensor);
-          } else {
-            paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
-                                                                        tensor);
-          }
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
+                                                                      tensor);
         } else {
           // TODO(jiabin): Support Other TensorBase later
           // TODO(zhanlve): Replace SelectedRowsAddTensor with
@@ -73,12 +63,8 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
           paddle::experimental::Tensor tensor_values(
               std::make_shared<phi::DenseTensor>(
                   tensor_sparse->non_zero_elements()));
-          if (t.is_custom_device()) {
-            tensor_values = add_ad_func(t_values, tensor_values);
-          } else {
-            paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
-                t_values, &tensor_values);
-          }
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &tensor_values);
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later
@@ -103,7 +89,7 @@ GradNodeAccumulation::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
+  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -136,22 +122,7 @@ GradNodeAccumulation::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
-  VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = "(grads[0][0], [%s]), ";
-    std::string input_out_grad_str = paddle::string::Sprintf(
-        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grads[0][0]));
-    const char* TENSOR_X_GRAD_TEMPLATE = "(grad_out, [%s]), ";
-    std::string output_x_grad_str = paddle::string::Sprintf(
-        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
-    output_str += output_x_grad_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
   return {{grad_out}};
 }
 

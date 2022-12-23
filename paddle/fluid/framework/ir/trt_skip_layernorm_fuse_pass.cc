@@ -158,10 +158,21 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
-    if (layer_norm->Op()->HasAttr("out_threshold")) {
+    //std::cout << "elementwise op has scale x: " << elementwise->Op()->HasAttr("Scale_x") << std::endl;
+    //std::cout << "elementwise op has scale y: " << elementwise->Op()->HasAttr("Scale_y") << std::endl;
+    
+    if (elementwise->Op()->HasAttr("out_threshold")) {
+      std::cout << "enable_int8" << std::endl;
       new_desc.SetAttr("enable_int8", true);
+    }
+
+    if (layer_norm->Op()->HasAttr("out_threshold")) {
+      //new_desc.SetAttr("enable_int8", true);
       new_desc.SetAttr("out_threshold",
                        layer_norm->Op()->GetAttr("out_threshold"));
+    } else {
+      new_desc.SetAttr("output_fp16", true);
+      std::cout << "set output fp16" << std::endl;
     }
 
     // outputs
@@ -169,21 +180,8 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
-
-    if (new_desc.HasAttr("begin_norm_axis")) {
-      int32_t begin_norm_axis = PADDLE_GET_CONST(
-          int32_t, layer_norm->Op()->GetAttr("begin_norm_axis"));
-      int32_t input_rank =
-          static_cast<int32_t>(elementwise_out->Var()->GetShape().size());
-      if ((begin_norm_axis != -1) && (begin_norm_axis != input_rank - 1)) {
-        LOG(WARNING) << "skip_layernorm pass only support "
-                        "layer_norm'begin_norm_axis == input_rank - 1.";
-        return;
-      }
-      new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
-    }
-    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
-    new_desc.SetAttr("hidden_size", hidden_size);
+    new_desc.SetAttr("begin_norm_axis",
+                     layer_norm->Op()->GetAttr("begin_norm_axis"));
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 
@@ -220,14 +218,14 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
             "trt_embedding_eltwise_layernorm_fuse_pass, "
             "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id. Please "
+                                  "pos_id, set mask_id. Please "
                                   "reconfig"));
     }
   }

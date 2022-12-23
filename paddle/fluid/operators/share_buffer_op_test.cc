@@ -18,15 +18,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(share_buffer);
-
-PD_DECLARE_KERNEL(share_buffer, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(share_buffer, GPU, ALL_LAYOUT);
-#endif
+USE_OP(share_buffer);
 
 namespace paddle {
 namespace framework {
@@ -59,17 +52,17 @@ TEST(test_share_buffer_op, test_share_buffer_op) {
 
   Scope scope;
   for (size_t i = 0; i < n; ++i) {
-    auto *in_tensor = scope.Var(inputs[i])->GetMutable<phi::DenseTensor>();
+    auto *in_tensor = scope.Var(inputs[i])->GetMutable<LoDTensor>();
     in_tensor->Resize(dims[i]);
     in_tensor->mutable_data<float>(place);
-    scope.Var(outputs[i])->GetMutable<phi::DenseTensor>();
+    scope.Var(outputs[i])->GetMutable<LoDTensor>();
   }
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   for (size_t i = 0; i < n; ++i) {
-    const auto &in_tensor = scope.Var(inputs[i])->Get<phi::DenseTensor>();
-    const auto &out_tensor = scope.Var(outputs[i])->Get<phi::DenseTensor>();
+    const auto &in_tensor = scope.Var(inputs[i])->Get<LoDTensor>();
+    const auto &out_tensor = scope.Var(outputs[i])->Get<LoDTensor>();
     EXPECT_TRUE(out_tensor.IsSharedBufferWith(in_tensor));
   }
 }

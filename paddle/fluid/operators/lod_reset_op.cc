@@ -71,7 +71,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -105,20 +105,18 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, phi::DenseTensor) Input variable of LoDResetOp which "
-             "could be a Tensor or phi::DenseTensor, where the data of output "
+             "(Tensor, LoDTensor) Input variable of LoDResetOp which "
+             "could be a Tensor or LoDTensor, where the data of output "
              "variable inherits from.");
     AddInput("Y",
-             "(phi::DenseTensor, optional) If provided and Y is "
-             "phi::DenseTensor, "
+             "(Tensor, LoDTensor, optional) If provided and Y is LoDTensor, "
              "lod of Input(Y) would be considered as the target lod first, "
              "otherwise data of Input(Y) would be considered as the "
              "target lod.")
         .AsDispensable();
-    AddOutput(
-        "Out",
-        "(phi::DenseTensor) Output variable of LoDResetOp which should be a "
-        "phi::DenseTensor.");
+    AddOutput("Out",
+              "(LoDTensor) Output variable of LoDResetOp which should be a "
+              "LoDTensor.");
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
@@ -126,7 +124,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
-provided and `Y` is a phi::DenseTensor, `Y.lod` would be considered as target LoD
+provided and `Y` is a LoDTensor, `Y.lod` would be considered as target LoD
 first, otherwise `Y.data` would be considered as target LoD. If `Y` is not
 provided, target LoD should be specified by attribute `target_lod`.
 If target LoD is specified by `Y.data` or `target_lod`, only one level LoD
@@ -134,7 +132,7 @@ is supported.
 
 Example 1:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level LoDTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -148,7 +146,7 @@ then we get a 1-level LoDTensor:
 
 Example 2:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level LoDTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -164,7 +162,7 @@ then we get a 1-level LoDTensor:
 
 Example 3:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level LoDTensor input(X):
     X.lod =  [[ 0,      2,                   5     6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]

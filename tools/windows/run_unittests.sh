@@ -39,6 +39,7 @@ disable_wingpu_test="^test_model$|\
 ^test_reader_reset$|\
 ^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
+^test_imperative_static_runner_while$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -157,6 +158,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
 ^test_py_reader_using_executor$|\
+^test_imperative_static_runner_while$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_sync_batch_norm_op$|\
@@ -193,6 +195,7 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
 ^test_imperative_se_resnext$|\
+^test_imperative_static_runner_mnist$|\
 ^test_bmn$|\
 ^test_mobile_net$|\
 ^test_resnet_v2$|\
@@ -236,6 +239,7 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
+^test_imperative_auto_mixed_precision$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 
@@ -276,7 +280,7 @@ rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
-    #rm -f $PADDLE_ROOT/added_ut
+    rm -f $PADDLE_ROOT/added_ut
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
         echo "Added UT should pass three additional executions"

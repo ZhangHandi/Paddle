@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerOp";
@@ -91,6 +93,27 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
             x_dim,
             y_dim));
 
+    if (ctx->Attrs().Get<int>("ring_id") == -1) {
+      if (trans_qkvw) {
+        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                          y_dim[3],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(3, num_head, dim_head, dim_embed),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+
+      } else {
+        PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
+                          y_dim[0],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(dim_embed, 3, num_head, dim_head),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+      }
+    }
+
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
       const auto &c_dims = ctx->GetInputsDim("CacheKV");
@@ -120,6 +143,12 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
+      PADDLE_ENFORCE_GT(
+          c_dim[3],
+          0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(
@@ -141,7 +170,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -168,10 +197,6 @@ class FusedMultiTransformerOpOpMaker
     AddInput("QKVW", "The qkv weight tensor.").AsDuplicable();
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable().AsDuplicable();
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
-        .AsDispensable()
-        .AsDuplicable();
-    AddInput("PreCaches",
-             "(optional) The prefix caches for generation inference.")
         .AsDispensable()
         .AsDuplicable();
     AddInput("TimeStep",
@@ -247,17 +272,7 @@ class FusedMultiTransformerOpOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<std::string>("act_method", "act_method")
-        .SetDefault("gelu")
-        .AddCustomChecker([](const std::string &act_type) {
-          PADDLE_ENFORCE_EQ(
-              act_type == "gelu" || act_type == "relu" || act_type == "none",
-              true,
-              platform::errors::InvalidArgument(
-                  "Only support `gelu`, `relu`, `none` activation in "
-                  "FusedMultiTransformer. "));
-        });
-
+    AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"

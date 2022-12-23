@@ -248,7 +248,7 @@ void RnnGradKernel(const Context &dev_ctx,
                      is_test);
 
   rnn.Create<T>(handle,
-                dev_ctx,
+                dev_ctx.GetPlace(),
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,

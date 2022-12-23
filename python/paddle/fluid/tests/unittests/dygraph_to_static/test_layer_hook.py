@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import tempfile
 import unittest
-
-import numpy as np
-
 import paddle
+import os
+import numpy as np
+import tempfile
 
 
 def forward_post_hook1(layer, input, output):
@@ -26,15 +24,14 @@ def forward_post_hook1(layer, input, output):
 
 
 def forward_pre_hook1(layer, input):
-    input_return = (input[0] * 2,)
+    input_return = (input[0] * 2, )
     return input_return
 
 
 class SimpleNet(paddle.nn.Layer):
-    def __init__(
-        self,
-    ):
-        super().__init__()
+
+    def __init__(self, ):
+        super(SimpleNet, self).__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
         # sublayer1 register post hook
         self.fc1.register_forward_post_hook(forward_post_hook1)
@@ -56,6 +53,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestNestLayerHook(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([4, 10])
@@ -92,15 +90,12 @@ class TestNestLayerHook(unittest.TestCase):
             dy_out,
             rtol=1e-05,
             err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dy_out, st_out
-            ),
-        )
+                dy_out, st_out))
         np.testing.assert_allclose(
             st_out,
             load_out,
             rtol=1e-05,
-            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out),
-        )
+            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out))
 
 
 if __name__ == "__main__":

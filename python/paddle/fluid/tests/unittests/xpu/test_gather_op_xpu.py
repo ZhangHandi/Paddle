@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+from __future__ import print_function
 import unittest
+import sys
 
 sys.path.append("..")
 
 import numpy as np
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
-    XPUOpTestWrapper,
-    create_test_class,
-    get_xpu_op_support_types,
-)
 
 import paddle
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
@@ -38,10 +35,12 @@ def gather_numpy(x, index, axis):
 
 
 class XPUTestGather(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'gather'
 
     class TestXPUGatherOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "gather"
             self.place = paddle.XPUPlace(0)
@@ -51,7 +50,7 @@ class XPUTestGather(XPUOpTestWrapper):
             xnp = np.random.random(self.x_shape).astype(self.dtype)
             self.inputs = {
                 'X': xnp,
-                'Index': np.array(self.index).astype(self.index_type),
+                'Index': np.array(self.index).astype(self.index_type)
             }
             self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
@@ -69,24 +68,28 @@ class XPUTestGather(XPUOpTestWrapper):
                 self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestCase1(TestXPUGatherOp):
+
         def init_config(self):
-            self.x_shape = 100
+            self.x_shape = (100)
             self.index = [1, 3, 5]
             self.index_type = np.int32
 
     class TestCase2(TestXPUGatherOp):
+
         def init_config(self):
-            self.x_shape = 100
+            self.x_shape = (100)
             self.index = [1, 3, 5]
             self.index_type = np.int64
 
     class TestCase3(TestXPUGatherOp):
+
         def init_config(self):
             self.x_shape = (10, 20)
             self.index = [1, 3, 5]
             self.index_type = np.int32
 
     class TestCase4(TestXPUGatherOp):
+
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': False}
@@ -94,6 +97,7 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase5(TestXPUGatherOp):
+
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': False}
@@ -101,6 +105,7 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase6(TestXPUGatherOp):
+
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': True}
@@ -108,6 +113,7 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase7(TestXPUGatherOp):
+
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': True}

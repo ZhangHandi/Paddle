@@ -64,7 +64,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       platform::errors::Fatal(
           "scope must not be null when applying constant floding."));
 
-  std::vector<std::string> blacklist{"feed"};
+  // Now, I don't want to fold fill_constant op in Paddle-TRT
+  std::vector<std::string> blacklist{"fill_constant", "feed"};
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
@@ -77,7 +78,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     bool input_persis = true;
     // map is used to record how many time a name string occures in the whole
     // graph's nodes
-    std::unordered_map<std::string, int> map;
+    std::map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
       if (!in_node->Var()->Persistable()) {
@@ -106,16 +107,15 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (input_persis) {
       for (auto in_node : op_node->inputs) {
         local_scope->Var(in_node->Var()->Name());
-        local_scope->FindVar(in_node->Var()->Name())
-            ->GetMutable<phi::DenseTensor>();
+        local_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
         // This persistable input node is exclusive, and can be removed
         if (in_node->outputs.size() == 1L) remove_nodes.emplace(in_node);
 
         auto in_shape = in_node->Var()->GetShape();
         auto *global_persis_x_tensor =
-            scope->FindVar(in_node->Name())->GetMutable<phi::DenseTensor>();
-        auto *local_x_tensor = local_scope->FindVar(in_node->Name())
-                                   ->GetMutable<phi::DenseTensor>();
+            scope->FindVar(in_node->Name())->GetMutable<LoDTensor>();
+        auto *local_x_tensor =
+            local_scope->FindVar(in_node->Name())->GetMutable<LoDTensor>();
         local_x_tensor->Resize(global_persis_x_tensor->dims());
         *local_x_tensor = *global_persis_x_tensor;
       }
@@ -124,8 +124,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       remove_nodes.emplace(op_node);
       for (auto out_node : op_node->outputs) {
         local_scope->Var(out_node->Var()->Name());
-        local_scope->FindVar(out_node->Var()->Name())
-            ->GetMutable<phi::DenseTensor>();
+        local_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
         // useless out_node can be removed, not need set it persistable !
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
       }
@@ -136,15 +135,14 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
         auto *local_out_tensor =
-            local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
+            local_scope->FindVar(out_name)->GetMutable<LoDTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
           out_shape.push_back(local_out_tensor->dims()[i]);
         }
         out_desc->SetShape(out_shape);
         out_desc->SetPersistable(true);
-        auto *global_out_tensor =
-            scope->Var(out_name)->GetMutable<phi::DenseTensor>();
+        auto *global_out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
         *global_out_tensor = *local_out_tensor;
       }
       GraphSafeRemoveNodes(graph, remove_nodes);

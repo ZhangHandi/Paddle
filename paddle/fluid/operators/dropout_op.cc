@@ -22,6 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class DropoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -35,7 +37,7 @@ class DropoutOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Seed") {
       VLOG(10) << "var_name:" << var_name

@@ -62,21 +62,20 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
 
     // prepare output
-    phi::DenseTensor* sentenceIds = nullptr;
-    phi::DenseTensor* sentenceScores = nullptr;
+    LoDTensor* sentenceIds = nullptr;
+    LoDTensor* sentenceScores = nullptr;
 
-    phi::DenseTensor* sentenceIds_temp =
-        context.Output<phi::DenseTensor>("SentenceIds");
-    phi::DenseTensor* sentenceScores_temp =
-        context.Output<phi::DenseTensor>("SentenceScores");
+    LoDTensor* sentenceIds_temp = context.Output<LoDTensor>("SentenceIds");
+    LoDTensor* sentenceScores_temp =
+        context.Output<LoDTensor>("SentenceScores");
 
     if (platform::is_xpu_place(ids->at(0).place())) {
-      sentenceIds = new phi::DenseTensor();
+      sentenceIds = new LoDTensor();
       sentenceIds->set_lod(sentenceIds_temp->lod());
     }
 
     if (platform::is_xpu_place(ids->at(0).place())) {
-      sentenceScores = new phi::DenseTensor();
+      sentenceScores = new LoDTensor();
       sentenceScores->set_lod(sentenceScores_temp->lod());
     }
 

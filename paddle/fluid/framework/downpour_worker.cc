@@ -144,7 +144,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   auto& feature_label = feature_labels_[table_id];
   feature_label.resize(feature.size());
   Variable* var = thread_scope_->FindVar(label_var_name_[table_id]);
-  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label_ptr = tensor->data<int64_t>();
 
   size_t global_index = 0;
@@ -155,7 +155,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     if (fea_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = fea_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr)
         << "tensor of var " << sparse_key_names_[table_id][i] << " is null";
 
@@ -207,7 +207,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
@@ -215,7 +215,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (var_emb == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
+    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
                                                  platform::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
@@ -290,7 +290,7 @@ void DownpourWorker::AdjustInsWeight() {
             << " is nullptr, skip adjust ins weight";
     return;
   }
-  phi::DenseTensor* nid_tensor = nid_var->GetMutable<phi::DenseTensor>();
+  LoDTensor* nid_tensor = nid_var->GetMutable<LoDTensor>();
   if (nid_tensor == nullptr) {
     VLOG(0) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
             << " is nullptr, skip adjust ins weight";
@@ -303,8 +303,7 @@ void DownpourWorker::AdjustInsWeight() {
             << " is nullptr, skip adjust ins weight";
     return;
   }
-  phi::DenseTensor* ins_weight_tensor =
-      ins_weight_var->GetMutable<phi::DenseTensor>();
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
   if (ins_weight_tensor == nullptr) {
     VLOG(0) << "tensor of ins weight tensor "
             << adjust_ins_weight_config_.ins_weight_slot()
@@ -429,14 +428,14 @@ void DownpourWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
-    phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
     CHECK(src_tensor != nullptr)
         << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
-    phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
     CHECK(dest_tensor != nullptr)
         << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
@@ -578,18 +577,18 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -873,10 +872,10 @@ void DownpourWorker::TrainFiles() {
             if (var == nullptr) {
               continue;
             }
-            phi::DenseTensor* tensor = nullptr;
+            Tensor* tensor = nullptr;
             int64_t len = 0;
-            if (var->IsType<phi::DenseTensor>()) {
-              tensor = var->GetMutable<phi::DenseTensor>();
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {
               auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -913,18 +912,18 @@ void DownpourWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -974,7 +973,7 @@ void DownpourWorker::TrainFiles() {
     if (need_to_push_dense_) {
       if (flag_partial_push_) {
         Variable* var = (*thread_scope_).FindVar("cond_tag");
-        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
         // check type in python code
         int64_t* cond_value_batch = tensor->data<int64_t>();
 

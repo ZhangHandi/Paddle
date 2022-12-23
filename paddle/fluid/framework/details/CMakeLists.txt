@@ -92,7 +92,8 @@ if(WITH_GPU)
          memory
          dynload_cuda
          variable_visitor
-         place)
+         place
+         device_memory_aligment)
   nv_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -104,6 +105,7 @@ if(WITH_GPU)
          dynload_cuda
          variable_visitor
          place
+         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
 
@@ -168,7 +170,8 @@ elseif(WITH_ROCM)
          memory
          dynload_cuda
          variable_visitor
-         place)
+         place
+         device_memory_aligment)
   hip_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -180,6 +183,7 @@ elseif(WITH_ROCM)
          dynload_cuda
          variable_visitor
          place
+         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
 
@@ -229,7 +233,8 @@ else()
          ddim
          memory
          variable_visitor
-         place)
+         place
+         device_memory_aligment)
   cc_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
@@ -240,6 +245,7 @@ else()
          memory
          variable_visitor
          place
+         device_memory_aligment
          all_reduce_op_handle
          fused_all_reduce_op_handle)
   if(WITH_DISTRIBUTE)
@@ -316,18 +322,16 @@ cc_test(
        memory
        device_context
        broadcast_op_handle)
-cc_test_old(
+cc_test(
   gather_op_test
-  SRCS
-  gather_op_handle_test.cc
-  DEPS
-  var_handle
-  op_handle_base
-  scope
-  ddim
-  memory
-  device_context
-  gather_op_handle)
+  SRCS gather_op_handle_test.cc
+  DEPS var_handle
+       op_handle_base
+       scope
+       ddim
+       memory
+       device_context
+       gather_op_handle)
 
 cc_library(
   scope_buffered_monitor

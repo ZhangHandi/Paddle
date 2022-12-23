@@ -90,11 +90,13 @@ ElementwiseAddGrad(const CPUContext& ctx,
                    int axis = -1) {
   auto blas = phi::funcs::GetBlas<CPUContext, T>(ctx);
   if (dx) {
-    blas.VCOPY(dout.numel(), dout.data<T>(), ctx.template Alloc<T>(dx));
+    blas.VCOPY(
+        dout.numel(), dout.data<T>(), dx->mutable_data<T>(ctx.GetPlace()));
   }
 
   if (dy) {
-    blas.VCOPY(dout.numel(), dout.data<T>(), ctx.template Alloc<T>(dy));
+    blas.VCOPY(
+        dout.numel(), dout.data<T>(), dy->mutable_data<T>(ctx.GetPlace()));
   }
 }
 

@@ -204,14 +204,14 @@ void DownpourLiteWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
-    phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
     CHECK(src_tensor != nullptr)
         << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
-    phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+    LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
     CHECK(dest_tensor != nullptr)
         << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
@@ -307,18 +307,18 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "Tensor %s contains NAN.", var_name));
     }
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
@@ -487,10 +487,10 @@ void DownpourLiteWorker::TrainFiles() {
             if (var == nullptr) {
               continue;
             }
-            phi::DenseTensor* tensor = nullptr;
+            Tensor* tensor = nullptr;
             int64_t len = 0;
-            if (var->IsType<phi::DenseTensor>()) {
-              tensor = var->GetMutable<phi::DenseTensor>();
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {
               auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -527,18 +527,18 @@ void DownpourLiteWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "Tensor %s contains NAN.", var_name));
     }
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)

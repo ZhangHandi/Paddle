@@ -19,6 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+using Tensor = framework::Tensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 namespace dynload = platform::dynload;
@@ -88,12 +89,12 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
-  phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
-  phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
-  phi::backends::gpu::TensorDescriptor bitmask_desc;
-  phi::backends::gpu::ActivationDescriptor activation_desc;
+  platform::TensorDescriptor in_desc;
+  platform::TensorDescriptor out_desc;
+  platform::TensorDescriptor equiv_scale_bias_desc;
+  platform::TensorDescriptor scale_bias_mean_var_desc;
+  platform::TensorDescriptor bitmask_desc;
+  platform::ActivationDescriptor activation_desc;
 };
 
 template <typename T>
@@ -116,14 +117,14 @@ class CudnnScaleBiasAddRelu {
   ~CudnnScaleBiasAddRelu() {}
 
   void Forward(const phi::GPUContext &ctx,
-               const phi::DenseTensor &x,
-               const phi::DenseTensor &x_scale,
-               const phi::DenseTensor &x_bias,
-               const phi::DenseTensor *z,
-               const phi::DenseTensor *z_scale,
-               const phi::DenseTensor *z_bias,
-               phi::DenseTensor *out,
-               phi::DenseTensor *bitmask) {
+               const Tensor &x,
+               const Tensor &x_scale,
+               const Tensor &x_bias,
+               const Tensor *z,
+               const Tensor *z_scale,
+               const Tensor *z_bias,
+               Tensor *out,
+               Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -171,17 +172,17 @@ class CudnnScaleBiasAddRelu {
   }
 
   void Backward(const phi::GPUContext &ctx,
-                const phi::DenseTensor &dy,
-                const phi::DenseTensor &x,
-                const phi::DenseTensor &scale,
-                const phi::DenseTensor &bias,
-                const phi::DenseTensor &saved_mean,
-                const phi::DenseTensor &saved_invstd,
-                const phi::DenseTensor *bitmask,
-                phi::DenseTensor *dx,
-                phi::DenseTensor *dz,
-                phi::DenseTensor *dscale,
-                phi::DenseTensor *dbias,
+                const Tensor &dy,
+                const Tensor &x,
+                const Tensor &scale,
+                const Tensor &bias,
+                const Tensor &saved_mean,
+                const Tensor &saved_invstd,
+                const Tensor *bitmask,
+                Tensor *dx,
+                Tensor *dz,
+                Tensor *dscale,
+                Tensor *dbias,
                 double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();

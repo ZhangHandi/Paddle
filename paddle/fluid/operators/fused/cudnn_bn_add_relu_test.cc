@@ -31,6 +31,7 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
+using Tensor = paddle::framework::Tensor;
 
 USE_OP_ITSELF(batch_norm);
 PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
@@ -39,7 +40,7 @@ USE_CUDA_ONLY_OP(fused_bn_add_activation_grad);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
-                      phi::DenseTensor *cpu_out) {
+                      framework::Tensor *cpu_out) {
   T *cpu_out_ptr =
       cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
   std::default_random_engine random(0);
@@ -52,7 +53,7 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 template <typename T>
 void InitConstantTensor(const std::vector<int64_t> &dims,
                         T value,
-                        phi::DenseTensor *cpu_out) {
+                        framework::Tensor *cpu_out) {
   T *cpu_out_ptr =
       cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
   for (int i = 0; i < cpu_out->numel(); ++i) {
@@ -62,8 +63,8 @@ void InitConstantTensor(const std::vector<int64_t> &dims,
 
 template <typename T>
 void CheckOutput(std::string name,
-                 const phi::DenseTensor &cpu_res,
-                 const phi::DenseTensor &cpu_base,
+                 const framework::Tensor &cpu_res,
+                 const framework::Tensor &cpu_base,
                  float diff,
                  bool is_relative_atol = false) {
   if (cpu_res.dims().size() == cpu_base.dims().size()) {
@@ -101,9 +102,9 @@ void CheckOutput(std::string name,
 }
 
 template <typename T>
-void ComputeSumAndSquareSum(const phi::DenseTensor &cpu_x,
-                            phi::DenseTensor *cpu_sum,
-                            phi::DenseTensor *cpu_sum_of_square) {
+void ComputeSumAndSquareSum(const framework::Tensor &cpu_x,
+                            framework::Tensor *cpu_sum,
+                            framework::Tensor *cpu_sum_of_square) {
   // x is in NHWC format.
   const auto &dims = cpu_x.dims();
   int64_t c = dims[3];
@@ -128,7 +129,8 @@ void ComputeSumAndSquareSum(const phi::DenseTensor &cpu_x,
 }
 
 template <typename T>
-void ComputeInplaceAdd(const phi::DenseTensor &cpu_x, phi::DenseTensor *cpu_y) {
+void ComputeInplaceAdd(const framework::Tensor &cpu_x,
+                       framework::Tensor *cpu_y) {
   EXPECT_EQ(cpu_x.dims(), cpu_y->dims());
 
   const T *cpu_x_ptr = cpu_x.data<T>();
@@ -139,7 +141,7 @@ void ComputeInplaceAdd(const phi::DenseTensor &cpu_x, phi::DenseTensor *cpu_y) {
 }
 
 template <typename T>
-void ComputeInplaceRelu(phi::DenseTensor *cpu_x) {
+void ComputeInplaceRelu(framework::Tensor *cpu_x) {
   T *cpu_x_ptr = cpu_x->data<T>();
   for (int64_t i = 0; i < cpu_x->numel(); ++i) {
     cpu_x_ptr[i] =
@@ -148,26 +150,27 @@ void ComputeInplaceRelu(phi::DenseTensor *cpu_x) {
 }
 
 void ComputeBatchNormForward(const phi::GPUContext &ctx,
-                             const phi::DenseTensor &cpu_x,
-                             const phi::DenseTensor &cpu_scale,
-                             const phi::DenseTensor &cpu_bias,
-                             phi::DenseTensor *cpu_mean,
-                             phi::DenseTensor *cpu_var,
-                             phi::DenseTensor *cpu_saved_mean,
-                             phi::DenseTensor *cpu_saved_var,
-                             phi::DenseTensor *cpu_y,
-                             phi::DenseTensor *saved_reserve_space) {
+                             const Tensor &cpu_x,
+                             const Tensor &cpu_scale,
+                             const Tensor &cpu_bias,
+                             Tensor *cpu_mean,
+                             Tensor *cpu_var,
+                             Tensor *cpu_saved_mean,
+                             Tensor *cpu_saved_var,
+                             Tensor *cpu_y,
+                             Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<phi::DenseTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<phi::DenseTensor>();
-  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
-  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
+  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
+  auto *saved_var =
+      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);
@@ -214,28 +217,29 @@ void ComputeBatchNormForward(const phi::GPUContext &ctx,
 }
 
 void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
-                                  const phi::DenseTensor &cpu_x,
-                                  const phi::DenseTensor &cpu_z,
-                                  const phi::DenseTensor &cpu_scale,
-                                  const phi::DenseTensor &cpu_bias,
-                                  phi::DenseTensor *cpu_mean,
-                                  phi::DenseTensor *cpu_var,
-                                  phi::DenseTensor *cpu_saved_mean,
-                                  phi::DenseTensor *cpu_saved_var,
-                                  phi::DenseTensor *cpu_y,
-                                  phi::DenseTensor *saved_reserve_space) {
+                                  const Tensor &cpu_x,
+                                  const Tensor &cpu_z,
+                                  const Tensor &cpu_scale,
+                                  const Tensor &cpu_bias,
+                                  Tensor *cpu_mean,
+                                  Tensor *cpu_var,
+                                  Tensor *cpu_saved_mean,
+                                  Tensor *cpu_saved_var,
+                                  Tensor *cpu_y,
+                                  Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("Z")->GetMutable<phi::DenseTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<phi::DenseTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<phi::DenseTensor>();
-  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
-  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("Z")->GetMutable<framework::LoDTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
+  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
+  auto *saved_var =
+      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);
@@ -277,32 +281,33 @@ void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
 }
 
 void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
-                                   const phi::DenseTensor &cpu_dy,
-                                   const phi::DenseTensor &cpu_x,
-                                   const phi::DenseTensor &cpu_scale,
-                                   const phi::DenseTensor &cpu_bias,
-                                   const phi::DenseTensor &cpu_saved_mean,
-                                   const phi::DenseTensor &cpu_saved_var,
-                                   const phi::DenseTensor &cpu_y,
-                                   const phi::DenseTensor &saved_reserve_space,
-                                   phi::DenseTensor *cpu_dx,
-                                   phi::DenseTensor *cpu_dz,
-                                   phi::DenseTensor *cpu_dscale,
-                                   phi::DenseTensor *cpu_dbias) {
+                                   const Tensor &cpu_dy,
+                                   const Tensor &cpu_x,
+                                   const Tensor &cpu_scale,
+                                   const Tensor &cpu_bias,
+                                   const Tensor &cpu_saved_mean,
+                                   const Tensor &cpu_saved_var,
+                                   const Tensor &cpu_y,
+                                   const Tensor &saved_reserve_space,
+                                   Tensor *cpu_dx,
+                                   Tensor *cpu_dz,
+                                   Tensor *cpu_dscale,
+                                   Tensor *cpu_dbias) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
-  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
-  auto *dy = scope.Var("Y@GRAD")->GetMutable<phi::DenseTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
-  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
+  auto *dy = scope.Var("Y@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
+  auto *saved_var =
+      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
-  auto *dx = scope.Var("X@GRAD")->GetMutable<phi::DenseTensor>();
-  auto *dz = scope.Var("Z@GRAD")->GetMutable<phi::DenseTensor>();
-  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<phi::DenseTensor>();
-  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<phi::DenseTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
+  auto *dx = scope.Var("X@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *dz = scope.Var("Z@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);
@@ -382,14 +387,12 @@ class CudnnBNAddReluTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-    auto select = [&](phi::DenseTensor *in) {
-      return has_shortcut_ ? in : nullptr;
-    };
+    auto select = [&](Tensor *in) { return has_shortcut_ ? in : nullptr; };
 
-    phi::DenseTensor cpu_mean_base_x;
-    phi::DenseTensor cpu_var_base_x;
-    phi::DenseTensor cpu_mean_base_z;
-    phi::DenseTensor cpu_var_base_z;
+    framework::Tensor cpu_mean_base_x;
+    framework::Tensor cpu_var_base_x;
+    framework::Tensor cpu_mean_base_z;
+    framework::Tensor cpu_var_base_z;
     if (!has_shortcut_ && fuse_add_ && (act_type_ == "relu")) {
       BaselineForwardFusedBNAddRelu(*ctx,
                                     &cpu_mean_base_x,
@@ -413,11 +416,11 @@ class CudnnBNAddReluTester {
                       select(&saved_reserve_space_z_));
     }
 
-    phi::DenseTensor cpu_mean_x;
-    phi::DenseTensor cpu_var_x;
-    phi::DenseTensor cpu_y;
-    phi::DenseTensor cpu_mean_z;
-    phi::DenseTensor cpu_var_z;
+    framework::Tensor cpu_mean_x;
+    framework::Tensor cpu_var_x;
+    framework::Tensor cpu_y;
+    framework::Tensor cpu_mean_z;
+    framework::Tensor cpu_var_z;
     FusedForward(*ctx,
                  &cpu_mean_x,
                  &cpu_var_x,
@@ -467,17 +470,17 @@ class CudnnBNAddReluTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-    phi::DenseTensor cpu_dx_base;
-    phi::DenseTensor cpu_dz_base;
-    phi::DenseTensor cpu_dscale_base;
-    phi::DenseTensor cpu_dbias_base;
+    framework::Tensor cpu_dx_base;
+    framework::Tensor cpu_dz_base;
+    framework::Tensor cpu_dscale_base;
+    framework::Tensor cpu_dbias_base;
     BaselineBackwardFusedBNAddRelu(
         *ctx, &cpu_dx_base, &cpu_dz_base, &cpu_dscale_base, &cpu_dbias_base);
 
-    phi::DenseTensor cpu_dx;
-    phi::DenseTensor cpu_dz;
-    phi::DenseTensor cpu_dscale;
-    phi::DenseTensor cpu_dbias;
+    framework::Tensor cpu_dx;
+    framework::Tensor cpu_dz;
+    framework::Tensor cpu_dscale;
+    framework::Tensor cpu_dbias;
     FusedBackward(*ctx, &cpu_dx, &cpu_dz, &cpu_dscale, &cpu_dbias);
 
     CheckOutput<T>("DX", cpu_dx, cpu_dx_base, diff, is_relative_atol);
@@ -507,10 +510,10 @@ class CudnnBNAddReluTester {
     InitRandomTensor<T>({batch_size_, height_, width_, channels_}, &cpu_dy_);
   }
 
-  void InitMeanVar(phi::DenseTensor *cpu_mean,
-                   phi::DenseTensor *cpu_var,
-                   phi::DenseTensor *cpu_saved_mean,
-                   phi::DenseTensor *cpu_saved_var) {
+  void InitMeanVar(Tensor *cpu_mean,
+                   Tensor *cpu_var,
+                   Tensor *cpu_saved_mean,
+                   Tensor *cpu_saved_var) {
     InitConstantTensor<float>({channels_}, static_cast<float>(0.0f), cpu_mean);
     InitConstantTensor<float>({channels_}, static_cast<float>(1.0f), cpu_var);
     InitConstantTensor<float>(
@@ -520,17 +523,17 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineForward(const phi::GPUContext &ctx,
-                       phi::DenseTensor *cpu_mean_x,
-                       phi::DenseTensor *cpu_var_x,
-                       phi::DenseTensor *cpu_saved_mean_x,
-                       phi::DenseTensor *cpu_saved_var_x,
-                       phi::DenseTensor *cpu_y,
-                       phi::DenseTensor *saved_reserve_space_x,
-                       phi::DenseTensor *cpu_mean_z = nullptr,
-                       phi::DenseTensor *cpu_var_z = nullptr,
-                       phi::DenseTensor *cpu_saved_mean_z = nullptr,
-                       phi::DenseTensor *cpu_saved_var_z = nullptr,
-                       phi::DenseTensor *saved_reserve_space_z = nullptr) {
+                       Tensor *cpu_mean_x,
+                       Tensor *cpu_var_x,
+                       Tensor *cpu_saved_mean_x,
+                       Tensor *cpu_saved_var_x,
+                       Tensor *cpu_y,
+                       Tensor *saved_reserve_space_x,
+                       Tensor *cpu_mean_z = nullptr,
+                       Tensor *cpu_var_z = nullptr,
+                       Tensor *cpu_saved_mean_z = nullptr,
+                       Tensor *cpu_saved_var_z = nullptr,
+                       Tensor *saved_reserve_space_z = nullptr) {
     InitMeanVar(cpu_mean_x, cpu_var_x, cpu_saved_mean_x, cpu_saved_var_x);
     ComputeBatchNormForward(ctx,
                             cpu_x_,
@@ -543,7 +546,7 @@ class CudnnBNAddReluTester {
                             cpu_y,
                             saved_reserve_space_x);
     if (has_shortcut_) {
-      phi::DenseTensor cpu_z_out;
+      framework::Tensor cpu_z_out;
       InitMeanVar(cpu_mean_z, cpu_var_z, cpu_saved_mean_z, cpu_saved_var_z);
       ComputeBatchNormForward(ctx,
                               cpu_z_,
@@ -567,12 +570,12 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineForwardFusedBNAddRelu(const phi::GPUContext &ctx,
-                                     phi::DenseTensor *cpu_mean,
-                                     phi::DenseTensor *cpu_var,
-                                     phi::DenseTensor *cpu_saved_mean,
-                                     phi::DenseTensor *cpu_saved_var,
-                                     phi::DenseTensor *cpu_y,
-                                     phi::DenseTensor *saved_reserve_space) {
+                                     Tensor *cpu_mean,
+                                     Tensor *cpu_var,
+                                     Tensor *cpu_saved_mean,
+                                     Tensor *cpu_saved_var,
+                                     Tensor *cpu_y,
+                                     Tensor *saved_reserve_space) {
     InitMeanVar(cpu_mean, cpu_var, cpu_saved_mean, cpu_saved_var);
     ComputeFusedBNAddReluForward(ctx,
                                  cpu_x_,
@@ -588,10 +591,10 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineBackwardFusedBNAddRelu(const phi::GPUContext &ctx,
-                                      phi::DenseTensor *cpu_dx,
-                                      phi::DenseTensor *cpu_dz,
-                                      phi::DenseTensor *cpu_dscale,
-                                      phi::DenseTensor *cpu_dbias) {
+                                      Tensor *cpu_dx,
+                                      Tensor *cpu_dz,
+                                      Tensor *cpu_dscale,
+                                      Tensor *cpu_dbias) {
     ComputeFusedBNAddReluBackward(ctx,
                                   cpu_dy_,
                                   cpu_x_,
@@ -608,21 +611,21 @@ class CudnnBNAddReluTester {
   }
 
   void ComputeFusedBNStatsFinalize(const phi::GPUContext &ctx,
-                                   const phi::DenseTensor &cpu_x,
-                                   const phi::DenseTensor &cpu_bn_scale,
-                                   const phi::DenseTensor &cpu_bn_bias,
-                                   phi::DenseTensor *sum,
-                                   phi::DenseTensor *sum_of_square,
-                                   phi::DenseTensor *bn_scale,
-                                   phi::DenseTensor *bn_bias,
-                                   phi::DenseTensor *mean,
-                                   phi::DenseTensor *var,
-                                   phi::DenseTensor *saved_mean,
-                                   phi::DenseTensor *saved_var,
-                                   phi::DenseTensor *equiv_scale,
-                                   phi::DenseTensor *equiv_bias) {
-    phi::DenseTensor cpu_sum;
-    phi::DenseTensor cpu_sum_of_square;
+                                   const Tensor &cpu_x,
+                                   const Tensor &cpu_bn_scale,
+                                   const Tensor &cpu_bn_bias,
+                                   Tensor *sum,
+                                   Tensor *sum_of_square,
+                                   Tensor *bn_scale,
+                                   Tensor *bn_bias,
+                                   Tensor *mean,
+                                   Tensor *var,
+                                   Tensor *saved_mean,
+                                   Tensor *saved_var,
+                                   Tensor *equiv_scale,
+                                   Tensor *equiv_bias) {
+    framework::Tensor cpu_sum;
+    framework::Tensor cpu_sum_of_square;
     ComputeSumAndSquareSum<T>(cpu_x, &cpu_sum, &cpu_sum_of_square);
 
     auto place = ctx.GetPlace();
@@ -665,27 +668,27 @@ class CudnnBNAddReluTester {
 
   // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
   void FusedForward(const phi::GPUContext &ctx,
-                    phi::DenseTensor *cpu_mean_x,
-                    phi::DenseTensor *cpu_var_x,
-                    phi::DenseTensor *cpu_saved_mean_x,
-                    phi::DenseTensor *cpu_saved_var_x,
-                    phi::DenseTensor *cpu_y,
-                    phi::DenseTensor *cpu_bitmask,
-                    phi::DenseTensor *cpu_mean_z = nullptr,
-                    phi::DenseTensor *cpu_var_z = nullptr,
-                    phi::DenseTensor *cpu_saved_mean_z = nullptr,
-                    phi::DenseTensor *cpu_saved_var_z = nullptr) {
-    phi::DenseTensor x;
-    phi::DenseTensor sum_x;
-    phi::DenseTensor sum_of_square_x;
-    phi::DenseTensor bn_scale_x;
-    phi::DenseTensor bn_bias_x;
+                    Tensor *cpu_mean_x,
+                    Tensor *cpu_var_x,
+                    Tensor *cpu_saved_mean_x,
+                    Tensor *cpu_saved_var_x,
+                    Tensor *cpu_y,
+                    Tensor *cpu_bitmask,
+                    Tensor *cpu_mean_z = nullptr,
+                    Tensor *cpu_var_z = nullptr,
+                    Tensor *cpu_saved_mean_z = nullptr,
+                    Tensor *cpu_saved_var_z = nullptr) {
+    framework::Tensor x;
+    framework::Tensor sum_x;
+    framework::Tensor sum_of_square_x;
+    framework::Tensor bn_scale_x;
+    framework::Tensor bn_bias_x;
 
-    phi::DenseTensor z;
-    phi::DenseTensor sum_z;
-    phi::DenseTensor sum_of_square_z;
-    phi::DenseTensor bn_scale_z;
-    phi::DenseTensor bn_bias_z;
+    framework::Tensor z;
+    framework::Tensor sum_z;
+    framework::Tensor sum_of_square_z;
+    framework::Tensor bn_scale_z;
+    framework::Tensor bn_bias_z;
 
     auto place = ctx.GetPlace();
     paddle::framework::TensorCopySync(cpu_x_, place, &x);
@@ -693,22 +696,22 @@ class CudnnBNAddReluTester {
       paddle::framework::TensorCopySync(cpu_z_, place, &z);
     }
 
-    phi::DenseTensor mean_x;
-    phi::DenseTensor var_x;
-    phi::DenseTensor saved_mean_x;
-    phi::DenseTensor saved_var_x;
-    phi::DenseTensor equiv_scale_x;
-    phi::DenseTensor equiv_bias_x;
+    framework::Tensor mean_x;
+    framework::Tensor var_x;
+    framework::Tensor saved_mean_x;
+    framework::Tensor saved_var_x;
+    framework::Tensor equiv_scale_x;
+    framework::Tensor equiv_bias_x;
 
-    phi::DenseTensor mean_z;
-    phi::DenseTensor var_z;
-    phi::DenseTensor saved_mean_z;
-    phi::DenseTensor saved_var_z;
-    phi::DenseTensor equiv_scale_z;
-    phi::DenseTensor equiv_bias_z;
+    framework::Tensor mean_z;
+    framework::Tensor var_z;
+    framework::Tensor saved_mean_z;
+    framework::Tensor saved_var_z;
+    framework::Tensor equiv_scale_z;
+    framework::Tensor equiv_bias_z;
 
-    phi::DenseTensor y;
-    phi::DenseTensor bitmask;
+    framework::Tensor y;
+    framework::Tensor bitmask;
 
     InitMeanVar(cpu_mean_x, cpu_var_x, cpu_saved_mean_x, cpu_saved_var_x);
     paddle::framework::TensorCopySync(*cpu_mean_x, place, &mean_x);
@@ -803,21 +806,21 @@ class CudnnBNAddReluTester {
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
   void FusedBackward(const phi::GPUContext &ctx,
-                     phi::DenseTensor *cpu_dx,
-                     phi::DenseTensor *cpu_dz,
-                     phi::DenseTensor *cpu_dscale,
-                     phi::DenseTensor *cpu_dbias) {
-    phi::DenseTensor dy;
-    phi::DenseTensor x;
-    phi::DenseTensor bn_scale;
-    phi::DenseTensor bn_bias;
-    phi::DenseTensor saved_mean;
-    phi::DenseTensor saved_var;
-    phi::DenseTensor bitmask;
-    phi::DenseTensor dx;
-    phi::DenseTensor dz;
-    phi::DenseTensor dscale;
-    phi::DenseTensor dbias;
+                     Tensor *cpu_dx,
+                     Tensor *cpu_dz,
+                     Tensor *cpu_dscale,
+                     Tensor *cpu_dbias) {
+    framework::Tensor dy;
+    framework::Tensor x;
+    framework::Tensor bn_scale;
+    framework::Tensor bn_bias;
+    framework::Tensor saved_mean;
+    framework::Tensor saved_var;
+    framework::Tensor bitmask;
+    framework::Tensor dx;
+    framework::Tensor dz;
+    framework::Tensor dscale;
+    framework::Tensor dbias;
 
     auto place = ctx.GetPlace();
     paddle::framework::TensorCopySync(cpu_dy_, place, &dy);
@@ -877,27 +880,27 @@ class CudnnBNAddReluTester {
   bool has_shortcut_;
 
   // Forward input
-  phi::DenseTensor cpu_x_;
-  phi::DenseTensor cpu_bn_scale_x_;
-  phi::DenseTensor cpu_bn_bias_x_;
-  phi::DenseTensor cpu_z_;
-  phi::DenseTensor cpu_bn_scale_z_;
-  phi::DenseTensor cpu_bn_bias_z_;
+  framework::Tensor cpu_x_;
+  framework::Tensor cpu_bn_scale_x_;
+  framework::Tensor cpu_bn_bias_x_;
+  framework::Tensor cpu_z_;
+  framework::Tensor cpu_bn_scale_z_;
+  framework::Tensor cpu_bn_bias_z_;
 
   // Backward input
-  phi::DenseTensor cpu_dy_;
-  phi::DenseTensor cpu_bitmask_;
-  phi::DenseTensor cpu_saved_mean_x_;
-  phi::DenseTensor cpu_saved_var_x_;
-  phi::DenseTensor cpu_saved_mean_z_;
-  phi::DenseTensor cpu_saved_var_z_;
-  phi::DenseTensor cpu_saved_mean_base_x_;
-  phi::DenseTensor cpu_saved_var_base_x_;
-  phi::DenseTensor saved_reserve_space_x_;
-  phi::DenseTensor cpu_saved_mean_base_z_;
-  phi::DenseTensor cpu_saved_var_base_z_;
-  phi::DenseTensor saved_reserve_space_z_;
-  phi::DenseTensor cpu_y_base_;
+  framework::Tensor cpu_dy_;
+  framework::Tensor cpu_bitmask_;
+  framework::Tensor cpu_saved_mean_x_;
+  framework::Tensor cpu_saved_var_x_;
+  framework::Tensor cpu_saved_mean_z_;
+  framework::Tensor cpu_saved_var_z_;
+  framework::Tensor cpu_saved_mean_base_x_;
+  framework::Tensor cpu_saved_var_base_x_;
+  framework::Tensor saved_reserve_space_x_;
+  framework::Tensor cpu_saved_mean_base_z_;
+  framework::Tensor cpu_saved_var_base_z_;
+  framework::Tensor saved_reserve_space_z_;
+  framework::Tensor cpu_y_base_;
 
   double eps_ = 1e-5;
   float momentum_ = 0.9;

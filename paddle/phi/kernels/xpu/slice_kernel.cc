@@ -113,5 +113,4 @@ PD_REGISTER_KERNEL(slice,
                    phi::SliceRawKernel,
                    float,
                    int,
-                   phi::dtype::float16,
-                   int64_t) {}
+                   phi::dtype::float16) {}

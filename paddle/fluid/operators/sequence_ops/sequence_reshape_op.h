@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
+using LoDTensor = framework::LoDTensor;
 template <typename DeviceContext, typename T>
 class SequenceReshapeKernel : public framework::OpKernel<T> {
  public:

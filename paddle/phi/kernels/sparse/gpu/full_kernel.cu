@@ -23,11 +23,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
-struct FullFunctor {
+struct FullFuctor {
   OutT value;
 
   template <typename VType>
-  explicit inline FullFunctor(VType val) {
+  explicit inline FullFuctor(VType val) {
     value = static_cast<OutT>(val);
   }
 
@@ -37,7 +37,7 @@ struct FullFunctor {
 };
 
 template <typename T, typename Context>
-void FullLikeCooKernel(const Context& dev_ctx,
+void CooFullLikeKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -54,13 +54,13 @@ void FullLikeCooKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }
 
 template <typename T, typename Context>
-void FullLikeCsrKernel(const Context& dev_ctx,
+void CsrFullLikeKernel(const Context& dev_ctx,
                        const SparseCsrTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -80,17 +80,17 @@ void FullLikeCsrKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(full_like_coo,
+PD_REGISTER_KERNEL(coo_full_like,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FullLikeCooKernel,
+                   phi::CooFullLikeKernel,
                    float,
                    double,
                    uint8_t,
@@ -105,10 +105,10 @@ PD_REGISTER_KERNEL(full_like_coo,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(full_like_csr,
+PD_REGISTER_KERNEL(csr_full_like,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FullLikeCsrKernel,
+                   phi::CsrFullLikeKernel,
                    float,
                    double,
                    uint8_t,

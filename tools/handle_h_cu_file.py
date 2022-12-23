@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import queue
-import sys
 import threading
+import os
+import json
 import time
+import sys
 
 taskQueue = queue.Queue()
 
@@ -31,12 +32,9 @@ def worker(fun):
 def threadPool(threadPoolNum):
     threadPool = []
     for i in range(threadPoolNum):
-        thread = threading.Thread(
-            target=worker,
-            args={
-                doFun,
-            },
-        )
+        thread = threading.Thread(target=worker, args={
+            doFun,
+        })
         thread.daemon = True
         threadPool.append(thread)
     return threadPool
@@ -63,12 +61,10 @@ def insert_pile_to_h_file(rootPath):
         os.system('echo "\n#include <cstdio>\n" >> %s' % line)
         os.system(
             'echo "__attribute__((constructor)) static void calledFirst%s()\n{" >> %s'
-            % (func, line)
-        )
+            % (func, line))
         os.system(
             'echo \'    printf("precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
-            % line
-        )
+            % line)
         os.system('echo "\n#endif" >> %s' % line)
 
 
@@ -90,14 +86,9 @@ def get_h_cu_file(file_path):
     dir_path = file_path[1]
     filename = file_path[2]
     ut = filename.replace('^', '').replace('$', '').replace('.log', '')
-    ut_path = "%s/build/ut_map/%s" % (rootPath, ut)
-    if os.path.exists(ut_path):
-        os.system(
-            "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
-            % (dir_path, filename, rootPath, ut, ut)
-        )
-    else:
-        print("%s has failed,no has direcotory" % ut)
+    os.system(
+        "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
+        % (dir_path, filename, rootPath, ut, ut))
 
 
 def doFun(file_path):

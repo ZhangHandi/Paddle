@@ -20,12 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 void LogLossAdds(const platform::Place& place,
                  const aclrtStream& stream,
-                 const phi::DenseTensor* x,
+                 const Tensor* x,
                  float scale,
-                 phi::DenseTensor* y) {
+                 Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scale}});
@@ -35,9 +37,9 @@ void LogLossAdds(const platform::Place& place,
 template <typename T>
 void LogLossMuls(const platform::Place& place,
                  const aclrtStream& stream,
-                 const phi::DenseTensor* x,
+                 const Tensor* x,
                  float scale,
-                 phi::DenseTensor* y) {
+                 Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scale}});
@@ -47,9 +49,9 @@ void LogLossMuls(const platform::Place& place,
 template <typename T>
 void LogLossBCE(const platform::Place& place,
                 const aclrtStream& stream,
-                const phi::DenseTensor* x,
-                const phi::DenseTensor* y,
-                phi::DenseTensor* z) {
+                const Tensor* x,
+                const Tensor* y,
+                Tensor* z) {
   z->mutable_data<T>(x->dims(), place);
   const auto& runner =
       NpuOpRunner("BinaryCrossEntropy",
@@ -62,10 +64,10 @@ void LogLossBCE(const platform::Place& place,
 template <typename T>
 void LogLossBCEGrad(const platform::Place& place,
                     const aclrtStream& stream,
-                    const phi::DenseTensor* x,
-                    const phi::DenseTensor* y,
-                    const phi::DenseTensor* dout,
-                    phi::DenseTensor* dx) {
+                    const Tensor* x,
+                    const Tensor* y,
+                    const Tensor* dout,
+                    Tensor* dx) {
   dx->mutable_data<T>(x->dims(), place);
   const auto& runner =
       NpuOpRunner("BinaryCrossEntropyGrad",
@@ -79,9 +81,9 @@ template <typename T, typename AttrType = T>
 class LogLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* y = ctx.Output<phi::DenseTensor>("Loss");
-    auto* pred = ctx.Input<phi::DenseTensor>("Predicted");
-    auto* label = ctx.Input<phi::DenseTensor>("Labels");
+    auto* y = ctx.Output<Tensor>("Loss");
+    auto* pred = ctx.Input<Tensor>("Predicted");
+    auto* label = ctx.Input<Tensor>("Labels");
     auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
 
     auto place = ctx.GetPlace();
@@ -102,11 +104,10 @@ template <typename T, typename AttrType = T>
 class LogLossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* pred = ctx.Input<phi::DenseTensor>("Predicted");
-    auto* label = ctx.Input<phi::DenseTensor>("Labels");
-    auto* dloss = ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
-    auto* dpred =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Predicted"));
+    auto* pred = ctx.Input<Tensor>("Predicted");
+    auto* label = ctx.Input<Tensor>("Labels");
+    auto* dloss = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
     auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
 
     auto place = ctx.GetPlace();

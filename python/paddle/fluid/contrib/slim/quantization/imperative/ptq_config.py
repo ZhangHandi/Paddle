@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import abc
 import copy
 
@@ -22,7 +23,7 @@ from .ptq_quantizer import *
 __all__ = ['PTQConfig', 'default_ptq_config']
 
 
-class PTQConfig:
+class PTQConfig(object):
     """
     The PTQ config shows how to quantize the inputs and outputs.
     """
@@ -35,9 +36,9 @@ class PTQConfig:
             activation_quantizer(BaseQuantizer): The activation quantizer.
                 It should be the instance of BaseQuantizer.
             weight_quantizer(BaseQuantizer): The weight quantizer.
-                It should be the instance of BaseQuantizer.
+                It should be the instance of BaseQuantizer.    
         """
-        super().__init__()
+        super(PTQConfig, self).__init__()
         assert isinstance(activation_quantizer, tuple(SUPPORT_ACT_QUANTIZERS))
         assert isinstance(weight_quantizer, tuple(SUPPORT_WT_QUANTIZERS))
 

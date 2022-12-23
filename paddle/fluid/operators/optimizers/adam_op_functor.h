@@ -16,16 +16,16 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
-namespace scatter = phi::funcs::scatter;
+namespace scatter = paddle::operators::math::scatter;
 
-static inline float GetAttrFromTensor(const phi::DenseTensor* tensor) {
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   const float* tensor_data = tensor->data<float>();
-  phi::DenseTensor cpu_tensor;
+  framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place())) {
     paddle::framework::TensorCopySync(
         *tensor, platform::CPUPlace(), &cpu_tensor);

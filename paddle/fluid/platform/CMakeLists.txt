@@ -1,5 +1,8 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
+if(WITH_GPU)
+  proto_library(external_error_proto SRCS external_error.proto)
+endif()
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -32,6 +35,10 @@ if(WITH_PYTHON)
 endif()
 
 cc_library(
+  flags
+  SRCS flags.cc
+  DEPS gflags)
+cc_library(
   denormal
   SRCS denormal.cc
   DEPS)
@@ -54,12 +61,20 @@ cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
   SRCS enforce_test.cc
-  DEPS enforce)
+  DEPS stringpiece enforce)
 
+set(CPU_INFO_DEPS gflags glog enforce)
+if(WITH_XBYAK)
+  list(APPEND CPU_INFO_DEPS xbyak)
+endif()
+cc_library(
+  cpu_info
+  SRCS cpu_info.cc
+  DEPS ${CPU_INFO_DEPS})
 cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
-  DEPS phi_backends)
+  DEPS cpu_info)
 cc_library(
   os_info
   SRCS os_info.cc
@@ -73,7 +88,7 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator phi_backends)
+    DEPS device_context allocator cuda_graph)
 else()
   cc_library(
     cuda_graph_with_memory_pool
@@ -166,6 +181,11 @@ if(WITH_GLOO)
     DEPS framework_proto gloo_wrapper enforce)
 endif()
 
+cc_library(
+  cudnn_workspace_helper
+  SRCS cudnn_workspace_helper.cc
+  DEPS)
+
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
@@ -185,7 +205,9 @@ cc_library(
        place
        phi_place
        eigen3
+       stringpiece
        cpu_helper
+       cpu_info
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
@@ -229,10 +251,6 @@ if(WITH_MLU)
   target_link_libraries(device_context mlu_resource_pool)
 endif()
 
-if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_device_resource_pool)
-endif()
-
 cc_test(
   init_test
   SRCS init_test.cc
@@ -266,17 +284,11 @@ if(WITH_GPU)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  if(WITH_CUSTOM_DEVICE)
-    nv_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu device_event_custom_device)
-  else()
-    nv_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu)
-  endif()
+  nv_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS device_event_gpu)
+
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -299,17 +311,11 @@ if(WITH_ROCM)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  if(WITH_CUSTOM_DEVICE)
-    hip_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu device_event_custom_device)
-  else()
-    hip_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu)
-  endif()
+  hip_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS device_event_gpu)
+
   hip_test(
     device_context_test
     SRCS device_context_test.cu
@@ -360,6 +366,10 @@ if(WITH_GPU)
          stats
          op_proto_maker
          shape_inference)
+  nv_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -372,6 +382,10 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
+  hip_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info gpu_info place)
 else()
   cc_library(
     profiler
@@ -383,6 +397,10 @@ else()
          stats
          op_proto_maker
          shape_inference)
+  cc_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info place)
 endif()
 
 cc_test(
@@ -451,14 +469,4 @@ if(NOT APPLE AND NOT WIN32)
       SRCS device_code_test.cc
       DEPS device_code lod_tensor)
   endif()
-endif()
-
-if(WITH_CUSTOM_DEVICE)
-  cc_library(
-    device_event_custom_device
-    SRCS device_event_custom_device.cc
-    DEPS device_event_base custom_device_resource_pool)
-  set(DEVICE_EVENT_LIBS
-      ${DEVICE_EVENT_LIBS} device_event_custom_device
-      CACHE INTERNAL "device event libs")
 endif()

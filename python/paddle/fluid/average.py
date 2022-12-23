@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import warnings
-
 """
     Class of all kinds of Average.
 
-    All Averages are accomplished via Python totally.
+    All Averages are accomplished via Python totally. 
     They do not change Paddle's Program, nor do anything to
-    modify NN model's configuration. They are completely
+    modify NN model's configuration. They are completely 
     wrappers of Python functions.
 """
 
@@ -28,24 +29,21 @@ __all__ = ["WeightedAverage"]
 
 
 def _is_number_(var):
-    return (
-        isinstance(var, int)
-        or isinstance(var, float)
-        or (isinstance(var, np.ndarray) and var.shape == (1,))
-    )
+    return isinstance(var, int) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
-class WeightedAverage:
+class WeightedAverage(object):
     """
     Calculate weighted average.
 
-    The average calculating is accomplished via Python totally.
+    The average calculating is accomplished via Python totally. 
     They do not change Paddle's Program, nor do anything to
-    modify NN model's configuration. They are completely
+    modify NN model's configuration. They are completely 
     wrappers of Python functions.
 
     Examples:
@@ -63,10 +61,8 @@ class WeightedAverage:
 
     def __init__(self):
         warnings.warn(
-            "The %s is deprecated, please use fluid.metrics.Accuracy instead."
-            % (self.__class__.__name__),
-            Warning,
-        )
+            "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
+            (self.__class__.__name__), Warning)
         self.reset()
 
     def reset(self):
@@ -76,8 +72,7 @@ class WeightedAverage:
     def add(self, value, weight):
         if not _is_number_or_matrix_(value):
             raise ValueError(
-                "The 'value' must be a number(int, float) or a numpy ndarray."
-            )
+                "The 'value' must be a number(int, float) or a numpy ndarray.")
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
 
@@ -91,6 +86,5 @@ class WeightedAverage:
     def eval(self):
         if self.numerator is None or self.denominator is None:
             raise ValueError(
-                "There is no data to be averaged in WeightedAverage."
-            )
+                "There is no data to be averaged in WeightedAverage.")
         return self.numerator / self.denominator

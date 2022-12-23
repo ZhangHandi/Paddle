@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 from . import extend_optimizer_with_weight_decay
 from .extend_optimizer_with_weight_decay import *
 

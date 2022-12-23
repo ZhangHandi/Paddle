@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import random
-import sys
-import threading
-import time
-
 from paddle.distributed.launch.utils.kv_client import KVClient
 from paddle.distributed.launch.utils.kv_server import KVServer
+
+import time
+import sys
+import six
+import threading
+import copy
+import random
 
 ETCD_PROTOCAL = 'etcd://'
 
 
-class Master:
+class Master(object):
     '''
     Master is a distributed store design to exchange info among nodes
     '''
@@ -63,6 +64,7 @@ class Master:
 
 
 class HTTPMaster(Master):
+
     def lazy_init(self):
         if self.initialized:
             return
@@ -81,8 +83,7 @@ class HTTPMaster(Master):
                         break
                     except Exception as e:
                         self.ctx.logger.warning(
-                            "start master failed {}".format(e)
-                        )
+                            "start master failed {}".format(e))
                         time.sleep(0.1)
                         continue
         else:
@@ -93,9 +94,7 @@ class HTTPMaster(Master):
 
             print("Copy the following command to other nodes to run.")
             cmd = [
-                sys.executable.split('/')[-1],
-                "-m",
-                "paddle.distributed.launch",
+                sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"
             ]
             cmd.extend(["--master", self.endpoint])
             cmd.extend(sys.argv[1:])
@@ -105,8 +104,7 @@ class HTTPMaster(Master):
 
             if int(self.ctx.args.rank) >= 0:
                 self.ctx.logger.warning(
-                    "--rank set in the command may not compatible in auto mode"
-                )
+                    "--rank set in the command may not compatible in auto mode")
 
         if '127.0.0.1' in self.endpoint:
             self.endpoint = self.endpoint.replace('127.0.0.1', self.ctx.node.ip)
@@ -175,6 +173,7 @@ class HTTPMaster(Master):
 
 
 class ETCDMaster(Master):
+
     def __init__(self, ctx):
         super().__init__(ctx)
 
@@ -205,7 +204,7 @@ class ETCDMaster(Master):
         self.ctx.logger.debug("sync path {} value {}".format(path, value))
 
         while not self.ctx.status.is_done():
-            self.client.put(path, value.encode('latin-1'))
+            self.client.put(path, six.b(value))
 
             result = [i for i in self.client.get_prefix(prefix)]
             result = copy.deepcopy(result)
@@ -213,22 +212,21 @@ class ETCDMaster(Master):
 
             if len(result) == size:
                 if rank < 0:
-                    keys = [i[1].key.decode() for i in result]
-                    sorted_keys = [i[1].key.decode() for i in result]
+                    keys = [six.ensure_str(i[1].key) for i in result]
+                    sorted_keys = [six.ensure_str(i[1].key) for i in result]
                     sorted_keys.sort()
-                    values = [i[0].decode() for i in result]
+                    values = [six.ensure_str(i[0]) for i in result]
                     ret = [values[keys.index(k)] for k in sorted_keys]
                     idx = ret.index(value)
                     return ret, idx
                 else:
                     ret = [None] * size
                     for v, k in result:
-                        ii = int(k.key.decode().split('/')[-1])
+                        ii = int(six.ensure_str(k.key).split('/')[-1])
                         if ii < 0:
                             self.ctx.logger.error(
-                                "rank {} error in sync".format(ii)
-                            )
-                        ret[ii] = v.decode()
+                                "rank {} error in sync".format(ii))
+                        ret[ii] = six.ensure_str(v)
                     return ret, rank
             else:
                 time.sleep(0.5)
@@ -243,26 +241,23 @@ class ETCDMaster(Master):
 
         lease = self.client.lease(ttl)
 
-        # self.client.delete_prefix(self.job_prefix)
+        #self.client.delete_prefix(self.job_prefix)
 
         beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
-        self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
+        self.client.put(beat_path, six.b(pod_id), lease=lease)
 
         def _beat_watch(event):
             self.ctx.status.restart()
 
         beat_watch = self.client.add_watch_prefix_callback(
-            self.heartbeat_prefix, _beat_watch
-        )
+            self.heartbeat_prefix, _beat_watch)
 
         def _heartbeat():
             while not self.ctx.status.is_done():
                 try:
                     lease.refresh()
                     if pod_id not in self.fetch_peer_alive():
-                        self.client.put(
-                            beat_path, pod_id.encode('latin-1'), lease=lease
-                        )
+                        self.client.put(beat_path, six.b(pod_id), lease=lease)
                         self.ctx.logger.debug("Heartbeat register again")
                 except Exception as e:
                     self.ctx.logger.error("Heartbeat error {}".format(e))
@@ -270,14 +265,15 @@ class ETCDMaster(Master):
             self.ctx.logger.debug("Heartbeat done")
             self.client.cancel_watch(beat_watch)
 
-        self.beat_thread = threading.Thread(
-            name='heartbeat', target=_heartbeat, daemon=True
-        )
+        self.beat_thread = threading.Thread(name='heartbeat',
+                                            target=_heartbeat,
+                                            daemon=True)
         self.beat_thread.start()
 
     def fetch_peer_alive(self):
         peer_alive = [
-            i[0].decode() for i in self.client.get_prefix(self.heartbeat_prefix)
+            six.ensure_str(i[0])
+            for i in self.client.get_prefix(self.heartbeat_prefix)
         ]
         self.ctx.logger.debug("peer alive {}".format(peer_alive))
         return peer_alive
@@ -311,17 +307,14 @@ class ETCDMaster(Master):
 
     def set_status(self, status):
         assert self.client.put(
-            self.job_prefix,
-            status.encode('latin-1'),
-            lease=self.client.lease(600),
-        ), "set status failed {}".format(status)
+            self.job_prefix, six.b(status),
+            lease=self.client.lease(600)), "set status failed {}".format(status)
 
     def get_status(self):
-        value = self.client.get(self.job_prefix)[0]
-        return value.decode() if value is not None else ''
+        return six.ensure_str(self.client.get(self.job_prefix)[0] or '')
 
     def stop(self):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
             # daemon thread
-            # self.beat_thread.join()
+            #self.beat_thread.join()

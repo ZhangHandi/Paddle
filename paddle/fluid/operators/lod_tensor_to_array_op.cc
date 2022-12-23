@@ -46,14 +46,14 @@ struct LoDTensorToArrayFunctorImpl {
 
 struct LoDTensorToArrayFunctor
     : public std::unary_function<platform::Place, void> {
-  std::vector<const phi::DenseTensor *> ref_inputs_;
-  mutable std::vector<phi::DenseTensor *> outputs_;
-  const phi::DenseTensor &input_;
+  std::vector<const framework::Tensor *> ref_inputs_;
+  mutable std::vector<framework::Tensor *> outputs_;
+  const framework::Tensor &input_;
 
-  explicit LoDTensorToArrayFunctor(const phi::DenseTensor &input)
+  explicit LoDTensorToArrayFunctor(const framework::Tensor &input)
       : input_(input) {}
 
-  void AddOutput(phi::DenseTensor *t) {
+  void AddOutput(framework::Tensor *t) {
     outputs_.emplace_back(t);
     ref_inputs_.emplace_back(t);
   }
@@ -108,7 +108,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
-                  .Get<phi::DenseTensor>();
+                  .Get<framework::LoDTensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input",
                                        "RankTable",
@@ -125,11 +125,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         rank_level,
         x.lod().size(),
-        platform::errors::InvalidArgument("Input should be a phi::DenseTensor, "
-                                          "and its lod_level should be at "
-                                          "least %d, but given is %d.",
-                                          rank_level + 1,
-                                          x.lod().size()));
+        platform::errors::InvalidArgument(
+            "Input should be a LoDTensor, and its lod_level should be at "
+            "least %d, but given is %d.",
+            rank_level + 1,
+            x.lod().size()));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -152,7 +152,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    std::map<size_t, phi::DenseTensor> outputs;
+    std::map<size_t, framework::Tensor> outputs;
 
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
@@ -189,15 +189,14 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(phi::DenseTensor), the input lod tensor is a minibatch of sequences, "
-        "and will be split to a tensor_array according to "
-        "Input(RankTable).");
+    AddInput("X",
+             "(LoDTensor), the input lod tensor is a minibatch of sequences, "
+             "and will be split to a tensor_array according to "
+             "Input(RankTable).");
     AddInput("RankTable", "(LoDRankTable), the rank table.");
     AddOutput("Out",
               "(LoDTensorArray), the result tensor_array, which is actually a "
-              "std::vector<phi::DenseTensor>.");
+              "std::vector<LoDTensor>.");
     AddComment(R"DOC(LoDTensorToArray operator.
 Input(X) is a minibatch of sequences. Input(RankTable) stores the order of the input sequences.
 The lod_tensor_to_array operator will spilt the input sequences to a tensor_array, with each
@@ -235,9 +234,9 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // kernel implementation.
     context->SetOutputDim("Out", x_dim);
 
-    // The output phi::DenseTensor's lod_level should be input X's lod_level
-    // - 1. For compile time, we call SetLoDLevel to set output's lod_level. For
-    // runtime, output phi::DenseTensor's lod is determined by input X's lod and
+    // The output LoDTensor's lod_level should be input X's lod_level - 1.
+    // For compile time, we call SetLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.

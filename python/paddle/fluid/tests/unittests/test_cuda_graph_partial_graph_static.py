@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import paddle
 import paddle.nn as nn
-from paddle.device.cuda.graphs import is_cuda_graph_supported, wrap_cuda_graph
+import unittest
+import numpy as np
+from paddle.device.cuda.graphs import wrap_cuda_graph, is_cuda_graph_supported
 
 paddle.enable_static()
 
 
 class SimpleModel(nn.Layer):
+
     def __init__(self, in_size, out_size):
-        super().__init__()
+        super(SimpleModel, self).__init__()
         self.linear = nn.Linear(in_size, out_size)
         self.dropout_1 = paddle.nn.Dropout(0.1)
         self.relu = nn.ReLU()
@@ -40,6 +41,7 @@ class SimpleModel(nn.Layer):
 
 
 class TestCudaGraphAttrAll(unittest.TestCase):
+
     def test_all_program(self):
         if not is_cuda_graph_supported():
             return
@@ -58,10 +60,8 @@ class TestCudaGraphAttrAll(unittest.TestCase):
                 if op._cuda_graph_attr is None:
                     # the loss and opt are not wrapped
                     assert op.type in [
-                        'sgd',
-                        'reduce_mean',
-                        'fill_constant',
-                        'reduce_mean_grad',
+                        'sgd', 'reduce_mean', 'fill_constant',
+                        'reduce_mean_grad'
                     ]
                 else:
                     assert op._cuda_graph_attr == 'thread_local;0;0'

@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 struct FillOpVisitor {
-  FillOpVisitor(phi::DenseTensor *tensor, const std::vector<float> &value)
+  FillOpVisitor(framework::LoDTensor *tensor, const std::vector<float> &value)
       : tensor_(tensor), value_(value) {}
 
   template <typename T>
@@ -38,7 +38,7 @@ struct FillOpVisitor {
         });
   }
 
-  phi::DenseTensor *tensor_;
+  framework::LoDTensor *tensor_;
   const std::vector<float> &value_;
 };
 
@@ -47,7 +47,7 @@ class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto &out = GET_DATA_SAFELY(
-        ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "Fill");
+        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "Fill");
     out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
@@ -56,7 +56,7 @@ class FillKernel : public framework::OpKernel<T> {
     auto force_cpu = ctx.Attr<bool>("force_cpu");
     out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), phi_dtype);
 
-    phi::DenseTensor tensor;
+    framework::LoDTensor tensor;
 
     if (force_cpu || platform::is_cpu_place(ctx.GetPlace())) {
       tensor.ShareDataWith(out);

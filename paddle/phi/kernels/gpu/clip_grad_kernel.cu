@@ -27,5 +27,4 @@ PD_REGISTER_KERNEL(clip_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

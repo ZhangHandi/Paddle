@@ -46,8 +46,8 @@ class LayerNormOpConverter : public OpConverter {
         platform::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
 
-    auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
-    auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
+    auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
+    auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
 
     auto bias_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);
@@ -60,8 +60,6 @@ class LayerNormOpConverter : public OpConverter {
       // the shape of mean and variance will be determine in configuPlugin.
       std::vector<int64_t> mean_shape{1};
       std::vector<int64_t> variance_shape{1};
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::LayerNormPluginDynamic* plugin =
           new plugin::LayerNormPluginDynamic(
               static_cast<const float*>(bias_weight.get().values),
@@ -71,8 +69,7 @@ class LayerNormOpConverter : public OpConverter {
               begin_norm_axis,
               eps,
               mean_shape,
-              variance_shape,
-              with_fp16);
+              variance_shape);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
       int statis_num = 1;
@@ -81,8 +78,6 @@ class LayerNormOpConverter : public OpConverter {
       }
       std::vector<int64_t> mean_shape{statis_num};
       std::vector<int64_t> variance_shape{statis_num};
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
           static_cast<const float*>(bias_weight.get().values),
           bias_weight.get().count,
@@ -91,8 +86,7 @@ class LayerNormOpConverter : public OpConverter {
           begin_norm_axis,
           eps,
           mean_shape,
-          variance_shape,
-          with_fp16);
+          variance_shape);
       layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
     }
