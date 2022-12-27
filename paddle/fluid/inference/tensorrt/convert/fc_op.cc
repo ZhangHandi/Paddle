@@ -344,7 +344,6 @@ class FcOpConverter : public OpConverter {
       //std::cout << "fc in right place" << std::endl;
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
-        //LOG(ERROR) << "add conv1x1 layer";
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
                                                    Convolution,
@@ -391,7 +390,6 @@ class FcOpConverter : public OpConverter {
                                    test_mode);
         }
       } else {
-        //LOG(ERROR) << "add fc layer";
         // add fc layer
 
         //auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(

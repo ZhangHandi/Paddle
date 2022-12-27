@@ -160,7 +160,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           //LOG(ERROR) << "input name 2 : " << op_desc.Input("Y")[0];
           LOG(ERROR) << "GetTensorDynamicRange of input1 " << engine_->GetTensorDynamicRange(input1);
           LOG(ERROR) << "GetTensorDynamicRange of input2 " << engine_->GetTensorDynamicRange(input2);
-
+       
           auto plugin_layer = engine_->network()->addPluginV2(
                 inputs.data(), inputs.size(), *pluginObj);
 
@@ -200,9 +200,10 @@ class SkipLayerNormOpConverter : public OpConverter {
               nullptr,
               platform::errors::InvalidArgument(
                   "fail to get creator of CustomSkipLayerNormPluginDynamic"));
-          int type = static_cast<int>((engine_->WithFp16() == 1)
-                                          ? nvinfer1::DataType::kHALF
-                                          : nvinfer1::DataType::kFLOAT);
+          //int type = static_cast<int>((engine_->WithFp16() == 1)
+          //                                ? nvinfer1::DataType::kHALF
+          //                                : nvinfer1::DataType::kFLOAT);
+          int type = static_cast<int>(nvinfer1::DataType::kHALF);
           //std::cout << "with fp16: " << (engine_->WithFp16() == 1) << std::endl;
           //std::cout << "datatype: " << type << std::endl;
           int ld = input1->getDimensions().d[1];  // hidden dimension
