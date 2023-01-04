@@ -925,14 +925,14 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
 
-    //auto* mul0_op_desc = mul0->Op();
+    auto* mul0_op_desc = mul0->Op();
 
     // all mul op has same input.
-    //if (mul0_op_desc->HasAttr("Input_scale")) {
+    if (mul0_op_desc->HasAttr("Input_scale")) {
     //  std::cout << "multihead_op_desc input scale: " << mul0_op_desc->HasAttr("Input_scale") << std::endl;
-    //  multihead_op_desc.SetAttr("Input_scale",
-    //                            mul0_op_desc->GetAttr("Input_scale"));
-    //}
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+    }
     auto* add0_op_desc = eltadd0->Op();
     auto* add1_op_desc = eltadd1->Op();
     auto* add2_op_desc = eltadd2->Op();
@@ -951,9 +951,6 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* softmax_qk_op_desc = softmax_qk->Op();
     auto* matmul_qk_op_desc = matmul_qk->Op();
     if (matmul_qk_op_desc->HasAttr("Input_scale")) {
-      multihead_op_desc.SetAttr("Input_scale",
-                                  matmul_qk_op_desc->GetAttr("Input_scale"));
-      //std::cout << "matmul_qk_op_desc input scale: " << matmul_qk_op_desc->HasAttr("Input_scale") << std::endl;
       multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
       if (softmax_qk_op_desc->HasAttr("out_threshold")) {
         auto qkv_plugin_scale = PADDLE_GET_CONST(

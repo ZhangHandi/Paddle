@@ -59,20 +59,20 @@ class SkipLayerNormOpConverter : public OpConverter {
           }
           inputs.push_back(input2);
         } else {
-          if ((input1->getDimensions().d[0] == 1) & (input1->getDimensions().d[2] == -1)) {
+          if ((input1->getDimensions().d[0] == -1) & (input1->getDimensions().d[2] == 1)) {
             inputs.push_back(input1);
-          } else if ((input1->getDimensions().d[0] == -1) & (input1->getDimensions().d[2] == 1)) {
+          } else if ((input1->getDimensions().d[0] == 1) & (input1->getDimensions().d[2] == -1)) {
             auto* shuffler_input1 = TRT_ENGINE_ADD_LAYER(
                 engine_, Shuffle, *(input1));
             nvinfer1::Permutation transpose_input1{2, 1, 0, 3};
             shuffler_input1->setSecondTranspose(transpose_input1);
             inputs.push_back(shuffler_input1->getOutput(0));
           }
-          if ((input2->getDimensions().d[0] == 1) & (input2->getDimensions().d[2] == -1)) {
+          if ((input2->getDimensions().d[0] == -1) & (input2->getDimensions().d[2] == 1)) {
             //std::cout << "sk ln no interleaved input2 d[0]" << input2->getDimensions().d[0] << std::endl;
             //std::cout << "sk ln no interleaved input1 d[2]" << input2->getDimensions().d[2] << std::endl;
             inputs.push_back(input2);  
-          } else if ((input2->getDimensions().d[0] == -1) & (input2->getDimensions().d[2] == 1)) {
+          } else if ((input2->getDimensions().d[0] == 1) & (input2->getDimensions().d[2] == -1)) {
             auto* shuffler_input2 = TRT_ENGINE_ADD_LAYER(
                 engine_, Shuffle, *(input2));
             nvinfer1::Permutation transpose_input2{2, 1, 0, 3};
@@ -270,6 +270,18 @@ class SkipLayerNormOpConverter : public OpConverter {
               platform::errors::InvalidArgument(
                   "fail to add CustomSkipLayerNormPluginDynamic layer"));
           layer = plugin_layer; 
+
+          if ((layer->getOutput(0)->getDimensions().d[0] == 1) & (input1->getDimensions().d[2] == -1)) {
+            inputs.push_back(input1);
+          } else if ((layer->getOutput(0)->getDimensions().d[0] == -1) & (layer->getOutput(0)->getDimensions().d[2] == 1)) {
+            auto* shuffler_output = TRT_ENGINE_ADD_LAYER(
+                engine_, Shuffle, *(layer->getOutput(0)));
+            nvinfer1::Permutation transpose_input1{2, 1, 0, 3};
+            shuffler_output->setSecondTranspose(transpose_input1); 
+            layer = shuffler_output;
+          }
+
+
         }
       } else {
         auto creator = GetPluginRegistry()->getPluginCreator(
