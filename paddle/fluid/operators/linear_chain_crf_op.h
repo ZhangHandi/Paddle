@@ -47,22 +47,21 @@ struct ScalarMul {
 };
 
 using framework::LoD;
+using framework::LoDTensor;
+using framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* emission_weights =
-        ctx.Input<phi::DenseTensor>("Emission");
-    const phi::DenseTensor* transition_weights =
-        ctx.Input<phi::DenseTensor>("Transition");
+    const Tensor* emission_weights = ctx.Input<framework::Tensor>("Emission");
+    const Tensor* transition_weights =
+        ctx.Input<framework::Tensor>("Transition");
 
-    phi::DenseTensor* emission_exps =
-        ctx.Output<phi::DenseTensor>("EmissionExps");
-    phi::DenseTensor* transition_exps =
-        ctx.Output<phi::DenseTensor>("TransitionExps");
-    phi::DenseTensor* alpha = ctx.Output<phi::DenseTensor>("Alpha");
-    phi::DenseTensor* ll = ctx.Output<phi::DenseTensor>("LogLikelihood");
+    Tensor* emission_exps = ctx.Output<Tensor>("EmissionExps");
+    Tensor* transition_exps = ctx.Output<Tensor>("TransitionExps");
+    Tensor* alpha = ctx.Output<Tensor>("Alpha");
+    Tensor* ll = ctx.Output<Tensor>("LogLikelihood");
 
     // Because the computation codes only runs on CPU, here the memory for all
     // the outputs is FIXED to be allocated on the CPU memory.
@@ -71,19 +70,18 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     transition_exps->mutable_data<T>(platform::CPUPlace());
     auto emission_dims = emission_weights->dims();
 
-    const phi::DenseTensor* label = ctx.Input<phi::DenseTensor>("Label");
-    phi::DenseTensor emission_weights_tmp = *emission_weights;
-    phi::DenseTensor label_tmp = *label;
-    phi::DenseTensor emission_exps_tmp = *emission_exps;
-    phi::DenseTensor alpha_tmp = *alpha;
+    const Tensor* label = ctx.Input<framework::Tensor>("Label");
+    Tensor emission_weights_tmp = *emission_weights;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor alpha_tmp = *alpha;
     int64_t seq_num = 0;
     int64_t batch_size;
     int64_t tag_num;
     const int64_t* length_data = nullptr;
     framework::LoD in_lod;
     if (ctx.HasInput("Length")) {
-      const phi::DenseTensor* label_length =
-          ctx.Input<phi::DenseTensor>("Length");
+      const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
       PADDLE_ENFORCE_EQ(
@@ -113,7 +111,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       phi::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
       phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
-      in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
+      in_lod = ctx.Input<LoDTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
                         0,
                         platform::errors::InvalidArgument(
@@ -127,7 +125,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     ll->Resize({seq_num, 1});
     ll->mutable_data<T>(platform::CPUPlace());
     // Now, all the inputs and outputs should be on the CPU memory.
-    phi::DenseTensor emission_row_max;
+    Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
         phi::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
@@ -160,15 +158,11 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         log_likelihood[i] = 0.;
         continue;
       }
-      const phi::DenseTensor one_seq =
-          emission_weights_tmp.Slice(start_pos, end_pos);
-      phi::DenseTensor one_seq_row_max =
-          emission_row_max.Slice(start_pos, end_pos);
-      phi::DenseTensor one_seq_exps =
-          emission_exps_tmp.Slice(start_pos, end_pos);
-      const phi::DenseTensor one_seq_label =
-          label_tmp.Slice(start_pos, end_pos);
-      phi::DenseTensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq = emission_weights_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
+      Tensor one_seq_exps = emission_exps_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       log_likelihood[i] = ForwardOneSequence(one_seq,
                                              one_seq_row_max,
                                              one_seq_exps,
@@ -180,13 +174,13 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   };
 
  private:
-  T ForwardOneSequence(const phi::DenseTensor& emission,
-                       const phi::DenseTensor& emission_row_max,
-                       const phi::DenseTensor& emission_exps,
-                       const phi::DenseTensor& trans_weights,
-                       const phi::DenseTensor& trans_weight_exps,
-                       const phi::DenseTensor& label,
-                       phi::DenseTensor* alpha) const {
+  T ForwardOneSequence(const Tensor& emission,
+                       const Tensor& emission_row_max,
+                       const Tensor& emission_exps,
+                       const Tensor& trans_weights,
+                       const Tensor& trans_weight_exps,
+                       const Tensor& label,
+                       Tensor* alpha) const {
     const T* x = emission.data<T>();
     const T* x_row_max = emission_row_max.data<T>();
     const T* x_exps = emission_exps.data<T>();
@@ -249,31 +243,27 @@ template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* label = ctx.Input<phi::DenseTensor>("Label");
-    const phi::DenseTensor* emission_exps =
-        ctx.Input<phi::DenseTensor>("EmissionExps");
-    const phi::DenseTensor* transition_exps =
-        ctx.Input<phi::DenseTensor>("TransitionExps");
-    const phi::DenseTensor* alpha = ctx.Input<phi::DenseTensor>("Alpha");
+    const Tensor* label = ctx.Input<Tensor>("Label");
+    const Tensor* emission_exps = ctx.Input<Tensor>("EmissionExps");
+    const Tensor* transition_exps = ctx.Input<Tensor>("TransitionExps");
+    const Tensor* alpha = ctx.Input<Tensor>("Alpha");
     const T* ll_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("LogLikelihood"))
-            ->data<T>();
-    phi::DenseTensor* emission_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Emission"));
+        ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
+    Tensor* emission_grad =
+        ctx.Output<Tensor>(framework::GradVarName("Emission"));
     auto* emission_grad_data =
         emission_grad->mutable_data<T>(platform::CPUPlace());
     memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
-    phi::DenseTensor alpha_tmp = *alpha;
-    phi::DenseTensor label_tmp = *label;
-    phi::DenseTensor emission_exps_tmp = *emission_exps;
-    phi::DenseTensor emission_grad_tmp = *emission_grad;
+    Tensor alpha_tmp = *alpha;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor emission_grad_tmp = *emission_grad;
     // getting seq_num  using padding or not
     int64_t seq_num = 0;
     framework::LoD in_lod;
     const int64_t* length_data = nullptr;
     if (ctx.HasInput("Length")) {
-      const phi::DenseTensor* label_length =
-          ctx.Input<phi::DenseTensor>("Length");
+      const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
       auto emission_dims = emission_grad->dims();
@@ -285,7 +275,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
-      in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
+      in_lod = ctx.Input<LoDTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
                         0,
                         platform::errors::InvalidArgument(
@@ -293,8 +283,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       seq_num = static_cast<int64_t>(in_lod[0].size() - 1);
     }
 
-    phi::DenseTensor* transition_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Transition"));
+    Tensor* transition_grad =
+        ctx.Output<Tensor>(framework::GradVarName("Transition"));
 
     // TODO(caoying) Fix this constraint. When the Input(Emission) is from the
     // data reader operator, it can have no gradients.
@@ -308,7 +298,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // backwark vectors. For a backward vector i (the i-th row of beta), it
     // captures the unnormalized probabilities of partial sequences starting
     // at position i.
-    phi::DenseTensor beta;
+    Tensor beta;
     beta.mutable_data<T>(emission_dims, platform::CPUPlace());
     if (ctx.HasInput("Length")) {
       beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
@@ -328,14 +318,12 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       if (end_pos == start_pos) {
         continue;
       }
-      const phi::DenseTensor one_seq_emission_exps =
+      const Tensor one_seq_emission_exps =
           emission_exps_tmp.Slice(start_pos, end_pos);
-      const phi::DenseTensor one_seq_label =
-          label_tmp.Slice(start_pos, end_pos);
-      const phi::DenseTensor one_seq_alpha =
-          alpha_tmp.Slice(start_pos, end_pos);
-      phi::DenseTensor one_seq_beta = beta.Slice(start_pos, end_pos);
-      phi::DenseTensor one_seq_emission_grad =
+      const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
+      Tensor one_seq_emission_grad =
           emission_grad_tmp.Slice(start_pos, end_pos);
       BackwardOneSequence(ctx.template device_context<phi::CPUContext>(),
                           ll_grad[i],
@@ -352,13 +340,13 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  private:
   void BackwardOneSequence(const phi::CPUContext& ctx,
                            const T ll_grad,
-                           const phi::DenseTensor& emission_exps,
-                           const phi::DenseTensor& transition_exps,
-                           const phi::DenseTensor& alpha,
-                           const phi::DenseTensor& label,
-                           phi::DenseTensor* beta,
-                           phi::DenseTensor* transition_grad,
-                           phi::DenseTensor* emission_grad) const {
+                           const Tensor& emission_exps,
+                           const Tensor& transition_exps,
+                           const Tensor& alpha,
+                           const Tensor& label,
+                           Tensor* beta,
+                           Tensor* transition_grad,
+                           Tensor* emission_grad) const {
     const T* w_exps = transition_exps.data<T>();
     const T* x_exps = emission_exps.data<T>();
     const int64_t* label_value = label.data<int64_t>();
@@ -418,7 +406,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
 
       // TODO(caoying): Fix this to avoid using this local variable if we can
       // profile the training process.
-      phi::DenseTensor tmp;
+      Tensor tmp;
       tmp.mutable_data<T>(beta->dims(), platform::CPUPlace());
       auto tmp_mat = framework::EigenMatrix<T>::From(tmp);
       auto prob = beta_mat * x_exps_mat;

@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -72,6 +73,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -88,7 +90,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -456,7 +457,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_XPU_KP
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
-          return platform::get_xpu_op_support_type(op_name, version);
+          return platform::get_xpu_kp_op_support_type(op_name, version);
         });
 #else
   m.def("get_xpu_device_op_support_types",
@@ -553,11 +554,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-
-          # required: npu
-
           import paddle
-          place = paddle.NPUPlace(0)
+          npu_place = paddle.NPUPlace(0)
 
         )DOC");
   g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());

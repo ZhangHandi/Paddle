@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import test_collective_api_base as test_base
+from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import test_collective_api_base as test_base
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 

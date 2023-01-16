@@ -21,7 +21,7 @@
 
 #include <mutex>  // NOLINT
 
-#include "paddle/phi/core/flags.h"
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(
     tracer_profile_fname,

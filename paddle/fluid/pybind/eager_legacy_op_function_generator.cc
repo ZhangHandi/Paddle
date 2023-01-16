@@ -416,11 +416,6 @@ GenerateOpFunctions() {
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       continue;
     }
-    // Skip the sparse op
-    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
-        op_type != "sparse_attention") {
-      continue;
-    }
     // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the phi lib contains op kernel, we still generate ops method
@@ -443,9 +438,9 @@ GenerateOpFunctions() {
     // In this case, output will reuse input varbase.
     // Dygraph mode needs to be aligned with the in-place strategy in static
     // mode, and the mapping relationships between output and input that have
-    // been defined in static graph mode should be used in dygraph mode.
-    // Find which ops need to use Inplace strategy in static graph mode, and get
-    // the mapping relationship between Inplace output and input.
+    // been defined in static mode should be used in dygraph mode.
+    // Find which ops need to use Inplace strategy in static mode, and get the
+    // mapping relationship between Inplace output and input.
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
     std::map<std::string, std::string> inplace_map;

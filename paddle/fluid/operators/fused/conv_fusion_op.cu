@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/padding.h"
-#include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -27,6 +27,7 @@ namespace paddle {
 namespace operators {
 
 #if PADDLE_WITH_HIP || CUDNN_VERSION >= 7100
+using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -44,26 +45,17 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-    auto* residual = ctx.Input<phi::DenseTensor>("ResidualData");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* residual = ctx.Input<Tensor>("ResidualData");
+    auto* output = ctx.Output<Tensor>("Output");
     dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     const std::string activation = ctx.Attr<std::string>("activation");
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(
-        data_format,
-        "NHWC",
-        platform::errors::PermissionDenied(
-            "Operator(Conv2DFusion) in cuDNN only supports data format of "
-            "channel first (NCHW) now. But received: data_format = '%s'.",
-            data_format));
-
     int groups = ctx.Attr<int>("groups");
     int64_t user_workspace_size =
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
@@ -76,8 +68,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
 
-    phi::DenseTensor transformed_input_channel(input->dtype());
-    phi::DenseTensor transformed_output(output->dtype());
+    Tensor transformed_input_channel(input->dtype());
+    Tensor transformed_output(output->dtype());
     transformed_input_channel = *input;
     transformed_output = *output;
     T* output_data = transformed_output.data<T>();
@@ -98,7 +90,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     int data_dim = strides.size();  // 2d or 3d
     bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
-    phi::DenseTensor transformed_input;
+    Tensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
     if (!is_sys_pad) {
       std::vector<int> padding_diff(data_dim);
@@ -143,8 +135,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         } break;
         default:
           PADDLE_THROW(platform::errors::PermissionDenied(
-              "Operator Conv2DFusion expects Input to be a 4-D or 5-D "
-              "phi::DenseTensor. "
+              "Operator Conv2DFusion expects Input to be a 4-D or 5-D Tensor. "
               "But received the actual dimension = %d, shape = [%s].",
               rank,
               transformed_input_channel.dims()));
@@ -225,7 +216,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               cudnn_conv_desc,
               cudnn_output_desc,
               output_data,
-              phi::kNUM_CUDNN_FWD_ALGS,
+              kNUM_CUDNN_FWD_ALGS,
               &find_count,
               &find_result,
               cudnn_workspace_ptr,
@@ -346,7 +337,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       int best_algo_idx = 0;
       size_t tmp_size = 0;
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
-          new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
+          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
@@ -354,7 +345,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               cudnn_filter_desc,
               cudnn_conv_desc,
               cudnn_output_desc,
-              phi::kNUM_CUDNN_FWD_ALGS,
+              kNUM_CUDNN_FWD_ALGS,
               &perf_count,
               perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
@@ -387,7 +378,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           [&]() -> SearchFuseResult<cudnnConvolutionFwdAlgo_t> {
         int returned_algo_count;
         SearchFuseResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-        std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
+        std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
             fwd_perf_stat;
         auto cudnn_find_func = [&](void* cudnn_workspace) {
           PADDLE_ENFORCE_GPU_SUCCESS(
@@ -400,7 +391,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   cudnn_conv_desc,
                   cudnn_output_desc,
                   output_data,
-                  phi::kNUM_CUDNN_FWD_ALGS,
+                  kNUM_CUDNN_FWD_ALGS,
                   &returned_algo_count,
                   fwd_perf_stat.data(),
                   cudnn_workspace,
@@ -532,10 +523,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 #endif
     std::vector<int> channels = ctx.Attr<std::vector<int>>("split_channels");
     if (channels.size()) {
-      auto outs = ctx.MultiOutput<phi::DenseTensor>("Outputs");
+      auto outs = ctx.MultiOutput<framework::Tensor>("Outputs");
       if (x_dims[0] == 1) {
         // share data with Output
-        phi::DenseTensor t;
+        framework::Tensor t;
         t.ShareDataWith(*output);
         auto y_dims = output->dims();
         t.Resize({y_dims[1], y_dims[2], y_dims[3]});

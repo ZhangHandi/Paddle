@@ -35,21 +35,15 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   funcs::ElementwiseGradPreProcess(dout, dx);
-
-  auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              const XPUType* y,
-              const XPUType* z,
-              const XPUType* dz,
-              XPUType* dy,
-              XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
-    return xpu::broadcast_div_grad<XPUType>(
-        ctx, x, y, z, dz, dy, dx, xshape, yshape);
-  };
-
-  XPUElementwiseGrad<T, XPUType>(dev_ctx, x, y, dout, axis, dx, dy, f, true);
+  XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                 x,
+                                 y,
+                                 dout,
+                                 axis,
+                                 dx,
+                                 dy,
+                                 xpu::broadcast_div_grad<XPUType>,
+                                 true);
 }
 
 }  // namespace phi

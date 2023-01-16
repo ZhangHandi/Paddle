@@ -18,12 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ReduceMinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -31,7 +32,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    phi::DenseTensor cast_out(x->type());
+    framework::Tensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
@@ -75,8 +76,8 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
     if (x->dtype() == experimental::DataType::INT64) {
-      auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
-                        const std::vector<phi::DenseTensor>& outputs,
+      auto op_func = [](const std::vector<Tensor>& inputs,
+                        const std::vector<Tensor>& outputs,
                         const NPUAttributeMap& attrs,
                         const platform::NPUDeviceContext& dev_ctx) {
         const auto& runner =

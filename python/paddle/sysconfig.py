@@ -20,7 +20,6 @@ __all__ = ['get_include', 'get_lib']
 def get_include():
     """
     Get the directory containing the PaddlePaddle C++ header files.
-
     Returns:
       The directory as string.
 
@@ -32,14 +31,12 @@ def get_include():
 
     """
     import paddle
-
     return os.path.join(os.path.dirname(paddle.__file__), 'include')
 
 
 def get_lib():
     """
     Get the directory containing the libpaddle_framework.
-
     Returns:
       The directory as string.
 
@@ -51,5 +48,4 @@ def get_lib():
 
     """
     import paddle
-
     return os.path.join(os.path.dirname(paddle.__file__), 'libs')

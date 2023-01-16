@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import unittest
 import sys
@@ -26,6 +28,7 @@ SEED = 2021
 
 
 class TestActivation(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -56,6 +59,7 @@ class TestActivation(OpTest):
 
 
 class TestLog(TestActivation):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "log"
@@ -70,18 +74,21 @@ class TestLog(TestActivation):
         self.outputs = {'Out': out}
 
     def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32"
-        )
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
-        )
+        in1 = fluid.layers.data(name="in1",
+                                shape=[11, 17],
+                                append_batch_size=False,
+                                dtype="int32")
+        in2 = fluid.layers.data(name="in2",
+                                shape=[11, 17],
+                                append_batch_size=False,
+                                dtype="int64")
 
         self.assertRaises(TypeError, fluid.layers.log, in1)
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
 class TestLog2(TestActivation):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "log2"
@@ -102,22 +109,19 @@ class TestLog2(TestActivation):
         self.assertRaises(TypeError, paddle.log2, in2)
 
     def test_api(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
-            data_x = paddle.static.data(
-                name="data_x", shape=[11, 17], dtype="float32"
-            )
+            data_x = paddle.static.data(name="data_x",
+                                        shape=[11, 17],
+                                        dtype="float32")
 
             out1 = paddle.log2(data_x)
             exe = paddle.static.Executor(place=fluid.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(
-                paddle.static.default_main_program(),
-                feed={"data_x": input_x},
-                fetch_list=[out1],
-            )
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
         expected_res = np.log2(input_x)
         np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
@@ -134,6 +138,7 @@ class TestLog2(TestActivation):
 
 
 class TestLog10(TestActivation):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "log10"
@@ -154,22 +159,19 @@ class TestLog10(TestActivation):
         self.assertRaises(TypeError, paddle.log10, in2)
 
     def test_api(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
-            data_x = paddle.static.data(
-                name="data_x", shape=[11, 17], dtype="float32"
-            )
+            data_x = paddle.static.data(name="data_x",
+                                        shape=[11, 17],
+                                        dtype="float32")
 
             out1 = paddle.log10(data_x)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(
-                paddle.static.default_main_program(),
-                feed={"data_x": input_x},
-                fetch_list=[out1],
-            )
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
         expected_res = np.log10(input_x)
         np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
@@ -184,6 +186,7 @@ class TestLog10(TestActivation):
 
 
 class TestLogHalf(TestLog):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -192,6 +195,7 @@ class TestLogHalf(TestLog):
 
 
 class TestLog2Half(TestLog2):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -200,6 +204,7 @@ class TestLog2Half(TestLog2):
 
 
 class TestLog10Half(TestLog10):
+
     def init_dtype(self):
         self.dtype = np.float16
 

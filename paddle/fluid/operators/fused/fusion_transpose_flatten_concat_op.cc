@@ -22,6 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

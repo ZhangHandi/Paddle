@@ -17,22 +17,22 @@
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-using phi::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
-template <int BlockSize, typename T>
+template <int BlockSize>
 __global__ void AccuracyCudaKernel(const int N,
                                    const int D,
                                    const int64_t* Xdata,
                                    const int64_t* labeldata,
                                    int* correct_data,
-                                   T* accuracy,
+                                   float* accuracy,
                                    int* total_data) {
   int count = 0;
   __shared__ int total[BlockSize];
@@ -64,7 +64,7 @@ __global__ void AccuracyCudaKernel(const int N,
 #endif
   if (threadIdx.x == 0) {
     *correct_data = result;
-    *accuracy = static_cast<T>(result) / static_cast<T>(N);
+    *accuracy = static_cast<float>(result) / static_cast<float>(N);
     *total_data = N;
   }
 }
@@ -84,18 +84,18 @@ void AccuracyRawKernel(const Context& dev_ctx,
 
   int* correct_data = dev_ctx.template Alloc<int>(correct);
   int* total_data = dev_ctx.template Alloc<int>(total);
-  T* accuracy_data = dev_ctx.template Alloc<T>(accuracy);
+  float* accuracy_data = dev_ctx.template Alloc<float>(accuracy);
 
   int num_samples = static_cast<int>(inference.dims()[0]);
   size_t infer_width = inference.dims()[1];
   auto stream = dev_ctx.stream();
-  phi::backends::gpu::GpuMemsetAsync(accuracy_data, 0, sizeof(T), stream);
+  phi::backends::gpu::GpuMemsetAsync(accuracy_data, 0, sizeof(float), stream);
 
   if (num_samples == 0) {
     return;
   }
 
-  AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS, T>
+  AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS>
       <<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(num_samples,
                                                   infer_width,
                                                   indices_data,

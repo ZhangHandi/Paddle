@@ -76,19 +76,18 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
-  virtual ::std::future<int32_t> PullSparsePtr(int shard_id,
-                                               char** select_values,
+  virtual ::std::future<int32_t> PullSparsePtr(char** select_values,
                                                size_t table_id,
                                                const uint64_t* keys,
-                                               size_t num,
-                                               uint16_t pass_id);
+                                               size_t num);
 
-  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id);
+  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id) {
+    std::promise<int32_t> prom;
+    std::future<int32_t> fut = prom.get_future();
+    prom.set_value(0);
 
-  virtual ::std::future<int32_t> SaveCacheTable(uint32_t table_id,
-                                                uint16_t pass_id,
-                                                size_t threshold);
-
+    return fut;
+  }
   virtual ::std::future<int32_t> PushSparse(size_t table_id,
                                             const uint64_t* keys,
                                             const float** update_values,

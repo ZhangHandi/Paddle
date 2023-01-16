@@ -28,6 +28,7 @@ SEED = 2022
 
 
 class TestAdam(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -51,19 +52,20 @@ class TestAdam(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32")
         }
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def set_mlu(self):
@@ -78,6 +80,7 @@ class TestAdam(OpTest):
 
 
 class TestAdamWithEpsilonTensor(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -109,14 +112,15 @@ class TestAdamWithEpsilonTensor(OpTest):
 
         self.attrs = {'epsilon': epsilon}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def set_mlu(self):
@@ -131,6 +135,7 @@ class TestAdamWithEpsilonTensor(OpTest):
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -183,6 +188,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -214,7 +220,8 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
         attributes = {'epsilon': epsilon}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, attributes)
 
         self.attrs = {'use_global_beta_pow': True}
 
@@ -224,7 +231,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([]),
-            'Beta2PowOut': np.array([]),
+            'Beta2PowOut': np.array([])
         }
 
     def set_mlu(self):
@@ -239,6 +246,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
 
 class TestNet(unittest.TestCase):
+
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -253,9 +261,9 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64'
-            )
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -263,8 +271,8 @@ class TestNet(unittest.TestCase):
             fc_1 = fluid.layers.fc(input=z, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
-            loss = paddle.mean(cost)
+            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            loss = fluid.layers.reduce_mean(cost)
             adam = fluid.optimizer.Adam(learning_rate=0.01)
             adam.minimize(loss)
 
@@ -279,17 +287,16 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np, "b": b_np, "label": label_np},
-                fetch_list=[prediction, loss],
-            )
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
             if epoch % 10 == 0:
-                print(
-                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                        epoch, pred_res[0], loss_res
-                    )
-                )
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
 
         return pred_res, loss_res
 

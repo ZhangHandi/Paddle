@@ -31,16 +31,8 @@ void DivideRawKernel(const Context& dev_ctx,
                      int axis,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              const XPUType* y,
-              XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
-    return xpu::broadcast_div<XPUType>(ctx, x, y, z, xshape, yshape);
-  };
-
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_div<XPUType>);
 }
 
 }  // namespace phi

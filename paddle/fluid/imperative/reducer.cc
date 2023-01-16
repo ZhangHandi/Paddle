@@ -34,10 +34,10 @@ namespace imperative {
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CNCL)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
-  phi::DenseTensor *tensor =
+  framework::Tensor *tensor =
       is_sparse_
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
-          : dense_contents_.GetMutable<phi::DenseTensor>();
+          : dense_contents_.GetMutable<framework::LoDTensor>();
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -76,23 +76,23 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 template <typename DeviceContext, typename T>
 static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
+    const std::vector<framework::Tensor> &dense_tensors_,
     framework::Variable *p_dense_contents) {
   operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(context,
                   dense_tensors_,
                   0,
-                  p_dense_contents->GetMutable<phi::DenseTensor>());
+                  p_dense_contents->GetMutable<framework::LoDTensor>());
 }
 
 template <typename DeviceContext, typename T>
 static void SplitTensorsForAllReduce(
     const DeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors) {
-  auto *in = p_dense_contents->GetMutable<phi::DenseTensor>();
-  std::vector<phi::DenseTensor *> outs;
-  std::vector<const phi::DenseTensor *> shape_refer;
+    std::vector<framework::Tensor> *p_dense_tensors) {
+  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor *> outs;
+  std::vector<const framework::Tensor *> shape_refer;
 
   outs.reserve(p_dense_tensors->size());
   shape_refer.reserve(p_dense_tensors->size());
@@ -114,7 +114,7 @@ static void SplitTensorsForAllReduce(
 template <typename DeviceContext>
 static void ConcatTensorsWithType(
     const DeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
+    const std::vector<framework::Tensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -140,10 +140,11 @@ static void ConcatTensorsWithType(
 
 // context is used to select the stream for split
 template <typename DeviceContext>
-static void SplitTensorsWithType(const DeviceContext &context,
-                                 framework::Variable *p_dense_contents,
-                                 std::vector<phi::DenseTensor> *p_dense_tensors,
-                                 framework::proto::VarType::Type type) {
+static void SplitTensorsWithType(
+    const DeviceContext &context,
+    framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors,
+    framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
       SplitTensorsForAllReduce<DeviceContext, platform::float16>(
@@ -170,10 +171,10 @@ template <>
 void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     const platform::XPUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors) {
-  auto *in = p_dense_contents->GetMutable<phi::DenseTensor>();
-  std::vector<phi::DenseTensor *> outs;
-  std::vector<const phi::DenseTensor *> shape_refer;
+    std::vector<framework::Tensor> *p_dense_tensors) {
+  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor *> outs;
+  std::vector<const framework::Tensor *> shape_refer;
 
   outs.reserve(p_dense_tensors->size());
   shape_refer.reserve(p_dense_tensors->size());
@@ -191,7 +192,7 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
 template <>
 void ConcatTensorsWithType<platform::XPUDeviceContext>(
     const platform::XPUDeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
+    const std::vector<framework::Tensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -212,7 +213,7 @@ template <>
 void SplitTensorsWithType<platform::XPUDeviceContext>(
     const platform::XPUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors,
+    std::vector<framework::Tensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
@@ -233,7 +234,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 template <>
 void ConcatTensorsWithType<platform::MLUDeviceContext>(
     const platform::MLUDeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
+    const std::vector<framework::Tensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -258,7 +259,7 @@ template <>
 void SplitTensorsWithType<platform::MLUDeviceContext>(
     const platform::MLUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors,
+    std::vector<framework::Tensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
@@ -462,7 +463,7 @@ void Reducer::InitializeDenseGroups(
                           "GRAD is SelectedRows",
                           var_name));
 
-    auto lod_tensor = var->MutableVar()->GetMutable<phi::DenseTensor>();
+    auto lod_tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -478,7 +479,7 @@ void Reducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->dense_tensors_.push_back(framework::Tensor());
 
     // check the dtype and place, it must be same.
     const auto &dtype = var->DataType();
@@ -832,7 +833,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
     if (is_used_var) {
       auto var_base = vars_[var_index]->GradVarBase();
-      auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
+      auto tensor = var_base->MutableVar()->GetMutable<framework::LoDTensor>();
       group_tensor.ShareDataWith(*tensor).Resize(
           {static_cast<int64_t>(length)});
     } else {
@@ -850,7 +851,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             platform::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
           auto var_base = vars_[var_index]->GradVarBase();
-          auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
+          auto tensor =
+              var_base->MutableVar()->GetMutable<framework::LoDTensor>();
           group_tensor.ShareDataWith(*tensor).Resize(
               {static_cast<int64_t>(length)});
         } else {
@@ -872,7 +874,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       if (HasGrad(var_index)) {
         auto var_base = vars_[var_index]->GradVarBase();
-        auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
+        auto tensor =
+            var_base->MutableVar()->GetMutable<framework::LoDTensor>();
         group_tensor.ShareDataWith(*tensor).Resize(
             {static_cast<int64_t>(length)});
       } else {
@@ -948,7 +951,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     UNUSED auto &group = groups_[next_group_];
     UNUSED const int run_order = next_group_ % nrings_;
 
-    auto *tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
+    auto *tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
     tensor->Resize(phi::make_ddim({group.all_length_}))
         .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
 
@@ -1024,7 +1027,8 @@ void Reducer::ProcessUnusedDenseVars() {
           << string::join_strings(local_used_vars_, ',');
   const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   // H2D is to allreduce the local_used_vars_
-  auto *global_used_tensor = global_used_vars_.GetMutable<phi::DenseTensor>();
+  auto *global_used_tensor =
+      global_used_vars_.GetMutable<framework::LoDTensor>();
   framework::TensorFromVector<int>(
       local_used_vars_, *dev_ctx, global_used_tensor);
   parallel_ctx_->AllReduceByStream(
@@ -1061,7 +1065,7 @@ void Reducer::ProcessUnusedDenseVars() {
       // 2. destination var base
       auto dest_var_base = vars_[var_index];
       auto *dest_tensor =
-          dest_var_base->MutableVar()->GetMutable<phi::DenseTensor>();
+          dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
       const auto &dest_dims = dest_tensor->dims();
 
       // 3. create grad var base or get grad var base
@@ -1073,7 +1077,7 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 4. set grad tensor
       auto *dest_grad_tensor =
-          grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
+          grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
       const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       paddle::framework::TensorCopy(
           src_tensor, place_, *dev_ctx, dest_grad_tensor);
@@ -1089,8 +1093,8 @@ bool Reducer::HasGrad(size_t var_index) {
   }
 
   const auto &var = grad_var->Var();
-  if (var.IsType<phi::DenseTensor>()) {
-    if (var.Get<phi::DenseTensor>().IsInitialized()) {
+  if (var.IsType<framework::LoDTensor>()) {
+    if (var.Get<framework::LoDTensor>().IsInitialized()) {
       return true;
     }
   } else if (var.IsType<phi::SelectedRows>()) {
@@ -1209,8 +1213,8 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
             << var->DataType();
     auto &group_info = next_group[var_dtype_str];
     int64_t var_size = -1;
-    if (var->Var().IsType<phi::DenseTensor>()) {
-      var_size = var->Var().Get<phi::DenseTensor>().numel();
+    if (var->Var().IsType<framework::LoDTensor>()) {
+      var_size = var->Var().Get<framework::LoDTensor>().numel();
     } else {
       VLOG(3) << "var " << var->Name()
               << " is not tensor or selected_rows, so skip it";

@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
@@ -36,24 +38,24 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
 
 void MomentumOpMaker::Make() {
   AddInput("Param",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input parameter that has to be updated");
   AddInput("Grad",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input gradient of the parameter");
   AddInput("Velocity",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input velocity (corresponding to the parameter) "
            "that has to be updated");
   AddInput("LearningRate",
-           "(phi::DenseTensor, default phi::DenseTensor<float>) "
+           "(Tensor, default Tensor<float>) "
            "Input learning rate");
   AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
   AddOutput("ParamOut",
-            "(phi::DenseTensor) This output is updated parameter. "
+            "(Tensor) This output is updated parameter. "
             "It shared memory with Input(Param).");
   AddOutput("VelocityOut",
-            "(phi::DenseTensor) This output is updated velocity. "
+            "(Tensor) This output is updated velocity. "
             "It shared memory with Input(Velocity).");
   AddOutput("MasterParamOut",
             "The updated FP32 master weight for AMP. "

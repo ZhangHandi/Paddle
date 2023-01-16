@@ -14,17 +14,6 @@
 
 from . import features
 from . import functional
-from . import datasets
-from . import backends
+from . import utils
 
-from .backends.backend import info, load, save
-
-__all__ = [
-    "functional",
-    "features",
-    "datasets",
-    "backends",
-    "load",
-    "info",
-    "save",
-]
+__all__ = ["functional", "features", "utils"]

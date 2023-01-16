@@ -20,7 +20,6 @@
 #include <map>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform//place.h"
 
 namespace paddle {
@@ -113,8 +112,6 @@ class BestFitAllocator : public Allocator {
 
   size_t NumFreeChunks() const;
 
-  bool IsAllocThreadSafe() const override { return true; }
-
  private:
   size_t FreeSize() const;
   using MapIt = typename details::FreeChunkBin::value_type::iterator;
@@ -134,7 +131,6 @@ class BestFitAllocator : public Allocator {
   phi::Allocation* allocation_;  // not owned
   details::ChunkList chunks_;
   details::FreeChunkBin free_chunks_;
-  SpinLock spinlock_;
 };
 }  // namespace allocation
 }  // namespace memory

@@ -236,7 +236,7 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
-   OR (ON_INFER AND NOT WITH_PYTHON))
+   OR ON_INFER)
   set(WITH_DGC OFF)
 endif()
 
@@ -254,7 +254,6 @@ include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
 include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
-include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
@@ -265,7 +264,6 @@ list(
   extern_zlib
   extern_dlpack
   extern_warpctc
-  extern_warprnnt
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
@@ -278,7 +276,6 @@ list(
   extern_zlib
   extern_dlpack
   extern_warpctc
-  extern_warprnnt
   extern_threadpool
   extern_lapack)
 
@@ -320,9 +317,8 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
-     OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6
-         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.8))
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0 OR ${CMAKE_CUDA_COMPILER_VERSION}
+                                                 GREATER_EQUAL 11.6)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   endif()
@@ -426,22 +422,6 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
-
-  include(external/jemalloc) # download, build, install jemalloc
-  list(APPEND third_party_deps extern_jemalloc)
-endif()
-
-if(WITH_RPC
-   AND NOT WITH_PSCORE
-   AND NOT WITH_PSLIB)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-
-  include(external/brpc)
-  list(APPEND third_party_deps extern_brpc)
 endif()
 
 if(WITH_XBYAK)
@@ -510,22 +490,6 @@ endif()
 if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
-endif()
-
-if(WITH_GPU
-   AND NOT WITH_ARM
-   AND NOT WIN32
-   AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-    include(external/cutlass) # download, build, install cusparselt
-    list(APPEND third_party_deps extern_cutlass)
-    set(WITH_CUTLASS ON)
-  endif()
-endif()
-
-if(WITH_CUDNN_FRONTEND)
-  include(external/cudnn-frontend) # download cudnn-frontend
-  list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

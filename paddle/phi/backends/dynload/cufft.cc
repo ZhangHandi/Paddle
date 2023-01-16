@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cufft.h"
 
-#include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace phi {
 namespace dynload {

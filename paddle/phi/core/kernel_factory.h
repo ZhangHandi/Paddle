@@ -32,6 +32,7 @@
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
+using DataLayout = paddle::experimental::DataLayout;
 
 /**
  * [ Naming considerations ]
@@ -141,7 +142,7 @@ enum class AttributeType {
   INT_ARRAY,
   DATA_TYPE,
   DATA_LAYOUT,
-  PLACE
+  PLACE,
 };
 
 struct AttributeArgDef {
@@ -271,10 +272,13 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePhiKernel(const std::string& op_type) const;
+  bool HasCompatiblePhiKernel(const std::string& op_type) const {
+    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
+  }
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key) const;
+                                        const KernelKey& kernel_key,
+                                        bool use_gpudnn = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;

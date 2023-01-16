@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorBlockingQueueHolder =
     paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
@@ -58,7 +59,7 @@ class DequeueOp : public framework::OperatorBase {
           out_var,
           platform::errors::NotFound("No variable with name %s found",
                                      out_names[i]));
-      auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
       PADDLE_ENFORCE_NOT_NULL(
           out_tensor,
           platform::errors::InvalidArgument(
@@ -89,7 +90,7 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "A list of `lod_tensor` to dequeue and assigned.")
         .AsDuplicable();
     AddComment(R"DOC(
-      Dequeue operator.
+			Dequeue operator.
       )DOC");
   }
 };

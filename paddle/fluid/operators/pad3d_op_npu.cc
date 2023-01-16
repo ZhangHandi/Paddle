@@ -19,10 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 static inline std::vector<int> GetPaddings(
     const framework::ExecutionContext& context) {
   std::vector<int> paddings(6);
-  auto* paddings_t = context.Input<phi::DenseTensor>("Paddings");
+  auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
     paddle::framework::TensorToVector(
         *paddings_t, context.device_context(), &paddings);
@@ -37,7 +39,7 @@ template <typename T>
 class Pad3dNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
 
     std::vector<int> pads = GetPaddings(context);
@@ -45,7 +47,7 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
     float value = context.Attr<float>("value");
     auto data_format = context.Attr<std::string>("data_format");
 
-    auto* out = context.Output<phi::DenseTensor>("Out");
+    auto* out = context.Output<Tensor>("Out");
 
     PADDLE_ENFORCE_LT(abs(value),
                       1e-5,
@@ -104,9 +106,8 @@ class Pad3dGradNPUKernel : public framework::OpKernel<T> {
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
 
-    auto* d_out =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* d_in = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
     auto d_in_dims = d_in->dims();
     d_in->mutable_data<T>(context.GetPlace());
 

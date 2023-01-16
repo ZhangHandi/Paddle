@@ -100,9 +100,9 @@ void BasicEngine::Init(
         true,
         platform::errors::NotFound("Tensor %s has no gradient", var->Name()));
 
-    auto& fwd_var = var->Var().Get<phi::DenseTensor>();
+    auto& fwd_var = var->Var().Get<framework::LoDTensor>();
     auto* grad_var =
-        var->GradVarBase()->MutableVar()->GetMutable<phi::DenseTensor>();
+        var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
     VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
             << " as stop_gradient false";
     var->GradVarBase()->InnerSetOverridedStopGradient(false);
@@ -113,10 +113,11 @@ void BasicEngine::Init(
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
       phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
-      paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
-                                    fwd_var.place(),
-                                    *dev_ctx,
-                                    grad_var);
+      paddle::framework::TensorCopy(
+          grad_tensor->Var().Get<framework::LoDTensor>(),
+          fwd_var.place(),
+          *dev_ctx,
+          grad_var);
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
@@ -149,10 +150,10 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       auto* inner_var = var->MutableVar();
-      phi::DenseTensor* tensor = nullptr;
+      framework::Tensor* tensor = nullptr;
       if (!inner_var->IsInitialized() ||
-          inner_var->IsType<phi::DenseTensor>()) {
-        tensor = inner_var->GetMutable<phi::DenseTensor>();
+          inner_var->IsType<framework::LoDTensor>()) {
+        tensor = inner_var->GetMutable<framework::LoDTensor>();
       }
 
       if (tensor && !tensor->IsInitialized()) {
@@ -337,8 +338,8 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
 
 static bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
   auto* inner_var = var->MutableVar();
-  if (inner_var->IsInitialized() && inner_var->IsType<phi::DenseTensor>()) {
-    auto tensor = inner_var->GetMutable<phi::DenseTensor>();
+  if (inner_var->IsInitialized() && inner_var->IsType<framework::LoDTensor>()) {
+    auto tensor = inner_var->GetMutable<framework::LoDTensor>();
     if (tensor->IsInitialized()) {
       return true;
     }
@@ -355,7 +356,7 @@ static void PerformBackwardInplace(const std::string& op_type,
   if (infer_inplace) {
     auto in_to_outs = infer_inplace(true);
     for (auto& pair : in_to_outs) {
-      phi::DenseTensor *in_tensor = nullptr, *out_tensor = nullptr;
+      framework::LoDTensor *in_tensor = nullptr, *out_tensor = nullptr;
       for (auto& p : ins) {
         if (p.first == pair.first) {
           // has at least one var
@@ -366,7 +367,7 @@ static void PerformBackwardInplace(const std::string& op_type,
             if (in_var.use_count() == 1) {
               if (IsInputCanInplace(in_var)) {
                 in_tensor =
-                    in_var->MutableVar()->GetMutable<phi::DenseTensor>();
+                    in_var->MutableVar()->GetMutable<framework::LoDTensor>();
               }
             }
           }
@@ -381,7 +382,7 @@ static void PerformBackwardInplace(const std::string& op_type,
             auto& out_var = p.second[0];
             if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
               out_tensor =
-                  out_var->MutableVar()->GetMutable<phi::DenseTensor>();
+                  out_var->MutableVar()->GetMutable<framework::LoDTensor>();
             }
           }
         }

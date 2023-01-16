@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import os
+
+os.environ['FLAGS_enable_eager_mode'] = '1'
+
 import unittest
+import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -22,10 +29,6 @@ class TestDygraphGroupSharded(TestMultipleGpus):
     # check group sharded logic as well as the accuracy with single mode
     def test_dygraph_group_sharded(self):
         self.run_mnist_2gpu('dygraph_group_sharded_api_eager.py')
-
-    # check stage3 for some functions.
-    def test_dygraph_group_sharded_stage3(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage3_eager.py')
 
 
 if __name__ == "__main__":

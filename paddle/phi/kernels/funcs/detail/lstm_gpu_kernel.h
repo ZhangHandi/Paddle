@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
 
@@ -202,12 +202,15 @@ __global__ void KeLstmBackward(Op op,
   if (is_batch) {
     if (value.prev_state_value) {
       if (grad.check_ig_grad)
-        phi::CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
+        paddle::platform::CudaAtomicAdd(grad.check_ig_grad + frame_idx,
+                                        r_checkIGrad);
       if (grad.check_fg_grad)
-        phi::CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
+        paddle::platform::CudaAtomicAdd(grad.check_fg_grad + frame_idx,
+                                        r_checkFGrad);
     }
     if (grad.check_og_grad)
-      phi::CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
+      paddle::platform::CudaAtomicAdd(grad.check_og_grad + frame_idx,
+                                      r_checkOGrad);
   } else {
     if (value.prev_state_value) {
       if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;

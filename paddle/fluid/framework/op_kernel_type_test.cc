@@ -20,7 +20,7 @@ TEST(OpKernelType, ToString) {
   using OpKernelType = paddle::framework::OpKernelType;
   using DataType = paddle::framework::proto::VarType;
   using CPUPlace = paddle::platform::CPUPlace;
-  using DataLayout = phi::DataLayout;
+  using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
   OpKernelType op_kernel_type(
@@ -43,7 +43,7 @@ TEST(OpKernelType, Hash) {
   using DataType = paddle::framework::proto::VarType;
   using CPUPlace = paddle::platform::CPUPlace;
   using CUDAPlace = paddle::platform::CUDAPlace;
-  using DataLayout = phi::DataLayout;
+  using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
   OpKernelType op_kernel_type_1(

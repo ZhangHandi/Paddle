@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -60,13 +61,13 @@ class PrintOptions {
 };
 
 void TensorToStream(std::ostream& os,
-                    const phi::DenseTensor& tensor,
+                    const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      Tensor* tensor,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape);
@@ -77,10 +78,10 @@ void TensorFromStream(std::istream& is,
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
-void TensorCopy(const phi::DenseTensor& src,
+void TensorCopy(const Tensor& src,
                 const platform::Place& dst_place,
                 const platform::DeviceContext& ctx,
-                phi::DenseTensor* dst);
+                Tensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -89,32 +90,30 @@ void TensorCopy(const phi::DenseTensor& src,
 // stream, if this copy operation is carried out on the src_place's stream,
 // when dst is used in dst_place's stream the copy operation may be
 // not completed.
-void TensorCopy(const phi::DenseTensor& src,
+void TensorCopy(const Tensor& src,
                 const platform::Place& dst_place,
-                phi::DenseTensor* dst);
+                Tensor* dst);
 
-void TensorCopySync(const phi::DenseTensor& src,
+void TensorCopySync(const Tensor& src,
                     const platform::Place& dst_place,
-                    phi::DenseTensor* dst);
+                    Tensor* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const platform::DeviceContext& ctx,
-                      phi::DenseTensor* dst);
+                      Tensor* dst);
 template <typename T>
-void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst);
+void TensorFromVector(const std::vector<T>& src, Tensor* dst);
 
 template <typename T>
-void TensorToVector(const phi::DenseTensor& src,
+void TensorToVector(const Tensor& src,
                     const platform::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
-void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
+void TesnorToVector(const Tensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
-
-void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 
 //
 // The implementation of template functions.
@@ -124,7 +123,7 @@ template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
                      const platform::DeviceContext& ctx,
-                     phi::DenseTensor* dst) {
+                     Tensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
   platform::CPUPlace src_place;
@@ -149,7 +148,7 @@ void TensorFromArray(const T* src,
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
     //  1. vector -> npu pinned tensor
     platform::NPUPinnedPlace npu_pinned_place;
-    phi::DenseTensor npu_pinned_tensor;
+    Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(dst->dims());
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
@@ -192,11 +191,6 @@ void TensorFromArray(const T* src,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
-#ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-#endif
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
@@ -206,7 +200,7 @@ void TensorFromArray(const T* src,
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const platform::DeviceContext& ctx,
-                      phi::DenseTensor* dst) {
+                      Tensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
@@ -236,7 +230,7 @@ void TensorFromVector(const std::vector<T>& src,
   // so pass nullptr as stream to  memory::Copy().
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
     //  1. vector -> npu pinned tensor
-    phi::DenseTensor npu_pinned_tensor(dst->dtype());
+    Tensor npu_pinned_tensor(dst->dtype());
     platform::NPUPinnedPlace npu_pinned_place;
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data<T>(dst->dims(), npu_pinned_place);
@@ -295,7 +289,7 @@ void TensorFromVector(const std::vector<T>& src,
 template <>
 inline void TensorFromVector(const std::vector<bool>& src,
                              const platform::DeviceContext& ctx,
-                             phi::DenseTensor* dst) {
+                             Tensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
   // https://stackoverflow.com/questions/46115669/why-does-stdvectorbool-have-no-data/46115714
@@ -328,7 +322,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
     //  1. vector -> npu pinned tensor
     platform::NPUPinnedPlace npu_pinned_place;
-    phi::DenseTensor npu_pinned_tensor;
+    Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(dst->dims());
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
@@ -375,7 +369,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 }
 
 template <typename T>
-void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst) {
+void TensorFromVector(const std::vector<T>& src, Tensor* dst) {
   platform::CPUPlace dst_place = platform::CPUPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
@@ -387,8 +381,7 @@ void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst) {
 }
 
 template <>
-inline void TensorFromVector(const std::vector<bool>& src,
-                             phi::DenseTensor* dst) {
+inline void TensorFromVector(const std::vector<bool>& src, Tensor* dst) {
   bool* array = new bool[src.size()];
   for (unsigned int i = 0; i < src.size(); i++) {
     array[i] = static_cast<bool>(src[i]);
@@ -405,7 +398,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 }
 
 template <typename T>
-void TensorToVector(const phi::DenseTensor& src,
+void TensorToVector(const Tensor& src,
                     const platform::DeviceContext& ctx,
                     std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
@@ -461,7 +454,7 @@ void TensorToVector(const phi::DenseTensor& src,
 }
 
 template <>
-inline void TensorToVector(const phi::DenseTensor& src,
+inline void TensorToVector(const Tensor& src,
                            const platform::DeviceContext& ctx,
                            std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
@@ -513,7 +506,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
 }
 
 template <typename T>
-void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
+void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
 
@@ -532,8 +525,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
 }
 
 template <>
-inline void TensorToVector(const phi::DenseTensor& src,
-                           std::vector<bool>* dst) {
+inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);
 
@@ -560,32 +552,31 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 
-inline phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
-                                        int num_col_dims) {
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   int rank = src.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
       2,
       platform::errors::InvalidArgument(
           "'ReshapeToMatrix()' is only used for flatten high rank "
-          "tensors to matrixs. The dimensions of phi::DenseTensor must be "
+          "tensors to matrixs. The dimensions of Tensor must be "
           "greater or equal than 2. "
-          "But received dimensions of phi::DenseTensor is %d",
+          "But received dimensions of Tensor is %d",
           rank));
   if (rank == 2) {
     return src;
   }
-  phi::DenseTensor res;
+  Tensor res;
   res.ShareDataWith(src);
   res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
 
 template <typename T>
-inline T GetValue(const phi::DenseTensor* x) {
+inline T GetValue(const framework::Tensor* x) {
   T value = static_cast<T>(0);
   if (!platform::is_cpu_place(x->place())) {
-    phi::DenseTensor cpu_x;
+    framework::Tensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

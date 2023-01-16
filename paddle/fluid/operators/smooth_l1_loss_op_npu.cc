@@ -23,12 +23,12 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in_x = context.Input<phi::DenseTensor>("X");
-    auto* in_y = context.Input<phi::DenseTensor>("Y");
-    auto* inside_weight = context.Input<phi::DenseTensor>("InsideWeight");
-    auto* outside_weight = context.Input<phi::DenseTensor>("OutsideWeight");
-    auto* out_diff = context.Output<phi::DenseTensor>("Diff");
-    auto* out_loss = context.Output<phi::DenseTensor>("Out");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* in_y = context.Input<Tensor>("Y");
+    auto* inside_weight = context.Input<Tensor>("InsideWeight");
+    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
+    auto* out_diff = context.Output<Tensor>("Diff");
+    auto* out_loss = context.Output<Tensor>("Out");
     out_diff->mutable_data<T>(context.GetPlace());
     out_loss->mutable_data<T>(context.GetPlace());
 
@@ -42,12 +42,12 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
     const auto& runner1 = NpuOpRunner("Sub", {*in_x, *in_y}, {*out_diff}, {});
     runner1.Run(stream);
 
-    phi::DenseTensor no_reduce_loss(in_x->dtype());
+    Tensor no_reduce_loss(in_x->dtype());
     no_reduce_loss.Resize(in_x->dims());
     no_reduce_loss.mutable_data<T>(context.GetPlace());
     // multiply inside weight before get the loss
     if (has_weight) {
-      phi::DenseTensor tmp_diff(out_diff->dtype());
+      Tensor tmp_diff(out_diff->dtype());
       tmp_diff.Resize(out_diff->dims());
       tmp_diff.mutable_data<T>(context.GetPlace());
       const auto& runner2 =
@@ -59,11 +59,11 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           out_diff);
 
-      phi::DenseTensor tmp_x(in_x->dtype());
+      Tensor tmp_x(in_x->dtype());
       tmp_x.Resize(in_x->dims());
       tmp_x.mutable_data<T>(context.GetPlace());
 
-      phi::DenseTensor tmp_y(in_y->dtype());
+      Tensor tmp_y(in_y->dtype());
       tmp_y.Resize(in_y->dims());
       tmp_y.mutable_data<T>(context.GetPlace());
 
@@ -90,7 +90,7 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
     // multiply outside weight and loss
     // reduceSum because the output'shape must be [B,1]
     if (has_weight) {
-      phi::DenseTensor tmp_loss(no_reduce_loss.dtype());
+      Tensor tmp_loss(no_reduce_loss.dtype());
       tmp_loss.Resize(no_reduce_loss.dims());
       tmp_loss.mutable_data<T>(context.GetPlace());
       const auto& runner4 =
@@ -117,14 +117,12 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* inside_weight = context.Input<phi::DenseTensor>("InsideWeight");
-    auto* outside_weight = context.Input<phi::DenseTensor>("OutsideWeight");
-    auto* diff = context.Input<phi::DenseTensor>("Diff");
-    auto* og = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* outx_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* outy_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* inside_weight = context.Input<Tensor>("InsideWeight");
+    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
+    auto* diff = context.Input<Tensor>("Diff");
+    auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* outx_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* outy_grad = context.Output<Tensor>(framework::GradVarName("Y"));
     auto sigma = context.Attr<T>("sigma");
     T sigma2 = 1.0 / (sigma * sigma);
     bool has_weight = (inside_weight != nullptr) && (outside_weight != nullptr);
@@ -134,13 +132,13 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // diff == in_x - in_y == diff - 0
-    phi::DenseTensor tmp_zero(diff->dtype());
+    Tensor tmp_zero(diff->dtype());
     tmp_zero.Resize(diff->dims());
     tmp_zero.mutable_data<T>(context.GetPlace());
     const auto& runner_zero = NpuOpRunner("ZerosLike", {*diff}, {tmp_zero}, {});
     runner_zero.Run(stream);
 
-    phi::DenseTensor grad(diff->dtype());
+    Tensor grad(diff->dtype());
     grad.Resize(diff->dims());
     grad.mutable_data<T>(context.GetPlace());
     // broadcast og(output_grad) to adapt to the npu interface
@@ -151,7 +149,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
                     {{"shape", phi::vectorize(diff->dims())}});
     runner_broad.Run(stream);
 
-    phi::DenseTensor gradient(diff->dtype());
+    Tensor gradient(diff->dtype());
     gradient.Resize(diff->dims());
     gradient.mutable_data<T>(context.GetPlace());
     // diff == diff - 0 == in_x - in_y
@@ -163,14 +161,14 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
 
     // mul weight and gradient
     if (has_weight) {
-      phi::DenseTensor weight(inside_weight->dtype());
+      Tensor weight(inside_weight->dtype());
       weight.Resize(inside_weight->dims());
       weight.mutable_data<T>(context.GetPlace());
       const auto& runner_weight =
           NpuOpRunner("Mul", {*inside_weight, *outside_weight}, {weight}, {});
       runner_weight.Run(stream);
 
-      phi::DenseTensor tmp_grad(gradient.dtype());
+      Tensor tmp_grad(gradient.dtype());
       tmp_grad.Resize(gradient.dims());
       tmp_grad.mutable_data<T>(context.GetPlace());
       const auto& runner_weight_grad =
@@ -196,7 +194,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     // outy_grad = - gradient
     if (outy_grad) {
       outy_grad->mutable_data<T>(context.GetPlace());
-      phi::DenseTensor coeff(experimental::DataType::FLOAT32);
+      Tensor coeff(experimental::DataType::FLOAT32);
       coeff.mutable_data<float>({1}, context.GetPlace());
       FillNpuTensorWithConstant<float>(&coeff, -1);
       const auto& runner_y_grad =

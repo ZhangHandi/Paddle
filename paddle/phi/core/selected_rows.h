@@ -90,9 +90,8 @@ class SelectedRows : public TensorBase,
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0,
-                     bool fake_alloc = false) override {
-    return impl_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
+                     size_t requested_size = 0) override {
+    return impl_->AllocateFrom(allocator, dtype, requested_size);
   }
 
   /*
@@ -133,7 +132,10 @@ class SelectedRows : public TensorBase,
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override { return impl_->dims(); }
+  const DDim& dims() const noexcept override {
+    return impl_->dims();
+    // return phi::make_ddim(dims);
+  }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.

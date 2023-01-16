@@ -22,18 +22,19 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(pool2d);
-PD_DECLARE_KERNEL(pool2d, OneDNN, ONEDNN);
+PD_DECLARE_KERNEL(pool2d, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(relu);
-PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
 USE_OP_ITSELF(shape);
-PD_DECLARE_KERNEL(shape, OneDNN, ONEDNN);
+USE_OP_DEVICE_KERNEL(shape, MKLDNN);
 USE_OP_ITSELF(crop);
 USE_OP_DEVICE_KERNEL(crop, CPU);
 
@@ -46,16 +47,17 @@ namespace operators {
 
 struct InputVars {
   std::string name;
-  phi::DenseTensor *tensor;
+  framework::LoDTensor *tensor;
 };
 
 TEST(test_pool2d_transpose_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
-  phi::CPUPlace p;
+  platform::CPUPlace p;
   framework::Scope scope;
 
-  InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
+  InputVars input_name = {"x",
+                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
   // Initialize input data
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
@@ -67,8 +69,8 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
     data_ptr[i] = dist(engine);
   }
 
-  scope.Var("y")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
+  scope.Var("y")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
 
   auto &pool = platform::DeviceContextPool::Instance();
 
@@ -108,10 +110,11 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
-  phi::CPUPlace p;
+  platform::CPUPlace p;
   framework::Scope scope;
 
-  InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
+  InputVars input_name = {"x",
+                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
   // Initialize input data
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
@@ -123,9 +126,9 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
     data_ptr[i] = dist(engine);
   }
 
-  scope.Var("y")->GetMutable<phi::DenseTensor>();
-  scope.Var("u")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
+  scope.Var("y")->GetMutable<framework::LoDTensor>();
+  scope.Var("u")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
 
   auto &pool = platform::DeviceContextPool::Instance();
 
@@ -171,10 +174,11 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
 TEST(test_pool2d_shape_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});              // NHWC shape
   std::vector<int32_t> expected_dims{1, 3, 7, 512};  // NHWC expected shape
-  phi::CPUPlace p;
+  platform::CPUPlace p;
   framework::Scope scope;
 
-  InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
+  InputVars input_name = {"x",
+                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
   // Initialize input data
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
@@ -186,8 +190,8 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
     data_ptr[i] = dist(engine);
   }
 
-  scope.Var("y")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
+  scope.Var("y")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
 
   auto &pool = platform::DeviceContextPool::Instance();
 
@@ -226,12 +230,13 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
 TEST(test_pool2d_crop_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 3, 7, 512});  // NCHW expected shape
-  phi::CPUPlace p;
+  platform::CPUPlace p;
   framework::Scope scope;
 
-  InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
+  InputVars input_name = {"x",
+                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
   InputVars second_crop_input_name = {
-      "v", scope.Var("v")->GetMutable<phi::DenseTensor>()};
+      "v", scope.Var("v")->GetMutable<framework::LoDTensor>()};
   // Initialize input data
   std::uniform_real_distribution<float> dist(10.0f, 20.0f);
   std::mt19937 engine;
@@ -254,8 +259,8 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
                          dnnl::memory::format_tag::nhwc);
   second_crop_input_name.tensor->set_mem_desc(second_crop_input_md);
 
-  scope.Var("y")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
+  scope.Var("y")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
 
   auto &pool = platform::DeviceContextPool::Instance();
 

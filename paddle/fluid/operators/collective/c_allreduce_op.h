@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -76,18 +76,6 @@ class CAllReduceOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (var_name == "Cond") {
-      return expected_kernel_type;
-    } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
-    }
-  }
 };
 
 template <ReduceType red_type, typename T>
@@ -95,8 +83,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
     int64_t send_numel = in->numel();
@@ -150,10 +138,11 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 // return true if found_nan or return false;
 inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
                         aclrtStream stream,
-                        const phi::DenseTensor* in) {
-  phi::DenseTensor out(in->type());
+                        const paddle::framework::Tensor* in) {
+  using Tensor = paddle::framework::Tensor;
+  Tensor out(in->type());
 
-  phi::DenseTensor mean(in->type());
+  Tensor mean(in->type());
   mean.Resize({1});
   mean.mutable_data<float>(dev_ctx.GetPlace());
   std::vector<int> axes;
@@ -191,26 +180,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<phi::DenseTensor>("Cond");
-      auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` tensor should be on cpu place"));
-      PADDLE_ENFORCE_EQ(cond->numel(),
-                        1,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` should be shape [1]"));
-      if (!cond->data<bool>()[0]) {
-        VLOG(4) << "Skip all reduce Op since cond is 0";
-        return;
-      }
-    }
-
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
     HcclDataType dtype =
         platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
@@ -266,7 +237,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
             << ", stream:" << stream;
 
-    phi::DenseTensor tmp;
+    framework::Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
     bool found_nan = false;
@@ -292,7 +263,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       T inf = static_cast<T>(std::numeric_limits<float>::infinity());
       VLOG(4) << "fill input data constant inf";
       auto dims = in->dims();
-      auto mutable_in = const_cast<phi::DenseTensor*>(in);
+      auto mutable_in = const_cast<framework::Tensor*>(in);
       FillNpuTensorWithConstant<T>(mutable_in, inf);
       mutable_in->Resize(dims);
     }
@@ -325,25 +296,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_XPU_BKCL)
-    if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<phi::DenseTensor>("Cond");
-      auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` tensor should be on cpu place"));
-      PADDLE_ENFORCE_EQ(cond->numel(),
-                        1,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` should be shape [1]"));
-      if (!cond->data<bool>()[0]) {
-        VLOG(4) << "Skip all reduce Op since cond is 0";
-        return;
-      }
-    }
-
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
     BKCLDataType dtype =
@@ -410,26 +364,9 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<phi::DenseTensor>("Cond");
-      auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` tensor should be on cpu place"));
-      PADDLE_ENFORCE_EQ(cond->numel(),
-                        1,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` should be shape [1]"));
-      if (!cond->data<bool>()[0]) {
-        VLOG(4) << "Skip all reduce Op since cond is 0";
-        return;
-      }
-    }
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
@@ -481,10 +418,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      // should not use global ctx for calc stream.
-      // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
-      stream = ctx.cuda_device_context().stream();
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -530,25 +465,8 @@ class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CNCL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-
-    if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<phi::DenseTensor>("Cond");
-      auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` tensor should be on cpu place"));
-      PADDLE_ENFORCE_EQ(cond->numel(),
-                        1,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` should be shape [1]"));
-      if (!cond->data<bool>()[0]) {
-        VLOG(4) << "Skip all reduce Op since cond is 0";
-        return;
-      }
-    }
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
     cnclDataType_t dtype =
@@ -631,12 +549,10 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 )DOC",
                                GetName(),
                                GetName()));
-    ExtraMake();
   }
 
  protected:
   virtual std::string GetName() const = 0;
-  virtual void ExtraMake() {}
 };
 
 }  // namespace operators

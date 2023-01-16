@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class L1NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

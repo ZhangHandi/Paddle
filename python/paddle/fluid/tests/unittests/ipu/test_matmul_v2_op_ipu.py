@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -45,12 +45,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
-        )
-        y = paddle.static.data(
-            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
-        )
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
         out = paddle.matmul(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -66,6 +66,7 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,
@@ -74,6 +75,7 @@ class TestCase1(TestBase):
 
 
 class TestCase3(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[5, 4, 2, 3])
         y = np.random.uniform(size=[5, 4, 3, 2])
@@ -83,6 +85,7 @@ class TestCase3(TestBase):
 
 
 class TestCase4(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 2, 3])
         y = np.random.uniform(size=[4, 3, 2])
@@ -92,6 +95,7 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 2, 3])
         y = np.random.uniform(size=[3, 2])
@@ -101,6 +105,7 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
         y = np.random.uniform(size=[3])
@@ -111,6 +116,7 @@ class TestCase6(TestBase):
 
 @unittest.skip("not supported")
 class TestCase6_2(TestCase6):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
         y = np.random.uniform(size=[3])
@@ -123,6 +129,7 @@ class TestCase6_2(TestCase6):
 
 
 class TestCase7(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 1])
         y = np.random.uniform(size=[1, 2])
@@ -133,6 +140,7 @@ class TestCase7(TestBase):
 
 @unittest.skip("dim > 4 is not supported")
 class TestCase8(TestBase):
+
     def set_data_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[6, 5, 4, 2, 3]).astype('float32'),
@@ -141,6 +149,7 @@ class TestCase8(TestBase):
 
 
 class TestCase9(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "transpose_y": True,
@@ -155,6 +164,7 @@ class TestCase9(TestBase):
 
 
 class TestCase10(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,

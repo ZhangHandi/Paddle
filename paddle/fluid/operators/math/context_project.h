@@ -18,13 +18,16 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace paddle {
 namespace operators {
 
 namespace math {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -48,8 +51,9 @@ namespace math {
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:
  *
- * Assumed input (X) is a [4, M, N] float phi::DenseTensor, and X->lod()[0] =
- * [0, 3, 4]. Besides, for the sake of simplicity, we assume M=1 and N=2.
+ * Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3,
+ * 4].
+ * Besides, for the sake of simplicity, we assume M=1 and N=2.
  *
  * X = [[a1, a2;
  *       b1, b2;
@@ -85,19 +89,18 @@ template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& in,
-                  const phi::DenseTensor* padding_data,
+                  const LoDTensor& in,
+                  const Tensor* padding_data,
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
                   const int context_stride,
                   const int up_pad,
                   const int down_pad,
-                  phi::DenseTensor* col) {
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        im2col_ocf;
+    math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -115,13 +118,13 @@ class ContextProjectFunctor {
                             : static_cast<int>(lod_level_0[i]);
       input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-      phi::DenseTensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
-                                          static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                static_cast<int>(lod_level_0[i + 1]));
 
       sequence_height = static_cast<int>(out_t.dims()[0]);
 
       if (input_row_begin < input_row_end) {
-        phi::DenseTensor in_t = in.Slice(input_row_begin, input_row_end);
+        Tensor in_t = in.Slice(input_row_begin, input_row_end);
 
         std::vector<int64_t> output_shape(
             {sequence_height,
@@ -149,9 +152,8 @@ class ContextProjectFunctor {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
         if (lod_level_0[i] == lod_level_0[i + 1]) continue;
 
-        phi::DenseTensor out_t =
-            col->Slice(static_cast<int>(lod_level_0[i]),
-                       static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -166,9 +168,9 @@ class ContextProjectFunctor {
           for (int k = 0; k < padding_rows; ++k) {
             int padding_size =
                 k + context_length < up_pad ? context_length : up_pad - k;
-            phi::DenseTensor out_t_sub = out_t.Slice(
-                k * context_length, k * context_length + padding_size);
-            phi::DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
+            Tensor out_t_sub = out_t.Slice(k * context_length,
+                                           k * context_length + padding_size);
+            Tensor w_sub = padding_data->Slice(k, k + padding_size);
             framework::TensorCopy(
                 w_sub, context.GetPlace(), context, &out_t_sub);
           }
@@ -195,10 +197,10 @@ class ContextProjectFunctor {
             if (padding_begin > 0 || sequence_height == context_start)
               padding_idx = padding_begin + t;
 
-            phi::DenseTensor out_t_sub = out_t.Slice(
+            Tensor out_t_sub = out_t.Slice(
                 (down_pad_begin_row + t) * context_length - padding_size,
                 (down_pad_begin_row + t) * context_length);
-            phi::DenseTensor w_sub = padding_data->Slice(
+            Tensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
             framework::TensorCopy(
                 w_sub, context.GetPlace(), context, &out_t_sub);
@@ -215,7 +217,7 @@ template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& in,
+                  const LoDTensor& in,
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
@@ -224,12 +226,11 @@ class ContextProjectGradFunctor {
                   const int down_pad,
                   bool pad_grad,
                   bool input_grad,
-                  phi::DenseTensor* padding_data,
-                  phi::DenseTensor* col) {
+                  Tensor* padding_data,
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
-        col2im_ocf;
+    math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -249,14 +250,13 @@ class ContextProjectGradFunctor {
                               : static_cast<int>(lod_level_0[i]);
         input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-        phi::DenseTensor out_t =
-            col->Slice(static_cast<int>(lod_level_0[i]),
-                       static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
         if (input_row_begin < input_row_end) {
-          phi::DenseTensor in_t = in.Slice(input_row_begin, input_row_end);
+          Tensor in_t = in.Slice(input_row_begin, input_row_end);
 
           std::vector<int64_t> output_shape(
               {sequence_height,
@@ -283,9 +283,8 @@ class ContextProjectGradFunctor {
         for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
           if (lod_level_0[i] == lod_level_0[i + 1]) continue;
 
-          phi::DenseTensor out_t =
-              col->Slice(static_cast<int>(lod_level_0[i]),
-                         static_cast<int>(lod_level_0[i + 1]));
+          Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                    static_cast<int>(lod_level_0[i + 1]));
 
           sequence_height = static_cast<int>(out_t.dims()[0]);
           out_t.Resize({static_cast<int64_t>(sequence_height) * context_length,
@@ -298,9 +297,9 @@ class ContextProjectGradFunctor {
             for (int k = 0; k < padding_rows; ++k) {
               int padding_size =
                   k + context_length < up_pad ? context_length : up_pad - k;
-              phi::DenseTensor out_t_sub = out_t.Slice(
-                  k * context_length, k * context_length + padding_size);
-              phi::DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
+              Tensor out_t_sub = out_t.Slice(k * context_length,
+                                             k * context_length + padding_size);
+              Tensor w_sub = padding_data->Slice(k, k + padding_size);
               blas.AXPY(w_sub.numel(),
                         static_cast<T>(1),
                         out_t_sub.data<T>(),
@@ -330,10 +329,10 @@ class ContextProjectGradFunctor {
               if (padding_begin > 0 || sequence_height == context_start)
                 padding_idx = padding_begin + t;
 
-              phi::DenseTensor out_t_sub = out_t.Slice(
+              Tensor out_t_sub = out_t.Slice(
                   (down_pad_begin_row + t) * context_length - padding_size,
                   (down_pad_begin_row + t) * context_length);
-              phi::DenseTensor w_sub = padding_data->Slice(
+              Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
               blas.AXPY(w_sub.numel(),
                         static_cast<T>(1),

@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 
+#include <map>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -59,19 +60,19 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(phi::DenseTensor* tensor,
+std::string PrintLodTensor(Tensor* tensor,
                            int64_t start,
                            int64_t end,
                            char separator = ',',
                            bool need_leading_separator = false);
-void PrintLodTensor(phi::DenseTensor* tensor,
+void PrintLodTensor(Tensor* tensor,
                     int64_t start,
                     int64_t end,
-                    std::string& output_str,  // NOLINT
+                    std::string& output_str,
                     char separator = ',',
                     bool need_leading_separator = false);
-std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
-bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
+bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -242,7 +243,6 @@ class DeviceWorker {
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
-  int thread_num_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -275,9 +275,7 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template <typename T>
-  void SetZero(phi::DenseTensor* tensor,
-               phi::DenseTensor* root_tensor,
-               int tensor_dim);
+  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
@@ -290,7 +288,6 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
-  static std::atomic<uint64_t> worker_num_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {

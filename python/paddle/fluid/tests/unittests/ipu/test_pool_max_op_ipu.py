@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -41,19 +41,22 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {
-            "kernel_size": 3,
-            "stride": 1,
-            "padding": 0,
+            "pool_size": 3,
+            "pool_type": 'max',
+            "pool_stride": 1,
+            "pool_padding": 0,
+            "global_pooling": False,
             "ceil_mode": False,
+            "exclusive": True,
             "data_format": 'NCHW',
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
-        )
-        out = paddle.nn.functional.max_pool2d(x, **self.attrs)
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        out = paddle.fluid.layers.pool2d(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -68,59 +71,100 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['kernel_size'] = 3
+        self.attrs['pool_size'] = 3
 
 
 class TestCase1_2(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['kernel_size'] = [3, 1]
+        self.attrs['pool_size'] = [3, 1]
 
 
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['stride'] = 2
+        self.attrs['pool_stride'] = 2
 
 
 class TestCase2_2(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['stride'] = [2, 1]
+        self.attrs['pool_stride'] = [2, 1]
 
 
 class TestCase3(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['padding'] = [1, 1]
+        self.attrs['pool_padding'] = [1, 1]
 
 
 class TestCase3_2(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['padding'] = [1, 1, 2, 2]
+        self.attrs['pool_padding'] = [1, 1, 2, 2]
 
 
 @unittest.skip('auto_pad is not currently supported')
 class TestCase3_3(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['padding'] = 'VALID'
+        self.attrs['pool_padding'] = 'VALID'
 
 
 @unittest.skip('auto_pad is not currently supported')
 class TestCase3_4(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
-        self.attrs['padding'] = 'SAME'
+        self.attrs['pool_padding'] = 'SAME'
+
+
+class TestCase4(TestBase):
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
+        self.attrs['global_pooling'] = True
 
 
 class TestCase5(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['ceil_mode'] = True
+
+
+class TestCase6(TestBase):
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
+        self.attrs['exclusive'] = False
+
+
+class TestAdaptive(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {
+            "pool_size": 1,
+            "pool_type": 'max',
+            "require_index": False
+        }
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        out = paddle.fluid.layers.adaptive_pool2d(x, **self.attrs)
+        self.fetch_list = [out.name]
 
 
 if __name__ == "__main__":

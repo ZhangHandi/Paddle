@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .ps_program_builder import *  # noqa: F403
-from .public import *  # noqa: F403
+import paddle
+from .ps_program_builder import *
+from .public import *
 
 __all__ = [
-    'PsProgramBuilder',
-    'GeoPsProgramBuilder',
-    'CpuSyncPsProgramBuilder',
-    'CpuAsyncPsProgramBuilder',
-    'GpuPsProgramBuilder',
-    'HeterAsyncPsProgramBuilder',
-    'FlPsProgramBuilder',
-    'NuPsProgramBuilder',
+    'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',
+    'CpuAsyncPsProgramBuilder', 'GpuPsProgramBuilder',
+    'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder', 'NuPsProgramBuilder'
 ]
 
 
-class PsProgramBuilderFactory:
+class PsProgramBuilderFactory(object):
+
     def __init__(self):
         pass
 

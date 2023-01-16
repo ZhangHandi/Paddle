@@ -39,7 +39,7 @@ void PrintVar(framework::Scope* scope,
     VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }
-  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   if (tensor == nullptr) {
     VLOG(0) << "tensor of variable " << var_name
             << " does not exist in your scope";
@@ -58,7 +58,7 @@ void PrintVar(framework::Scope* scope,
     if (framework::TransToProtoVarType(tensor->dtype()) == proto_type) { \
       *sstream << "[";                                                   \
       const cpp_type* data = nullptr;                                    \
-      phi::DenseTensor cpu_tensor;                                       \
+      framework::LoDTensor cpu_tensor;                                   \
       if (is_cpu_place(tensor->place())) {                               \
         data = tensor->data<cpp_type>();                                 \
       } else {                                                           \

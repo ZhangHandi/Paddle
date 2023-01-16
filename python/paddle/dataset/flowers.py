@@ -29,16 +29,27 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
 
+from __future__ import print_function
+
+import itertools
 import functools
-import tarfile
-from multiprocessing import cpu_count
-
-import paddle.utils.deprecated as deprecated
-from paddle.dataset.image import load_image_bytes, simple_transform
-from paddle.reader import map_readers, xmap_readers
-from paddle.utils import try_import
-
 from .common import download
+import tarfile
+
+from paddle.dataset.image import load_image_bytes
+from paddle.dataset.image import load_image
+from paddle.dataset.image import simple_transform
+from paddle.dataset.image import batch_images_from_tar
+
+from paddle.reader import map_readers, xmap_readers
+from paddle import compat as cpt
+import paddle.utils.deprecated as deprecated
+import os
+import numpy as np
+from multiprocessing import cpu_count
+import six
+from six.moves import cPickle as pickle
+from paddle.utils import try_import
 
 __all__ = []
 
@@ -62,9 +73,11 @@ def default_mapper(is_train, sample):
     '''
     img, label = sample
     img = load_image_bytes(img)
-    img = simple_transform(
-        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68]
-    )
+    img = simple_transform(img,
+                           256,
+                           224,
+                           is_train,
+                           mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
 
 
@@ -72,16 +85,14 @@ train_mapper = functools.partial(default_mapper, True)
 test_mapper = functools.partial(default_mapper, False)
 
 
-def reader_creator(
-    data_file,
-    label_file,
-    setid_file,
-    dataset_name,
-    mapper,
-    buffered_size=1024,
-    use_xmap=True,
-    cycle=False,
-):
+def reader_creator(data_file,
+                   label_file,
+                   setid_file,
+                   dataset_name,
+                   mapper,
+                   buffered_size=1024,
+                   use_xmap=True,
+                   cycle=False):
     '''
     1. read images from tar file and
         merge images into batch files in 102flowers.tgz_batch/
@@ -137,8 +148,7 @@ def reader_creator(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader",
-)
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers training set reader.
@@ -157,24 +167,21 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: train data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TRAIN_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle,
-    )
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TRAIN_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader",
-)
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers test set reader.
@@ -193,24 +200,21 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TEST_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle,
-    )
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TEST_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader",
-)
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers validation set reader.
@@ -227,15 +231,10 @@ def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        VALID_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-    )
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG,
+                          mapper, buffered_size, use_xmap)
 
 
 def fetch():

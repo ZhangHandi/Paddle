@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class ElementwisePowMLUKernel : public framework::OpKernel<T> {
  public:
@@ -30,11 +32,11 @@ template <typename T>
 class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* y = ctx.Input<phi::DenseTensor>("Y");
-    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     auto place = ctx.GetPlace();
 
@@ -62,11 +64,11 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
     auto dout_dims = dout->dims();
     if (dx) {
       // dx = dout * y * pow(x, y - 1);
-      phi::DenseTensor one_dx(y->type());
+      Tensor one_dx(y->type());
       one_dx.mutable_data<T>(phi::make_ddim(y_dims_array), place);
       FillMLUTensorWithHostValue(ctx, static_cast<T>(1), &one_dx);
 
-      phi::DenseTensor sub_dx(y->type());
+      Tensor sub_dx(y->type());
       sub_dx.mutable_data<T>(phi::make_ddim(y_dims_array), place);
       MLUCnnlOpTensorDesc op_tensor_desc(
           CNNL_OP_TENSOR_SUB, data_type, CNNL_NOT_PROPAGATE_NAN);
@@ -80,7 +82,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
                         GetBasePtr(&sub_dx),
                         data_type);
 
-      phi::DenseTensor tmp_dx(x->type());
+      Tensor tmp_dx(x->type());
       tmp_dx.mutable_data<T>(phi::make_ddim(out_dims_array), place);
       MLUCnnl::Pow(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,
@@ -132,7 +134,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
     }
     if (dy) {
       // dy = dout * log(x) * pow(x, y)
-      phi::DenseTensor tmp_dy(y->type());
+      Tensor tmp_dy(y->type());
       tmp_dy.mutable_data<T>(phi::make_ddim(out_dims_array), place);
       MLUCnnl::Pow(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,
@@ -143,7 +145,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
                    out_desc.get(),
                    GetBasePtr(&tmp_dy));
 
-      phi::DenseTensor log_x(x->type());
+      Tensor log_x(x->type());
       log_x.mutable_data<T>(x->dims(), place);
       MLUCnnl::Log(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,

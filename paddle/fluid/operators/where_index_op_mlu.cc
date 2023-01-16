@@ -20,16 +20,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class MLUWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* condition = context.Input<phi::DenseTensor>("Condition");
-    auto* out = context.Output<phi::DenseTensor>("Out");
+    auto* condition = context.Input<Tensor>("Condition");
+    auto* out = context.Output<Tensor>("Out");
     auto dims = condition->dims();
     const int rank = dims.size();
 
-    phi::DenseTensor num_true;
+    Tensor num_true;
     num_true.mutable_data<int>({1}, context.GetPlace());
     MLUCnnlTensorDesc con_desc(*condition);
     MLUCnnlTensorDesc num_true_desc(num_true);
@@ -39,7 +41,7 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
                      num_true_desc.get(),
                      GetBasePtr(&num_true));
 
-    phi::DenseTensor local_true_num;
+    Tensor local_true_num;
     paddle::framework::TensorCopySync(
         num_true, platform::CPUPlace(), &local_true_num);
     auto true_num = *local_true_num.data<int>();
@@ -52,7 +54,7 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<MLUDeviceContext>();
-    phi::DenseTensor out_int32 =
+    framework::Tensor out_int32 =
         context.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                              dev_ctx);
     MLUCnnlTensorDesc out_int32_desc(out_int32);

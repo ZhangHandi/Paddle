@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-import os
-
-import numpy as np
-
 import paddle
 import paddle.static as static
+import numpy as np
+import json
+import os
 from paddle.fluid import core
 
 
-class CostModel:
+class CostModel():
+
     def __init__(self):
         pass
 
@@ -31,12 +30,11 @@ class CostModel:
 
         main_program = static.Program()
         startup_program = static.Program()
-        with static.program_guard(
-            main_program=main_program, startup_program=startup_program
-        ):
-            data = paddle.static.data(
-                name='X', shape=[None, 1], dtype='float32'
-            )
+        with static.program_guard(main_program=main_program,
+                                  startup_program=startup_program):
+            data = paddle.static.data(name='X',
+                                      shape=[None, 1],
+                                      dtype='float32')
             hidden = paddle.static.nn.fc(data, 10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -45,13 +43,11 @@ class CostModel:
 
         return startup_program, main_program
 
-    def profile_measure(
-        self,
-        startup_program,
-        main_program,
-        device='gpu',
-        fetch_cost_list=['time'],
-    ):
+    def profile_measure(self,
+                        startup_program,
+                        main_program,
+                        device='gpu',
+                        fetch_cost_list=['time']):
 
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
@@ -65,9 +61,8 @@ class CostModel:
         cost_data = cost_model.ProfileMeasure(device)
 
     def static_cost_data(self):
-        static_cost_data_path = os.path.join(
-            os.path.dirname(__file__), "static_op_benchmark.json"
-        )
+        static_cost_data_path = os.path.join(os.path.dirname(__file__),
+                                             "static_op_benchmark.json")
         with open(static_cost_data_path, 'r') as load_f:
             load_dict = json.load(load_f)
         self._static_cost_data = load_dict
@@ -76,7 +71,7 @@ class CostModel:
 
     def get_static_op_time(self, op_name, forward=True, dtype="float32"):
         # if forward is True, return op forward time, otherwise return op backward time.
-        if op_name is None:
+        if op_name == None:
             raise ValueError(
                 'op_name should not be empty when you want to get static op time'
             )
@@ -84,7 +79,7 @@ class CostModel:
         op_cost = {}
         for op_data in self._static_cost_data:
             if (op_data["op"] == op_name) and (dtype in op_data["config"]):
-                if forward:
+                if (forward):
                     op_cost["op_time"] = op_data["paddle_gpu_time"]
                 else:
                     op_cost["op_time"] = op_data["paddle_gpu_time_backward"]

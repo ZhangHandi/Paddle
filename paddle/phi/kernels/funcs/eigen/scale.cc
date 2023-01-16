@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
@@ -42,7 +41,6 @@ struct EigenScale<Eigen::DefaultDevice, T> {
 template struct EigenScale<Eigen::DefaultDevice, float>;
 template struct EigenScale<Eigen::DefaultDevice, double>;
 template struct EigenScale<Eigen::DefaultDevice, dtype::bfloat16>;
-template struct EigenScale<Eigen::DefaultDevice, dtype::float16>;
 template struct EigenScale<Eigen::DefaultDevice, uint8_t>;
 template struct EigenScale<Eigen::DefaultDevice, int8_t>;
 template struct EigenScale<Eigen::DefaultDevice, int16_t>;

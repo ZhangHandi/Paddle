@@ -18,15 +18,16 @@
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 class MLUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -55,8 +56,8 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    phi::DenseTensor input_tensor(input->type());
-    phi::DenseTensor output_tensor(output->type());
+    Tensor input_tensor(input->type());
+    Tensor output_tensor(output->type());
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     if (channel_last) {
       input_tensor.ShareDataWith(*input);
@@ -77,7 +78,7 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
     output_tensor.set_layout(DataLayout::kNHWC);
 
     // transpose filter from MCHW to MHWC
-    phi::DenseTensor trans_filter(filter->type());
+    Tensor trans_filter(filter->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -128,14 +129,11 @@ template <typename T>
 class MLUConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("Input");
-    auto filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    auto input = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -165,8 +163,8 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    phi::DenseTensor input_tensor(input->type());
-    phi::DenseTensor output_grad_tensor(output_grad->type());
+    Tensor input_tensor(input->type());
+    Tensor output_grad_tensor(output_grad->type());
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
     if (channel_last) {
@@ -192,7 +190,7 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
 
       auto filter_grad_dims = filter_grad->dims();
-      phi::DenseTensor temp_filter_grad(filter_grad->type());
+      Tensor temp_filter_grad(filter_grad->type());
       temp_filter_grad.mutable_data<T>({filter_grad_dims[0],
                                         filter_grad_dims[2],
                                         filter_grad_dims[3],
@@ -233,7 +231,7 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
 
-      phi::DenseTensor input_grad_tensor(input_grad->type());
+      Tensor input_grad_tensor(input_grad->type());
       if (channel_last) {
         input_grad_tensor.ShareDataWith(*input_grad);
       } else {
@@ -247,7 +245,7 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
       input_grad_tensor.set_layout(DataLayout::kNHWC);
 
       // transpose filter from MCHW to MHWC
-      phi::DenseTensor trans_filter(filter->type());
+      Tensor trans_filter(filter->type());
       TransposeFromMLUTensor<T>(ctx,
                                 perm_to_nhwc,
                                 filter,
@@ -294,9 +292,9 @@ template <typename T>
 class MLUDepthwiseConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -325,8 +323,8 @@ class MLUDepthwiseConvOpKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    phi::DenseTensor input_tensor(input->type());
-    phi::DenseTensor output_tensor(output->type());
+    Tensor input_tensor(input->type());
+    Tensor output_tensor(output->type());
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     if (channel_last) {
       groups = in_dims[3];
@@ -349,7 +347,7 @@ class MLUDepthwiseConvOpKernel : public framework::OpKernel<T> {
     output_tensor.set_layout(DataLayout::kNHWC);
 
     // transpose filter from MCHW to MHWC
-    phi::DenseTensor trans_filter(filter->type());
+    Tensor trans_filter(filter->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -400,14 +398,11 @@ template <typename T>
 class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("Input");
-    auto filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+    auto input = ctx.Input<Tensor>("Input");
+    auto filter = ctx.Input<Tensor>("Filter");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -437,8 +432,8 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    phi::DenseTensor input_tensor(input->type());
-    phi::DenseTensor output_grad_tensor(output_grad->type());
+    Tensor input_tensor(input->type());
+    Tensor output_grad_tensor(output_grad->type());
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
     const std::vector<int> perm_hwcm_to_mchw = {3, 2, 0, 1};
@@ -468,7 +463,7 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
 
       auto filter_grad_dims = filter_grad->dims();
-      phi::DenseTensor temp_filter_grad(filter_grad->type());
+      Tensor temp_filter_grad(filter_grad->type());
       // Details about setting diff_w hwcn for better performance, see the CNNL
       // documentation.
       temp_filter_grad.mutable_data<T>({filter_grad_dims[perm_mchw_to_hwcm[0]],
@@ -511,7 +506,7 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
 
-      phi::DenseTensor input_grad_tensor(input_grad->type());
+      Tensor input_grad_tensor(input_grad->type());
       if (channel_last) {
         input_grad_tensor.ShareDataWith(*input_grad);
       } else {
@@ -525,7 +520,7 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
       input_grad_tensor.set_layout(DataLayout::kNHWC);
 
       // transpose filter from MCHW to MHWC
-      phi::DenseTensor trans_filter(filter->type());
+      Tensor trans_filter(filter->type());
       TransposeFromMLUTensor<T>(ctx,
                                 perm_to_nhwc,
                                 filter,

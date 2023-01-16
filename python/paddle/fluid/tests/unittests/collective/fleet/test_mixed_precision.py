@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import unittest
-
-import numpy as np
-
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.contrib.mixed_precision import fp16_utils
 import paddle
 import paddle.nn as nn
 import paddle.static as static
+import numpy as np
 
 paddle.enable_static()
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self, input_size, output_size):
-        super().__init__()
+        super(SimpleNet, self).__init__()
         self.linear1 = nn.Linear(input_size, output_size)
         self.relu1 = nn.ReLU()
         self.linear2 = nn.Linear(input_size, output_size)
@@ -37,15 +39,16 @@ class SimpleNet(nn.Layer):
         x = self.linear1(x)
         # currently, paddle's relu may hide nan/inf, relu(nan) = 0, relu(inf)= inf
         # so, do not use it here.
-        # x = self.relu1(x)
+        #x = self.relu1(x)
         x = self.linear2(x)
-        # x = self.relu2(x)
+        #x = self.relu2(x)
         x = self.linear3(x)
 
         return x
 
 
 class AMPTest(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
 
@@ -61,11 +64,10 @@ class AMPTest(unittest.TestCase):
         loss = mse(out, label)
 
         opt = paddle.fluid.optimizer.Adam(
-            learning_rate=0.0001, parameter_list=model.parameters()
-        )  # 定义优化器
-        opt = paddle.static.amp.decorate(
-            opt, init_loss_scaling=128.0, use_dynamic_loss_scaling=True
-        )
+            learning_rate=0.0001, parameter_list=model.parameters())  # 定义优化器
+        opt = paddle.static.amp.decorate(opt,
+                                         init_loss_scaling=128.0,
+                                         use_dynamic_loss_scaling=True)
         opt.minimize(loss)
         return model, loss, opt
 
@@ -80,17 +82,11 @@ class AMPTest(unittest.TestCase):
             model, loss, opt = self.net()
             weight = model.linear1.weight
             moment1 = opt._optimizer._get_accumulator(
-                opt._optimizer._moment1_acc_str, weight
-            )
+                opt._optimizer._moment1_acc_str, weight)
             beta_pow1 = opt._optimizer._get_accumulator(
-                opt._optimizer._beta1_pow_acc_str, weight
-            )
+                opt._optimizer._beta1_pow_acc_str, weight)
             fetch_list = [
-                loss,
-                weight,
-                moment1,
-                beta_pow1,
-                'find_infinite_scale.tmp_0',
+                loss, weight, moment1, beta_pow1, 'find_infinite_scale.tmp_0'
             ]
 
             exe = paddle.static.Executor(self.place)
@@ -105,24 +101,20 @@ class AMPTest(unittest.TestCase):
             ]
 
             weight_, moment1_, beta_pow1_ = exe.run(
-                startup_prog, fetch_list=[weight, moment1, beta_pow1]
-            )
-            pre_weight_, pre_moment1_, pre_beta_pow1_ = (
-                weight_,
-                moment1_,
-                beta_pow1_,
-            )
+                startup_prog, fetch_list=[weight, moment1, beta_pow1])
+            pre_weight_, pre_moment1_, pre_beta_pow1_ = weight_, moment1_, beta_pow1_
             for i in range(nums_batch):
                 if i % 2:
                     train_data[i][10] = np.inf
                 loss_, weight_, moment1_, beta_pow1_, found_inf = exe.run(
                     main_prog,
-                    feed={"X": train_data[i], "Y": labels[i]},
-                    fetch_list=fetch_list,
-                )
-                print(
-                    loss_, weight_[0][0], moment1_[0][0], beta_pow1_, found_inf
-                )
+                    feed={
+                        "X": train_data[i],
+                        "Y": labels[i]
+                    },
+                    fetch_list=fetch_list)
+                print(loss_, weight_[0][0], moment1_[0][0], beta_pow1_,
+                      found_inf)
                 if i % 2:
                     self.assertTrue(found_inf)
                     np.testing.assert_array_equal(weight_, pre_weight_)
@@ -133,11 +125,7 @@ class AMPTest(unittest.TestCase):
                     self.assertFalse(np.array_equal(weight_, pre_weight_))
                     self.assertFalse(np.array_equal(moment1_, pre_moment1_))
                     self.assertFalse(np.array_equal(beta_pow1_, pre_beta_pow1_))
-                pre_weight_, pre_moment1_, pre_beta_pow1_ = (
-                    weight_,
-                    moment1_,
-                    beta_pow1_,
-                )
+                pre_weight_, pre_moment1_, pre_beta_pow1_ = weight_, moment1_, beta_pow1_
 
 
 if __name__ == '__main__':

@@ -558,20 +558,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
-    } else if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-      if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
-      } else {
-        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
-      }
-      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-#else
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use NPU device since it's not compiled with "
-          "NPU,"
-          "Please recompile or reinstall Paddle with NPU support."));
-#endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -823,11 +809,11 @@ void ParallelExecutor::BCastParamsToDevices(
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
-    if (main_var == nullptr || !main_var->IsType<phi::DenseTensor>()) {
+    if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
 
-    auto &main_tensor = main_var->Get<phi::DenseTensor>();
+    auto &main_tensor = main_var->Get<LoDTensor>();
     if (!main_tensor.IsInitialized()) {
       VLOG(3) << "one in var not inited, return!";
       continue;
@@ -848,7 +834,7 @@ void ParallelExecutor::BCastParamsToDevices(
           buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.dtype());
         }
@@ -918,7 +904,7 @@ void ParallelExecutor::BCastParamsToDevices(
           buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.dtype());
         }
@@ -970,7 +956,7 @@ void ParallelExecutor::BCastParamsToDevices(
       platform::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
-        auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+        auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 
         auto copy_memory = [&] {
           t->Resize(dims);
@@ -1063,8 +1049,7 @@ void ParallelExecutor::SkipMemoryReuse(
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
-    const std::vector<std::unordered_map<std::string, phi::DenseTensor>>
-        &tensors) {
+    const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
   if (platform::IsCUDAGraphCapturing()) {
     for (auto &tensor : tensors) {
       PADDLE_ENFORCE_EQ(
@@ -1113,7 +1098,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
                                         : member_->local_exec_scopes_[i];
       auto *feed_var = feed_scope->Var(pair.first);
 
-      auto *trg = feed_var->GetMutable<phi::DenseTensor>();
+      auto *trg = feed_var->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);
       trg->set_lod(pair.second.lod());
     }
@@ -1135,7 +1120,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 }
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
-    const std::unordered_map<std::string, phi::DenseTensor> &tensors) {
+    const std::unordered_map<std::string, LoDTensor> &tensors) {
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(
         tensors.empty(),
@@ -1241,7 +1226,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
 
-      auto t = feed_var->GetMutable<phi::DenseTensor>();
+      auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }
@@ -1359,14 +1344,8 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "CPU";
   } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
-  } else if (member_->use_device_ == p::kNPU) {
-    device_name = "NPU";
-  } else if (member_->use_device_ == p::kXPU) {
-    device_name = "XPU";
   } else {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/NPU/XPU is supportted. "
-                                      "please use CPU/CUDA/NPU/XPU backend."));
+    device_name = "XPU";
   }
 
   VLOG(1) << string::Sprintf(

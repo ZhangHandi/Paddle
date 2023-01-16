@@ -18,12 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ReduceMaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -31,7 +32,7 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    phi::DenseTensor cast_out(x->type());
+    framework::Tensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
@@ -76,8 +77,8 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
     if (framework::TransToProtoVarType(x->dtype()) ==
         framework::proto::VarType::INT64) {
-      auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
-                        const std::vector<phi::DenseTensor>& outputs,
+      auto op_func = [](const std::vector<Tensor>& inputs,
+                        const std::vector<Tensor>& outputs,
                         const NPUAttributeMap& attrs,
                         const platform::NPUDeviceContext& dev_ctx) {
         const auto& runner =
@@ -114,10 +115,9 @@ template <typename DeviceContext, typename T>
 class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<phi::DenseTensor>("X");
-    auto* out = context.Input<phi::DenseTensor>("Out");
-    auto* out_grad =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Input<Tensor>("Out");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto reduce_dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
     int in_dtype = context.Attr<int>("in_dtype");
@@ -128,8 +128,7 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "NPU only support in_dtype == -1 in reduce_max_grad op."));
 
-    auto* x_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx =
@@ -146,7 +145,7 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    phi::DenseTensor tmp_out, tmp_out_grad;
+    Tensor tmp_out, tmp_out_grad;
     auto tmp_out_dims_vec = x_dims_vec;
     for (auto d : reduce_dims) {
       if (d < 0) {
@@ -160,7 +159,7 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
     tmp_out_grad.ShareDataWith(*out_grad);
     tmp_out_grad.Resize(phi::make_ddim(tmp_out_dims_vec));
 
-    phi::DenseTensor transformed_out(x->type());
+    Tensor transformed_out(x->type());
     transformed_out.Resize(phi::make_ddim(x_dims_vec));
     transformed_out.mutable_data<T>(place);
     NpuOpRunner r_brd_out;
@@ -169,7 +168,7 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
         .AddInput(std::move(x_dims_vec))
         .AddOutput(transformed_out)
         .Run(stream);
-    phi::DenseTensor transformed_out_grad(x->type());
+    Tensor transformed_out_grad(x->type());
     transformed_out_grad.Resize(phi::make_ddim(x_dims_vec));
     transformed_out_grad.mutable_data<T>(place);
     NpuOpRunner r_brd_out_grad;
@@ -180,14 +179,14 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
         .Run(stream);
 
     // compare
-    phi::DenseTensor equal_cond;
+    Tensor equal_cond;
     equal_cond.mutable_data<bool>(x_grad->dims(), place);
     const auto& r_equal =
         NpuOpRunner("Equal", {*x, transformed_out}, {equal_cond}, {});
     r_equal.Run(stream);
 
     // select
-    phi::DenseTensor t_zero;
+    Tensor t_zero;
     t_zero.mutable_data<T>(x_grad->dims(), place);
     FillNpuTensorWithConstant(&t_zero, static_cast<T>(0));
     t_zero.Resize(x_grad->dims());

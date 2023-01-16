@@ -31,21 +31,22 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-static void DeepCopy(const phi::DenseTensor &src_item,
+static void DeepCopy(const framework::LoDTensor &src_item,
                      const std::string &fetch_var_name,
-                     phi::DenseTensor *dst_item) {
+                     framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
-    if (src_item.layout() == phi::DataLayout::ONEDNN) {
-      phi::DenseTensor out;
+    if (src_item.layout() == framework::DataLayout::kMKLDNN) {
+      framework::Tensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      phi::funcs::TransDataLayoutFromOneDNN(
+      framework::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
-              ? phi::DataLayout::kNCHW
-              : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::MKLDNNDeviceContext::tls()
+                    .get_cur_paddle_data_layout(),
           src_item,
           &out,
           platform::CPUPlace());
@@ -74,7 +75,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (!tensor.IsInitialized()) {
       return expected_kernel_type;
@@ -91,15 +92,9 @@ class FetchV2Op : public framework::OperatorWithKernel {
                                      platform::CPUPlace());
     }
 
-    if (fetch_var->IsType<phi::DenseTensor>()) {
-      auto &src_item = fetch_var->Get<phi::DenseTensor>();
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
       if (!src_item.IsInitialized()) {
-        return framework::OpKernelType(framework::proto::VarType::FP32,
-                                       platform::CPUPlace());
-      }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
         return framework::OpKernelType(framework::proto::VarType::FP32,
                                        platform::CPUPlace());
       }
@@ -149,12 +144,12 @@ class FetchV2Kernel {
 
     bool deepcopy = ctx.Attr<bool>("deepcopy");
 
-    if (fetch_var->IsType<phi::DenseTensor>()) {
-      auto &src_item = fetch_var->Get<phi::DenseTensor>();
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
       if (!src_item.IsInitialized()) {
         return;
       }
-      auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(
@@ -168,12 +163,6 @@ class FetchV2Kernel {
         dst_item->ShareDataWith(src_item);
         dst_item->set_lod(src_item.lod());
       }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return;
-      }
-      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
@@ -200,12 +189,10 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
-             "expected to return "
+             "(LoDTensor) The resulted LoDTensor which is expected to return "
              "to users.");
     AddOutput("Out",
-              "(vector<phi::DenseTensor>) A fetching list of phi::DenseTensor "
-              "which may have "
+              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")

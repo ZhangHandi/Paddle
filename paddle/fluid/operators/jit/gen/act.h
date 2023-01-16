@@ -84,8 +84,8 @@ class VActFunc : public JitCode {
 
   // compute EXP with ymm, xmm
   template <typename JMM>
-  void exp_jmm(JMM& dst,  // NOLINT
-               JMM& src,  // NOLINT
+  void exp_jmm(JMM& dst,
+               JMM& src,
                int src_idx = 11,
                int fx_idx = 12,  // NOLINT
                int fy_idx = 13,
@@ -144,11 +144,10 @@ class VActFunc : public JitCode {
     vcvttps2dq(ymm_int, jmm_fx);
     mov(reg_ptr_global, reinterpret_cast<size_t>(exp_int_0x7f));
     vmovdqa(jmm_tmp, ptr[reg_ptr_global]);
-    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx2) ||
-        std::is_same<JMM, xmm_t>::value) {
+    if (MayIUse(avx2) || std::is_same<JMM, xmm_t>::value) {
       vpaddd(ymm_int, ymm_int, jmm_tmp);
       vpslld(ymm_int, ymm_int, 23);
-    } else if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+    } else if (MayIUse(avx)) {
       xmm_t xtmp1 = xmm_t(ymm_int.getIdx());
       xmm_t xtmp2 = xmm_t(jmm_tmp.getIdx());
       reg64_t reg_ptr_tmp = reg_ptr_global;
@@ -175,8 +174,8 @@ class VActFunc : public JitCode {
 
   // compute SIGMOID with ymm, xmm
   template <typename JMM>
-  void sigmoid_jmm(JMM& dst,          // NOLINT
-                   JMM& src,          // NOLINT
+  void sigmoid_jmm(JMM& dst,
+                   JMM& src,
                    int src_idx = 11,  // NOLINT
                    int fx_idx = 12,
                    int fy_idx = 13,
@@ -204,8 +203,8 @@ class VActFunc : public JitCode {
 
   // compute TANH with ymm, xmm
   template <typename JMM>
-  void tanh_jmm(JMM& dst,          // NOLINT
-                JMM& src,          // NOLINT
+  void tanh_jmm(JMM& dst,
+                JMM& src,
                 int src_idx = 11,  // NOLINT
                 int fx_idx = 12,
                 int fy_idx = 13,

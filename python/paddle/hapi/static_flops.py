@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-
+import copy
 import numpy as np
-
-from paddle.static import Program, Variable
+import paddle
+from collections import OrderedDict
+from paddle.static import Program, program_guard, Variable
 
 __all__ = []
 
 
-class VarWrapper:
+class VarWrapper(object):
+
     def __init__(self, var, graph):
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
@@ -41,7 +42,8 @@ class VarWrapper:
         return self._var.shape
 
 
-class OpWrapper:
+class OpWrapper(object):
+
     def __init__(self, op, graph):
         assert isinstance(graph, GraphWrapper)
         self._op = op
@@ -71,13 +73,13 @@ class OpWrapper:
         return [self._graph.var(var_name) for var_name in self._op.output(name)]
 
 
-class GraphWrapper:
+class GraphWrapper(object):
     """
     It is a wrapper of paddle.fluid.framework.IrGraph with some special functions
     for paddle slim framework.
 
     Args:
-        program(framework.Program): A program with
+        program(framework.Program): A program with 
         in_nodes(dict): A dict to indicate the input nodes of the graph.
                         The key is user-defined and human-readable name.
                         The value is the name of Variable.
@@ -87,8 +89,9 @@ class GraphWrapper:
     """
 
     def __init__(self, program=None, in_nodes=[], out_nodes=[]):
-        """ """
-        super().__init__()
+        """
+        """
+        super(GraphWrapper, self).__init__()
         self.program = Program() if program is None else program
         self.persistables = {}
         self.teacher_persistables = {}
@@ -210,7 +213,8 @@ def static_flops(program, print_detail=False):
     return _graph_flops(graph, detail=print_detail)
 
 
-class Table:
+class Table(object):
+
     def __init__(self, table_heads):
         self.table_heads = table_heads
         self.table_len = []
@@ -224,10 +228,8 @@ class Table:
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
             print(
-                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.format(
-                    len(row_str), self.col_num
-                )
-            )
+                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'
+                .format(len(row_str), self.col_num))
         for i in range(self.col_num):
             if len(str(row_str[i])) > self.table_len[i]:
                 self.table_len[i] = len(str(row_str[i]))

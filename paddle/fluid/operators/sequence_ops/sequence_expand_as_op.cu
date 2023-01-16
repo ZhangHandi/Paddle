@@ -15,10 +15,12 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
+
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
@@ -67,9 +69,9 @@ template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
   void operator()(
       const phi::GPUContext &context,
-      const phi::DenseTensor &x,
+      const LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out) {
+      LoDTensor *out) {
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 
@@ -97,9 +99,9 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
 template <typename T>
 struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
-                  const phi::DenseTensor &dout,
+                  const LoDTensor &dout,
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
-                  phi::DenseTensor *dx) {
+                  LoDTensor *dx) {
     int height = dx->dims()[0];
     int width = phi::product(dx->dims()) / height;
 

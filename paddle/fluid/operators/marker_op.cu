@@ -40,8 +40,8 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
     VLOG(3) << "marker role: " << marker_role
             << " marker position: " << marker_pos;
 
-    phi::DenseTensor A;
-    phi::DenseTensor B;
+    framework::Tensor A;
+    framework::Tensor B;
     auto* in_temp = A.mutable_data<T>({32, 1}, ctx.GetPlace());
     auto* out_temp = B.mutable_data<T>({32, 1}, ctx.GetPlace());
     platform::RecordEvent record_event(

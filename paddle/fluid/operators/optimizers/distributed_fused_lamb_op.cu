@@ -225,10 +225,10 @@ static void LogParamAndTrustRatioDivSquareNorm(
     const float *trust_ratio_div_square_norm) {
   if (!VLOG_IS_ON(LogLevel)) return;
 
-  auto tensors = ctx.MultiInput<phi::DenseTensor>("Param");
+  auto tensors = ctx.MultiInput<framework::Tensor>("Param");
   if (tensors.empty()) return;
 
-  const auto *order = ctx.Input<phi::DenseTensor>("ParamOrder")->data<int>();
+  const auto *order = ctx.Input<framework::Tensor>("ParamOrder")->data<int>();
 
   size_t n = tensors.size();
   auto place = tensors[0]->place();
@@ -264,7 +264,7 @@ template <typename T>
 static const T *GetInputTensorPtr(const framework::ExecutionContext &ctx,
                                   const char *in_name,
                                   int64_t *numel = nullptr) {
-  const auto *in_tensor = ctx.Input<phi::DenseTensor>(in_name);
+  const auto *in_tensor = ctx.Input<framework::Tensor>(in_name);
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -283,7 +283,7 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
                                 const char *in_name,
                                 const char *out_name,
                                 int64_t *numel = nullptr) {
-  const auto *in_tensor = ctx.Input<phi::DenseTensor>(in_name);
+  const auto *in_tensor = ctx.Input<framework::Tensor>(in_name);
   if (in_tensor == nullptr || !in_tensor->IsInitialized()) {
     PADDLE_ENFORCE_EQ(AllowNotExist,
                       true,
@@ -293,7 +293,7 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
     return nullptr;
   }
 
-  auto *out_tensor = ctx.Output<phi::DenseTensor>(out_name);
+  auto *out_tensor = ctx.Output<framework::Tensor>(out_name);
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -1145,7 +1145,8 @@ static std::string GetMinMaxStr(const T *x,
 }
 
 struct VisitDTypeFunctor {
-  VisitDTypeFunctor(const phi::DenseTensor *x, std::string *s) : x_(x), s_(s) {}
+  VisitDTypeFunctor(const framework::Tensor *x, std::string *s)
+      : x_(x), s_(s) {}
 
   template <typename T>
   void apply() const {
@@ -1153,11 +1154,11 @@ struct VisitDTypeFunctor {
   }
 
  private:
-  const phi::DenseTensor *x_;
+  const framework::Tensor *x_;
   std::string *s_;
 };
 
-static std::string GetMinMaxStr(const phi::DenseTensor *x) {
+static std::string GetMinMaxStr(const framework::Tensor *x) {
   if (x == nullptr) return "null";
   if (!x->IsInitialized()) return "not_inited";
   if (!platform::is_gpu_place(x->place())) return "CPUTensor";
@@ -1172,7 +1173,7 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   if (!VLOG_IS_ON(1)) return;
   for (const auto &pair : ctx.GetOp().Inputs()) {
     const auto &key = pair.first;
-    const auto tensors = ctx.MultiInput<phi::DenseTensor>(key);
+    const auto tensors = ctx.MultiInput<framework::Tensor>(key);
     size_t n = tensors.size();
     for (size_t i = 0; i < n; ++i) {
       VLOG(1) << "Input(" << key + ")[" << i << "] = " << pair.second[i]
@@ -1183,7 +1184,7 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   if (only_inputs) return;
   for (const auto &pair : ctx.GetOp().Outputs()) {
     const auto &key = pair.first;
-    const auto tensors = ctx.MultiOutput<phi::DenseTensor>(key);
+    const auto tensors = ctx.MultiOutput<framework::Tensor>(key);
     size_t n = tensors.size();
     for (size_t i = 0; i < n; ++i) {
       VLOG(1) << "Output(" << key + ")[" << i << "] = " << pair.second[i]
@@ -1339,7 +1340,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     auto stream = dev_ctx.stream();
     auto place = dev_ctx.GetPlace();
 
-    auto *found_inf_t = ctx.Output<phi::DenseTensor>("FoundInf");
+    auto *found_inf_t = ctx.Output<framework::Tensor>("FoundInf");
     found_inf_t->Resize({1});
 
     // Step 1: Get fp16 param and grad tensors
@@ -1396,7 +1397,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         platform::errors::InvalidArgument(
             "The gradient accumulation steps should be not less than 1."));
     if (acc_steps > 1) {
-      auto *step_t = ctx.Output<phi::DenseTensor>("AccStep");
+      auto *step_t = ctx.Output<framework::Tensor>("AccStep");
       PADDLE_ENFORCE_NOT_NULL(
           step_t,
           platform::errors::InvalidArgument(
@@ -1416,7 +1417,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       float *fp32_acc_grad = nullptr;
       if (has_fp32_param) {
         auto *fp32_acc_grad_t =
-            ctx.Output<phi::DenseTensor>("FP32AccFusedGrad");
+            ctx.Output<framework::Tensor>("FP32AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
             fp32_acc_grad_t,
             platform::errors::InvalidArgument(
@@ -1436,7 +1437,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       if (has_fp16_param) {
         use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
-            ctx.Output<phi::DenseTensor>("FP16AccFusedGrad");
+            ctx.Output<framework::Tensor>("FP16AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
             fp16_acc_grad_t,
             platform::errors::InvalidArgument(
@@ -1526,7 +1527,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         }
       }
 
-      auto *stop_update_t = ctx.Output<phi::DenseTensor>("StopUpdate");
+      auto *stop_update_t = ctx.Output<framework::Tensor>("StopUpdate");
       stop_update_t->Resize({1});
       auto *stop_update =
           stop_update_t->mutable_data<bool>(platform::CPUPlace());
@@ -2060,18 +2061,18 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     VLOG(10) << "ReduceScatter done";
 
     // Step 7: update the moment1, moment2. Calcuate the trust_ratio_div
-    auto *fused_offsets_t = ctx.Input<phi::DenseTensor>("FusedParamOffsets");
+    auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
     auto *fused_offsets = fused_offsets_t->data<int>();
     auto *fp32_partial_fused_offsets_t =
-        ctx.Input<phi::DenseTensor>("FP32ShardFusedParamOffsets");
+        ctx.Input<framework::Tensor>("FP32ShardFusedParamOffsets");
     const auto *fp32_partial_fused_offsets =
         fp32_partial_fused_offsets_t->data<int>();
     auto *fp16_partial_fused_offsets_t =
-        ctx.Input<phi::DenseTensor>("FP16ShardFusedParamOffsets");
+        ctx.Input<framework::Tensor>("FP16ShardFusedParamOffsets");
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 
-    auto *step = ctx.Output<phi::DenseTensor>("Step")->data<int64_t>();
+    auto *step = ctx.Output<framework::Tensor>("Step")->data<int64_t>();
 
     VLOG(1) << "FusedParamOffsets: "
             << FlattenToString(fused_offsets,

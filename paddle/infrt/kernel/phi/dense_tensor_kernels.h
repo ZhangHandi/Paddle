@@ -25,45 +25,46 @@ namespace infrt {
 namespace kernel {
 namespace phi {
 
-::Tensor CreateDenseTensor(
+::phi::DenseTensor CreateDenseTensor(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision);
 
-::Tensor CreateInitedDenseTensorF32(
+::phi::DenseTensor CreateInitedDenseTensorF32(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<float> value);
 
-::Tensor CreateHostInitedDenseTensorF32(
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<std::vector<float>> values);
 
-::Tensor CreateGPUDenseTensor(
+::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision);
 
-void FillDenseTensorF32(::Tensor* dense_tensor,
+void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<float>> values);
-void PrintDenseTensor(::Tensor* dense_tensor);
+void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
 
 ::infrt::phi::DenseTensorMap LoadParameters(const std::string& path);
 
 ::infrt::phi::DenseTensorMap LoadParams(
     host_context::Attribute<std::string> path);
 
-::Tensor TensorMapGetTensor(const ::infrt::phi::DenseTensorMap& map,
-                            host_context::Attribute<std::string> name);
+::phi::DenseTensor TensorMapGetTensor(
+    const ::infrt::phi::DenseTensorMap& map,
+    host_context::Attribute<std::string> name);
 
 ::infrt::phi::DenseTensorMap LoadCombinedParams(
     host_context::Attribute<std::string> model_path,
@@ -78,10 +79,10 @@ void PrintDenseTensor(::Tensor* dense_tensor);
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
 #ifdef INFRT_WITH_GPU
-void GpuMemCpy(const ::Tensor& input,
+void GpuMemCpy(const ::phi::DenseTensor& input,
                const ::phi::GPUContext& context,
                bool d2h,
-               ::Tensor* output);
+               ::phi::DenseTensor* output);
 #endif
 
 }  // namespace phi

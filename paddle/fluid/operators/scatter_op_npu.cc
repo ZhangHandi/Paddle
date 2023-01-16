@@ -22,21 +22,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class ScatterNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* index = ctx.Input<phi::DenseTensor>("Ids");
-    auto* updates = ctx.Input<phi::DenseTensor>("Updates");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* index = ctx.Input<Tensor>("Ids");
+    auto* updates = ctx.Input<Tensor>("Updates");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    phi::DenseTensor tmp_tensor(index->type());
+    framework::Tensor tmp_tensor(index->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
@@ -47,16 +49,16 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto op_func_update = [](const std::vector<phi::DenseTensor>& inputs,
-                             const std::vector<phi::DenseTensor>& outputs,
+    auto op_func_update = [](const std::vector<Tensor>& inputs,
+                             const std::vector<Tensor>& outputs,
                              const NPUAttributeMap& attrs,
                              const platform::NPUDeviceContext& dev_ctx) {
       const auto& runner =
           NpuOpRunner("TensorScatterUpdate", inputs, outputs, attrs);
       runner.Run(dev_ctx.stream());
     };
-    auto op_func_add = [](const std::vector<phi::DenseTensor>& inputs,
-                          const std::vector<phi::DenseTensor>& outputs,
+    auto op_func_add = [](const std::vector<Tensor>& inputs,
+                          const std::vector<Tensor>& outputs,
                           const NPUAttributeMap& attrs,
                           const platform::NPUDeviceContext& dev_ctx) {
       const auto& runner =

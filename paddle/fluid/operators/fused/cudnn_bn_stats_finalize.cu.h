@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 template <typename T>
 using BatchNormParamType =
@@ -53,8 +54,8 @@ struct BNStatsFinalizeArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
+  platform::TensorDescriptor in_desc;
+  platform::TensorDescriptor out_desc;
 };
 
 template <typename T>
@@ -69,16 +70,16 @@ class CudnnBNStatsFinalize {
   ~CudnnBNStatsFinalize() {}
 
   void Forward(const phi::GPUContext &ctx,
-               const phi::DenseTensor &sum,
-               const phi::DenseTensor &sum_of_squares,
-               const phi::DenseTensor &scale,
-               const phi::DenseTensor &bias,
-               phi::DenseTensor *saved_mean,
-               phi::DenseTensor *saved_invstd,
-               phi::DenseTensor *running_mean,
-               phi::DenseTensor *running_var,
-               phi::DenseTensor *equiv_scale,
-               phi::DenseTensor *equiv_bias,
+               const Tensor &sum,
+               const Tensor &sum_of_squares,
+               const Tensor &scale,
+               const Tensor &bias,
+               Tensor *saved_mean,
+               Tensor *saved_invstd,
+               Tensor *running_mean,
+               Tensor *running_var,
+               Tensor *equiv_scale,
+               Tensor *equiv_bias,
                double eps,
                float momentum,
                int64_t ele_count,

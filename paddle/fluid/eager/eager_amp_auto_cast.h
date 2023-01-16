@@ -27,8 +27,7 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place) ||
-      paddle::platform::is_custom_place(place)) {
+      paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == paddle::experimental::DataType::FLOAT32 ||
          data_type == paddle::experimental::DataType::FLOAT16 ||
@@ -46,7 +45,7 @@ inline paddle::experimental::Tensor Cast(
     const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
-      return sparse::cast_ad_func(
+      return sparse::cast_dygraph_function(
           input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
@@ -54,7 +53,7 @@ inline paddle::experimental::Tensor Cast(
     }
   } else {
     if (trace_backward) {
-      return cast_ad_func(input, dst_dtype);
+      return cast_dygraph_function(input, dst_dtype);
     } else {
       return paddle::experimental::cast(input, dst_dtype);
     }
@@ -69,7 +68,7 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << phi::DataTypeToString(dst_dtype) << ").";
+          << paddle::framework::DataType2String(dst_dtype) << ").";
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
@@ -88,8 +87,8 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     const std::string& op_name,
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
-          << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
-          << phi::DataTypeToString(dst_dtype) << ").";
+          << " input(" << input_name << ") dst_dtype("
+          << paddle::framework::DataType2String(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
@@ -108,7 +107,6 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
-    VLOG(6) << "Input : " << input.impl() << "NeedCast";
     return Cast(input, dst_dtype, trace_backward);
   }
   return input;

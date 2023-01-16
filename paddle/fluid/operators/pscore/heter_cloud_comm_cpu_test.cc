@@ -40,7 +40,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
   auto var1 = scope->Var("w");
   var1->GetMutable<phi::SelectedRows>();
   auto var2 = scope->Var("x");
-  var2->GetMutable<phi::DenseTensor>();
+  var2->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
@@ -59,7 +59,7 @@ void InitTensorsOnClient(framework::Scope* scope,
     ptr[i] = static_cast<float>(i / 10);
   }
 
-  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) {

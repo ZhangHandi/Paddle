@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
 import paddle
+import os
 
 
 class TestInstallCheck(unittest.TestCase):
+
     def test_paddle_fluid(self):
         paddle.fluid.install_check.run_check()
 

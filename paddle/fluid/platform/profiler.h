@@ -251,8 +251,8 @@ void DisableHostEventRecorder();
 void EnableMemoryRecorder();
 void DisableMemoryRecorder();
 
-void EnableOpInfoRecorder();
-void DisableOpInfoRecorder();
+void EnableInputShapeRecorder();
+void DisableInputShapeRecorder();
 
 // Defined for UT
 std::string PrintHostEvents();

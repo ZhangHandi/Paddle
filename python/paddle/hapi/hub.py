@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import os
-import shutil
+import re
 import sys
+import shutil
 import zipfile
-
 from paddle.utils.download import get_path_from_url
 
 __all__ = []
@@ -54,12 +54,10 @@ def _import_module(name, repo_dir):
 def _git_archive_link(repo_owner, repo_name, branch, source):
     if source == 'github':
         return 'https://github.com/{}/{}/archive/{}.zip'.format(
-            repo_owner, repo_name, branch
-        )
+            repo_owner, repo_name, branch)
     elif source == 'gitee':
         return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
-            repo_owner, repo_name, branch
-        )
+            repo_owner, repo_name, branch)
 
 
 def _parse_repo_info(repo, source):
@@ -97,9 +95,8 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     # We don't know the repo name before downloading the zip file
     # and inspect name from it.
     # To check if cached repo exists, we need to normalize folder names.
-    repo_dir = os.path.join(
-        hub_dir, '_'.join([repo_owner, repo_name, normalized_br])
-    )
+    repo_dir = os.path.join(hub_dir,
+                            '_'.join([repo_owner, repo_name, normalized_br]))
 
     use_cache = (not force_reload) and os.path.exists(repo_dir)
 
@@ -117,8 +114,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             hub_dir,
             check_exist=not force_reload,
             decompress=False,
-            method=('wget' if source == 'gitee' else 'get'),
-        )
+            method=('wget' if source == 'gitee' else 'get'))
         shutil.move(fpath, cached_file)
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
@@ -137,11 +133,11 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
 
 
 def _load_entry_from_hubconf(m, name):
-    '''load entry from hubconf'''
+    '''load entry from hubconf
+    '''
     if not isinstance(name, str):
         raise ValueError(
-            'Invalid input: model should be a str of function name'
-        )
+            'Invalid input: model should be a str of function name')
 
     func = getattr(m, name, None)
 
@@ -167,9 +163,8 @@ def _check_dependencies(m):
             pkg for pkg in dependencies if not _check_module_exists(pkg)
         ]
         if len(missing_deps):
-            raise RuntimeError(
-                'Missing dependencies: {}'.format(', '.join(missing_deps))
-            )
+            raise RuntimeError('Missing dependencies: {}'.format(
+                ', '.join(missing_deps)))
 
 
 def list(repo_dir, source='github', force_reload=False):
@@ -181,9 +176,9 @@ def list(repo_dir, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-
+            
             local path (str): local repo path
-
+        
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
@@ -199,21 +194,19 @@ def list(repo_dir, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
-        )
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
 
     if source in ('github', 'gitee'):
-        repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source
-        )
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
     entrypoints = [
-        f
-        for f in dir(hub_module)
+        f for f in dir(hub_module)
         if callable(getattr(hub_module, f)) and not f.startswith('_')
     ]
 
@@ -229,9 +222,9 @@ def help(repo_dir, model, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-
+            
             local path (str): local repo path.
-
+        
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.
@@ -248,15 +241,14 @@ def help(repo_dir, model, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
-        )
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
 
     if source in ('github', 'gitee'):
-        repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source
-        )
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
@@ -276,7 +268,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
             tag/branch. The default branch is `main` if not specified.
 
             local path (str): local repo path.
-
+        
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.
@@ -292,15 +284,14 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
-        )
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
 
     if source in ('github', 'gitee'):
-        repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source
-        )
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 

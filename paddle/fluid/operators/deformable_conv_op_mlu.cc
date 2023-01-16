@@ -18,15 +18,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class DeformableConvMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
-    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
 
     const int groups = ctx.Attr<int>("groups");
@@ -56,29 +58,29 @@ class DeformableConvMLUKernel : public framework::OpKernel<T> {
                             im2col_step);
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
-    phi::DenseTensor trans_input(input->dtype());
+    Tensor trans_input(input->dtype());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, input, &trans_input, true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_offset(offset->dtype());
+    Tensor trans_offset(offset->dtype());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               offset,
                               &trans_offset,
                               true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_mask(mask->dtype());
+    Tensor trans_mask(mask->dtype());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, mask, &trans_mask, true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_filter(filter->dtype());
+    Tensor trans_filter(filter->dtype());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
                               &trans_filter,
                               true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor tmp_output(output->dtype());
+    Tensor tmp_output(output->dtype());
     auto output_dims = output->dims();
     tmp_output.mutable_data<T>(
         {output_dims[0], output_dims[2], output_dims[3], output_dims[1]},
@@ -123,21 +125,17 @@ template <typename T>
 class DeformableConvGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const phi::DenseTensor* output_grad =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
-    auto* input_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto* filter_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
-    auto* offset_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Offset"));
-    auto* mask_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Mask"));
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto* offset_grad = ctx.Output<Tensor>(framework::GradVarName("Offset"));
+    auto* mask_grad = ctx.Output<Tensor>(framework::GradVarName("Mask"));
 
-    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
-    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
-    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
 
     int groups = ctx.Attr<int>("groups");
     int deformable_groups = ctx.Attr<int>("deformable_groups");
@@ -165,54 +163,54 @@ class DeformableConvGradMLUKernel : public framework::OpKernel<T> {
                             groups,
                             im2col_step);
 
-    phi::DenseTensor tmp_input_grad;
+    Tensor tmp_input_grad;
     auto input_dims = input->dims();
     tmp_input_grad.mutable_data<T>(
         {input_dims[0], input_dims[2], input_dims[3], input_dims[1]},
         ctx.GetPlace());
 
-    phi::DenseTensor tmp_filter_grad;
+    Tensor tmp_filter_grad;
     auto filter_dims = filter->dims();
     tmp_filter_grad.mutable_data<T>(
         {filter_dims[0], filter_dims[2], filter_dims[3], filter_dims[1]},
         ctx.GetPlace());
 
-    phi::DenseTensor tmp_offset_grad;
+    Tensor tmp_offset_grad;
     auto offset_dims = offset->dims();
     tmp_offset_grad.mutable_data<T>(
         {offset_dims[0], offset_dims[2], offset_dims[3], offset_dims[1]},
         ctx.GetPlace());
 
-    phi::DenseTensor tmp_mask_grad;
+    Tensor tmp_mask_grad;
     auto mask_dims = mask->dims();
     tmp_mask_grad.mutable_data<T>(
         {mask_dims[0], mask_dims[2], mask_dims[3], mask_dims[1]},
         ctx.GetPlace());
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
-    phi::DenseTensor trans_output_grad(output_grad->dtype());
+    Tensor trans_output_grad(output_grad->dtype());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               output_grad,
                               &trans_output_grad,
                               true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_input(input->dtype());
+    Tensor trans_input(input->dtype());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, input, &trans_input, true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_offset(offset->dtype());
+    Tensor trans_offset(offset->dtype());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               offset,
                               &trans_offset,
                               true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_mask(mask->dtype());
+    Tensor trans_mask(mask->dtype());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, mask, &trans_mask, true /*need_reshape_or_alloc*/);
 
-    phi::DenseTensor trans_filter(filter->dtype());
+    Tensor trans_filter(filter->dtype());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,

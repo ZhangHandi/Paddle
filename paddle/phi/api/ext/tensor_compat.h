@@ -100,7 +100,6 @@ using experimental::multinomial;
 using experimental::multiply;
 using experimental::mv;
 using experimental::nll_loss;
-using experimental::npu_identity;
 using experimental::one_hot;
 using experimental::ones;
 using experimental::pixel_shuffle;

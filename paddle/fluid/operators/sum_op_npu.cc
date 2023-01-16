@@ -16,23 +16,22 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-using SelectedRows = phi::SelectedRows;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<phi::DenseTensor>()) {
-      auto *out = out_var->GetMutable<phi::DenseTensor>();
-      auto x = ctx.MultiInput<phi::DenseTensor>("X");
+    if (out_var->IsType<framework::LoDTensor>()) {
+      auto *out = out_var->GetMutable<framework::LoDTensor>();
+      auto x = ctx.MultiInput<Tensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
 
       auto place = ctx.GetPlace();
@@ -43,7 +42,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
         return;
       }
 
-      std::vector<phi::DenseTensor> inputs;
+      std::vector<framework::Tensor> inputs;
       std::vector<std::string> names;
       for (int i = 0; i < n; ++i) {
         if (x[i] && x[i]->numel() > 0) {
@@ -105,7 +104,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) must be phi::DenseTensor or "
+          "Expected type of Output(out) must be Tensor or "
           "LoDTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

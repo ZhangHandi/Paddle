@@ -20,6 +20,10 @@ batch size to fully utilize a GPU.
 This API is still under active development and may change drastically.
 """
 
+from __future__ import print_function
+
+import six
+
 from .. import core
 from ..framework import Program, Variable
 
@@ -66,8 +70,7 @@ def memory_usage(program, batch_size):
     if not isinstance(program, Program):
         raise TypeError(
             "Calculating Memory Usage requires Program as its Parameter."
-            "But you passed in %s" % (type(program))
-        )
+            "But you passed in %s" % (type(program)))
     if batch_size <= 0:
         raise ValueError("The batch size need to be positive.")
 
@@ -89,9 +92,8 @@ def memory_usage(program, batch_size):
                 if x < 0:
                     if neg_dim_count >= 1:
                         raise ValueError(
-                            "Var %s has more than one negative dim."
-                            % (var_name)
-                        )
+                            "Var %s has more than one negative dim." %
+                            (var_name))
                     neg_dim_count += 1
                     data_count *= batch_size * (-x)
                 else:

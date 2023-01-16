@@ -130,32 +130,25 @@ void StringTensor::init_holder() {
 
 void* StringTensor::AllocateFrom(Allocator* allocator,
                                  DataType dtype,
-                                 size_t requested_size,
-                                 bool fake_alloc) {
+                                 size_t requested_size) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
-
+  PADDLE_ENFORCE(
+      valid(),
+      errors::PreconditionNotMet(
+          "The meta data must be valid when call the mutable data function."));
   size_t bytes = numel() * SizeOf(this->dtype());
-  if (fake_alloc) {
-    bytes = 0;
-  } else {
-    PADDLE_ENFORCE(
-        valid(),
-        errors::PreconditionNotMet("The meta data must be valid when call the "
-                                   "mutable data function."));
-    if (requested_size) {
-      PADDLE_ENFORCE_GE(requested_size,
-                        bytes,
-                        errors::InvalidArgument(
-                            "The reserved size %d should be enough to meet the "
-                            "volume required by metadata %d.",
-                            requested_size,
-                            bytes));
-
-      bytes = requested_size;
-    }
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size,
+                      bytes,
+                      errors::InvalidArgument(
+                          "The reserved size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          requested_size,
+                          bytes));
+    bytes = requested_size;
   }
 
   if (!holder_ || holder_->size() < bytes + meta_.offset) {

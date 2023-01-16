@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+from paddle import fluid
+import paddle.fluid.dygraph as dg
 import unittest
 
-import numpy as np
-
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
 from paddle.nn import functional as F
 
 
@@ -33,6 +32,7 @@ def glu(x, dim=-1):
 
 
 class TestGLUCase(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randn(5, 20)
         self.dim = -1
@@ -53,6 +53,7 @@ class TestGLUCase(unittest.TestCase):
 
 
 class TestGLUV2(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randn(5, 20)
         self.dim = -1

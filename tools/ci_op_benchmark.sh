@@ -39,9 +39,10 @@ function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  # the operators under paddle/fluid/operators directory
-  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
-  # the operators under paddle/phi/kernels directory
+  for sub_dir in "" "/elementwise" "/reduce_ops"
+  do
+    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
+  done
   for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
@@ -114,13 +115,13 @@ function load_CHANGE_OP_FILES {
 }
 
 # Clone benchmark repo
-function clone_and_collect_op_info {
+function prepare_benchmark_environment {
   LOG "[INFO] Clone benchmark repo ..."
   git clone https://github.com/PaddlePaddle/benchmark.git
   [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
   python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name tests                    \
+      --test_module_name dynamic_tests_v2         \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
   [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
@@ -203,7 +204,7 @@ function run_op_benchmark_test {
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh tests \
+    bash deploy/main_control.sh dynamic_tests_v2 \
                                 tests_v2/configs \
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
@@ -230,7 +231,7 @@ function check_op_benchmark_result {
       # there is no need to recompile and install paddle
       LOG "[INFO] retry ${retry_time} times ..."
       pushd benchmark/api > /dev/null
-      bash deploy/main_control.sh tests \
+      bash deploy/main_control.sh dynamic_tests_v2 \
                                   tests_v2/configs \
                                   ${logs_dir} \
                                   $VISIBLE_DEVICES \
@@ -284,13 +285,13 @@ function summary_problems {
 }
 
 
-function prepare_env {
-  LOG "[INFO] Start preparing op benchmark environment ..."
+function cpu_op_benchmark {
+  LOG "[INFO] Start run op benchmark cpu test ..."
   load_CHANGE_OP_FILES
-  clone_and_collect_op_info
+  prepare_benchmark_environment
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
-  LOG "[INFO] Op benchmark environment is prepared success!"
+  LOG "[INFO] Op benchmark run success and no error!"
 }
 
 
@@ -320,7 +321,7 @@ fi
 
 case $1 in
   run_op_benchmark)
-    prepare_env
+    cpu_op_benchmark
     gpu_op_benchmark 
   ;;
 esac

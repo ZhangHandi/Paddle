@@ -86,7 +86,7 @@ void Broadcast(int local_rank, int device_id) {
   npc.Init();
 
   framework::Variable* src_dev_var(new framework::Variable());
-  auto* src_dev_tensor = src_dev_var->GetMutable<phi::DenseTensor>();
+  auto* src_dev_tensor = src_dev_var->GetMutable<framework::LoDTensor>();
   src_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   // fill data for rank 0 only

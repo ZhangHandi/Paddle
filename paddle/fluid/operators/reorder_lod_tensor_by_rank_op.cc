@@ -37,14 +37,13 @@ class ReorderLoDTensorByRankTableOpProtoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(phi::DenseTensor), the input lod tensor to be reordered according to "
-        "Input(RankTable).");
+    AddInput("X",
+             "(LoDTensor), the input lod tensor to be reordered according to "
+             "Input(RankTable).");
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "phi::DenseTensor, the reordered lod tensor.");
+    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
@@ -71,7 +70,7 @@ X = [Slice0, Slice1, Slice2, Slice3] and its LoD information is empty. The
 indices in RankTable are [3, 0, 2, 1].
 Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
-**NOTE**:
+**NOTE**: 
 This operator sorts Input(X) according to a given LoDRankTable which does
 not need to be calculated according to Input(X). It can be calculated according
 to another different sequence, and then this operator sorts Input(X) according
@@ -96,7 +95,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
                               "Input",
                               "X",
                               "ReorderLoDTensorByRankTable")
-                  .Get<phi::DenseTensor>();
+                  .Get<framework::LoDTensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input",
                                        "RankTable",
@@ -106,7 +105,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
                                   "Output",
                                   "Out",
                                   "ReorderLoDTensorByRankTable")
-                      .GetMutable<phi::DenseTensor>());
+                      .GetMutable<framework::LoDTensor>());
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
@@ -115,9 +114,9 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
  protected:
   virtual void process(const platform::Place &place,
-                       const phi::DenseTensor &x,
+                       const framework::LoDTensor &x,
                        const framework::LoDRankTable &rank_table,
-                       phi::DenseTensor *out) const = 0;
+                       framework::LoDTensor *out) const = 0;
 
   struct AbsoluteRankTableItem {
     size_t offset;  // the absolute/accumulated offset.
@@ -126,7 +125,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   };
 
   std::vector<AbsoluteRankTableItem> GetAbsoluteOffsetAndLengthByLoDRankTable(
-      const phi::DenseTensor &x) const {
+      const framework::LoDTensor &x) const {
     std::vector<AbsoluteRankTableItem> absolute_table;
 
     if (x.lod().empty()) {
@@ -160,8 +159,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
   size_t CopyTensorAndLod(const platform::Place &place,
                           const AbsoluteRankTableItem &item,
-                          const phi::DenseTensor &x,
-                          phi::DenseTensor *out,
+                          const framework::LoDTensor &x,
+                          framework::LoDTensor *out,
                           size_t out_offset) const {
     auto &out_lod = *out->mutable_lod();
     auto len = item.length;
@@ -203,9 +202,9 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
 
  protected:
   void process(const platform::Place &place,
-               const phi::DenseTensor &x,
+               const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
-               phi::DenseTensor *out) const override {
+               framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
     size_t out_offset = 0;
     out->mutable_lod()->clear();
@@ -258,9 +257,9 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
 
  protected:
   void process(const platform::Place &place,
-               const phi::DenseTensor &x,
+               const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
-               phi::DenseTensor *out) const override {
+               framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
 
     // offsets = enumerate([item.index for item in rank_table.items()])

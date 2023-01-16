@@ -130,7 +130,6 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", x_g);
       op.SetAttr("scale", 1.0f);
-      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     if (!y_g.empty()) {
@@ -139,7 +138,6 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", y_g);
       op.SetAttr("scale", -1.0f);
-      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     return node;

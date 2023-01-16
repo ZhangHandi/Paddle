@@ -14,4 +14,6 @@
 
 from .neighbors import sample_neighbors  # noqa: F401
 
-__all__ = []
+__all__ = [
+    'sample_neighbors',
+]

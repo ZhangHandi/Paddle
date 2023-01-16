@@ -275,8 +275,7 @@ void BindVarDsec(pybind11::module *m) {
       .value("RAW", pd::proto::VarType::RAW)
       .value("STRING", pd::proto::VarType::STRING)
       .value("STRINGS", pd::proto::VarType::STRINGS)
-      .value("VOCAB", pd::proto::VarType::VOCAB)
-      .value("SPARSE_COO", pd::proto::VarType::SPARSE_COO);
+      .value("VOCAB", pd::proto::VarType::VOCAB);
 }
 
 void BindOpDesc(pybind11::module *m) {

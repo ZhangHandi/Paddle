@@ -27,10 +27,13 @@ void Conv3DGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const std::string& padding_algorithm,
+                      const std::string& paddding_algorithm,
                       int groups,
                       const std::vector<int>& dilations,
                       const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad) {
   ConvGradKernel<T>(dev_ctx,
@@ -39,10 +42,13 @@ void Conv3DGradKernel(const Context& dev_ctx,
                     out_grad,
                     strides,
                     paddings,
-                    padding_algorithm,
-                    dilations,
+                    paddding_algorithm,
                     groups,
+                    dilations,
                     data_format,
+                    use_addto,
+                    workspace_size_MB,
+                    exhaustive_search,
                     input_grad,
                     filter_grad);
 }
@@ -54,7 +60,3 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_KERNEL(
     conv3d_grad, GPU, ALL_LAYOUT, phi::Conv3DGradKernel, float, double) {}
-
-PD_REGISTER_KERNEL(
-    conv2d_grad_grad, GPU, ALL_LAYOUT, phi::ConvGradGradKernel, float, double) {
-}

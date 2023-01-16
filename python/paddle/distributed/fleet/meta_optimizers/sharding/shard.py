@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-
 from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op
-from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import (
-    FP16Utils,
-)
-from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
+from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
 
 __all__ = []
 
 
-class Shard:
-    def __init__(
-        self,
-    ):
+class Shard(object):
+
+    def __init__(self, ):
         self.global_params = set([])
         self.worker_idx = -1
         self.worker_num = -1
@@ -41,25 +36,19 @@ class Shard:
         self.worker_num = worker_num
         # global_param2device contains fp32 params and fp16 params
         # device2global_params only contains fp32 params
-        (
-            self.global_param2device,
-            self.device2global_params,
-        ) = self._split_params(params_grads, worker_idx, worker_num)
+        self.global_param2device, self.device2global_params \
+            = self._split_params(params_grads, worker_idx, worker_num)
 
     def has_param(self, var_name):
-        return (
-            var_name in self.global_param2device
-            and self._var_device_id(var_name) == self.worker_idx
-        )
+        return var_name in self.global_param2device and \
+            self._var_device_id(var_name) == self.worker_idx
 
     def has_opt_var(self, var_name):
         return self._var_device_id(var_name) == self.worker_idx
 
     def has_var(self, var_name):
-        return (
-            self._var_device_id(var_name) == -1
-            or self._var_device_id(var_name) == self.worker_idx
-        )
+        return self._var_device_id(var_name) == -1 or \
+            self._var_device_id(var_name) == self.worker_idx
 
     def _split_params(self, params_grads, worker_idx, worker_num):
         param2device = {}
@@ -84,11 +73,8 @@ class Shard:
         if var_name in self.global_param2device:
             return self.global_param2device[var_name]
         for suffix in [
-            "_moment1_0",
-            "_moment2_0",
-            "_beta1_pow_acc_0",
-            "_beta2_pow_acc_0",
-            "_velocity_0",
+                "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
+                "_beta2_pow_acc_0", "_velocity_0"
         ]:
             base_name = re.sub(suffix, '', var_name)
             if base_name in self.global_param2device:
@@ -118,8 +104,7 @@ class Shard:
             fp16_to_fp32[output_name] = input_name
             param_usage[input_name] -= 1
             self.global_param2device[output_name] = self.global_param2device[
-                input_name
-            ]
+                input_name]
 
         for param, usage in param_usage.items():
             if usage > 0:
@@ -136,11 +121,8 @@ class Shard:
         if var_name in self.global_params:
             return True
         for suffix in [
-            "_moment1_0",
-            "_moment2_0",
-            "_beta1_pow_acc_0",
-            "_beta2_pow_acc_0",
-            "_velocity_0",
+                "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
+                "_beta2_pow_acc_0", "_velocity_0"
         ]:
             base_name = re.sub(suffix, '', var_name)
             if base_name in self.global_params:
@@ -156,7 +138,8 @@ class Shard:
         return grads_in_shard
 
 
-class ProgramSegment:
+class ProgramSegment(object):
+
     def __init__(self, block):
         self._block = block
         self._allreduce_vars = []

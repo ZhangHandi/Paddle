@@ -31,74 +31,64 @@ class Variable;
 namespace paddle {
 namespace framework {
 
-static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
+static void PassTensorData(Tensor *from, Tensor *to) {
   to->ShareDataWith(*from);
-  *from = phi::DenseTensor();
+  *from = Tensor();
 }
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *output_tensor) {
+                   const Tensor &input_tensor,
+                   Tensor *output_tensor) {
   bool transformed = false;
-  phi::DenseTensor in;
+  Tensor in;
   in.ShareDataWith(input_tensor);
-  phi::DenseTensor out;
+  Tensor out;
   const DataLayout lin = kernel_type_for_var.data_layout_;
   const DataLayout lout = expected_kernel_type.data_layout_;
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (lin == DataLayout::ONEDNN || lout == DataLayout::ONEDNN) {
+    if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_EQ(
-          !(lin == DataLayout::ONEDNN && lout == DataLayout::ONEDNN),
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
           true,
           platform::errors::PreconditionNotMet(
-              "No layout transform needed between two oneDNN OPKernels."));
+              "No layout transform needed between two MKLDNN OPKernels."));
 
-      if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
-        // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
+      if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
+        // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
-        auto out_format = phi::funcs::OneDNNFormatForSize(
-            in.dims().size(), phi::funcs::ToOneDNNFormat(lin));
+        auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
+                                                        ToMKLDNNFormat(lin));
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         if (lin == DataLayout::kNHWC || lin == DataLayout::kNDHWC) {
-          phi::funcs::MatchShapeToLayout(&out, lin, lout);
+          platform::MatchShapeToLayout(&out, lin, lout);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
-          phi::OneDNNContext::tls().set_cur_paddle_data_layout(lin);
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(lin);
         }
         dnnl::memory::desc out_mem_desc(
             vectorize(out.dims()),
-            phi::funcs::ToOneDNNDataType(in.dtype()),
+            ToMKLDNNDataType(TransToProtoVarType(in.type())),
             out_format);
         out.set_mem_desc(out_mem_desc);
       } else {
-        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
-        // Do transform via ONEDNN lib
-        PADDLE_ENFORCE(
-            kernel_type_for_var.data_layout_ == DataLayout::ONEDNN &&
-                expected_kernel_type.data_layout_ != DataLayout::ONEDNN,
-            platform::errors::InvalidArgument(
-                "TransDataLayoutFromOneDNN only supports "
-                "transform from ONEDNN to non-ONEDNN"));
-
-        phi::funcs::TransDataLayoutFromOneDNN(
-            kernel_type_for_var.data_layout_,
-            phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
-            in,
-            &out,
-            expected_kernel_type.place_);
+        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+        // Do transform via MKLDNN lib
+        TransDataLayoutFromMKLDNN(
+            kernel_type_for_var, expected_kernel_type, in, &out);
       }
     } else {
-      // Case3 - transfrom between Non-ONEDNN OPKernels
+      // Case3 - transfrom between Non-MKLDNN OPKernels
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     }
 #else
-    // Case3 - transfrom between Non-ONEDNN OPKernels
+    // Case3 - transfrom between Non-MKLDNN OPKernels
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
 #endif
     transformed = true;
@@ -130,11 +120,11 @@ void TransformData(const OpKernelType &expected_kernel_type,
 }
 
 void SetTensorToVariable(const Variable &in_var,
-                         const phi::DenseTensor &tensor,
+                         const Tensor &tensor,
                          Variable *out_var) {
-  if (in_var.IsType<phi::DenseTensor>()) {
-    auto &in_lod_tensor = in_var.Get<phi::DenseTensor>();
-    auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
+  if (in_var.IsType<LoDTensor>()) {
+    auto &in_lod_tensor = in_var.Get<LoDTensor>();
+    auto *tran_lod_tensor = out_var->GetMutable<LoDTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
 #ifdef PADDLE_WITH_MKLDNN
@@ -149,8 +139,7 @@ void SetTensorToVariable(const Variable &in_var,
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported variable type, only supports phi::DenseTensor or "
-        "SelectedRows, "
+        "Unsupported variable type, only supports LoDTensor or SelectedRows, "
         "but the input variable type is %s.",
         ToTypeName(in_var.Type())));
   }

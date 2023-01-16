@@ -23,12 +23,13 @@ TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
 /// \brief Test whether the tensor's storage in TensorArray is allocated.
 /// return Whether all tensors in TensorArray is allocated.
 bool TensorArray::initialized() const {
+  bool init = true;
   for (auto tensor : tensors_) {
     if (!tensor.IsInitialized()) {
-      return false;
+      init = false;
     }
   }
-  return true;
+  return init;
 }
 
 int64_t TensorArray::numel() const {
@@ -65,11 +66,9 @@ bool TensorArray::valid() const {
 /// \return Void pointer
 void* TensorArray::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
-                                size_t requested_size,
-                                bool fake_allc) {
+                                size_t requested_size) {
   for (size_t i = 0; i < tensors_.size(); i++) {
-    tensors_[i].AllocateFrom(
-        allocator, tensors_[i].dtype(), requested_size, fake_allc);
+    tensors_[i].AllocateFrom(allocator, tensors_[i].dtype(), requested_size);
   }
   return nullptr;
 }

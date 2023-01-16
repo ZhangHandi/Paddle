@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import sys
@@ -25,19 +27,13 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
-from test_conv2d_op_mlu import (
-    TestConv2DOp,
-    TestConv2DOp_v2,
-    create_test_padding_SAME_class,
-    create_test_padding_VALID_class,
-    create_test_channel_last_class,
-    create_test_fp16_class,
-)
+from test_conv2d_op_mlu import TestConv2DOp, TestConv2DOp_v2, create_test_padding_SAME_class, create_test_padding_VALID_class, create_test_channel_last_class, create_test_fp16_class
 
-# ----------------TestDepthwiseConv -----
+#----------------TestDepthwiseConv -----
 
 
 class TestDepthwiseConv(TestConv2DOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -50,6 +46,7 @@ class TestDepthwiseConv(TestConv2DOp):
 
 
 class TestDepthwiseConv2(TestConv2DOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -62,6 +59,7 @@ class TestDepthwiseConv2(TestConv2DOp):
 
 
 class TestDepthwiseConv3(TestConv2DOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -74,6 +72,7 @@ class TestDepthwiseConv3(TestConv2DOp):
 
 
 class TestDepthwiseConvandFuse(TestConv2DOp):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]
@@ -87,6 +86,7 @@ class TestDepthwiseConvandFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv2andFuse(TestConv2DOp):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]
@@ -100,6 +100,7 @@ class TestDepthwiseConv2andFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv3andFuse(TestConv2DOp):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]
@@ -113,6 +114,7 @@ class TestDepthwiseConv3andFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -128,6 +130,7 @@ class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv2_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -143,6 +146,7 @@ class TestDepthwiseConv2_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv3_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -158,6 +162,7 @@ class TestDepthwiseConv3_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvandFuse_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]
@@ -175,6 +180,7 @@ class TestDepthwiseConvandFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv2andFuse_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]
@@ -192,6 +198,7 @@ class TestDepthwiseConv2andFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv3andFuse_AsyPadding(TestConv2DOp_v2):
+
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.pad = [1, 1]

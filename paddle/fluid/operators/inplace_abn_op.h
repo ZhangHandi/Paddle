@@ -22,6 +22,7 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>

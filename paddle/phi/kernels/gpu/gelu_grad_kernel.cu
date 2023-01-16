@@ -99,5 +99,4 @@ PD_REGISTER_KERNEL(gelu_grad,
                    phi::GeluGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}

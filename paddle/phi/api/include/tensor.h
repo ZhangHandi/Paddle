@@ -63,7 +63,7 @@ class AbstractAutogradMeta {
  * computation.
  *
  * This is a new Tensor design, which is independent of the original
- * phi::DenseTensor in fluid. The original Tensor will be gradually discarded
+ * framework::Tensor in fluid. The original Tensor will be gradually discarded
  * in the future.
  *
  * Note: Tensor can be NULL state, Tensor is meaningful only when the
@@ -211,7 +211,7 @@ class PADDLE_API Tensor final {
    *
    * @return DataLayout
    */
-  phi::DataLayout layout() const;
+  DataLayout layout() const;
 
   /**
    * @brief Determine whether tensor is DenseTensor
@@ -285,14 +285,6 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_gpu_pinned() const;
-
-  /**
-   * @brief Determine whether the tensor device is XPU
-   *
-   * @return true
-   * @return false
-   */
-  bool is_xpu() const;
 
   /**
    * @brief Determine whether the tensor device is CustomDevice

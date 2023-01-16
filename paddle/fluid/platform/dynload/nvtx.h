@@ -13,6 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifndef _WIN32
+#include <cuda.h>
+#include <nvToolsExt.h>
+
+#include <mutex>  // NOLINT
+
 #include "paddle/phi/backends/dynload/nvtx.h"
 
 namespace paddle {
@@ -23,12 +28,11 @@ namespace dynload {
   using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
-#define PLATFORM_NVTX_ROUTINE_EACH(__macro) \
-  __macro(nvtxRangePushA);                  \
-  __macro(nvtxRangePushEx);                 \
+#define NVTX_ROUTINE_EACH(__macro) \
+  __macro(nvtxRangePushA);         \
   __macro(nvtxRangePop);
 
-PLATFORM_NVTX_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
+NVTX_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
 
 #undef PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP
 }  // namespace dynload

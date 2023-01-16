@@ -20,6 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
+
 template <typename T>
 class AssignPosOpCPUKernel : public framework::OpKernel<T> {
  public:

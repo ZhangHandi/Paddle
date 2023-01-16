@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import os
-
-import numpy as np
-
 import paddle
 import paddle.distributed.fleet as fleet
-import paddle.nn as nn
 from paddle.vision.models import resnet50 as resnet
+import numpy as np
+import paddle.nn as nn
 
 __all__ = [
     'resnet_model',
@@ -30,15 +28,16 @@ def get_seed_from_env():
     return int(os.environ.get("SEED", 0))
 
 
-def resnet_model(
-    place, batch_size, image_shape=[3, 224, 224], num_classes=1000
-):
-    image = paddle.static.data(
-        shape=[batch_size] + image_shape, dtype='float32', name='image'
-    )
-    label = paddle.static.data(
-        shape=[batch_size, 1], dtype='int64', name='label'
-    )
+def resnet_model(place,
+                 batch_size,
+                 image_shape=[3, 224, 224],
+                 num_classes=1000):
+    image = paddle.static.data(shape=[batch_size] + image_shape,
+                               dtype='float32',
+                               name='image')
+    label = paddle.static.data(shape=[batch_size, 1],
+                               dtype='int64',
+                               name='label')
     model = resnet(pretrained=False)
     loss_fn = nn.loss.CrossEntropyLoss()
     pred_out = model(image)
@@ -59,9 +58,9 @@ def resnet_model(
         np.random.seed(seed + rank)
         for _ in range(10):
             image_np = np.random.random(size=image.shape).astype('float32')
-            label_np = np.random.randint(
-                low=0, high=num_classes, size=label.shape
-            ).astype('int64')
+            label_np = np.random.randint(low=0,
+                                         high=num_classes,
+                                         size=label.shape).astype('int64')
             yield image_np, label_np
 
     main_program = paddle.static.default_main_program()
@@ -70,12 +69,12 @@ def resnet_model(
 
 
 def simple_net(place, batch_size, image_shape=[784], num_classes=10):
-    image = paddle.static.data(
-        shape=[batch_size] + image_shape, dtype='float32', name='image'
-    )
-    label = paddle.static.data(
-        shape=[batch_size, 1], dtype='int64', name='label'
-    )
+    image = paddle.static.data(shape=[batch_size] + image_shape,
+                               dtype='float32',
+                               name='image')
+    label = paddle.static.data(shape=[batch_size, 1],
+                               dtype='int64',
+                               name='label')
     linears = [nn.Linear(784, 784) for _ in range(3)]
     hidden = image
     for linear in linears:
@@ -99,9 +98,9 @@ def simple_net(place, batch_size, image_shape=[784], num_classes=10):
         np.random.seed(seed + rank)
         for _ in range(10):
             image_np = np.random.random(size=image.shape).astype('float32')
-            label_np = np.random.randint(
-                low=0, high=num_classes, size=label.shape
-            ).astype('int64')
+            label_np = np.random.randint(low=0,
+                                         high=num_classes,
+                                         size=label.shape).astype('int64')
             yield image_np, label_np
 
     main_program = paddle.static.default_main_program()

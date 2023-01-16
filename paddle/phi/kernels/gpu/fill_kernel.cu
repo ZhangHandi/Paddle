@@ -26,6 +26,5 @@ PD_REGISTER_KERNEL(fill,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   paddle::platform::float16,
                    bool) {}

@@ -12,12 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// NOTE(Ruibiao): Difficult to remove code from this header file because too
+// many files rely on it through "mkldnn_reuse.h"
+
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 class PoolOp : public framework::OperatorWithKernel {
  public:
@@ -29,7 +34,7 @@ class PoolOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -43,7 +48,7 @@ class PoolOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

@@ -19,15 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class IndexSelectNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<phi::DenseTensor>("X");
-    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* index = ctx.Input<Tensor>("Index");
     auto dim = ctx.Attr<int>("dim");
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
@@ -48,9 +50,10 @@ template <typename DeviceContext, typename T>
 class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* index = ctx.Input<phi::DenseTensor>("Index");
-    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* index = ctx.Input<Tensor>("Index");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -64,7 +67,7 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
       dim += out_dims.size();
     }
 
-    phi::DenseTensor casted_index;
+    Tensor casted_index;
     if (framework::TransToProtoVarType(index->dtype()) !=
         framework::proto::VarType::INT32) {
       casted_index.mutable_data<int32_t>(index->dims(), ctx.GetPlace());
@@ -88,7 +91,7 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
           .AddOutput(*x_grad);
       runner.Run(stream);
     } else {
-      phi::DenseTensor transed_out_grad;
+      Tensor transed_out_grad;
       std::vector<int> in_trans_perm;
       in_trans_perm.push_back(dim);
       for (int i = 0; i < out_dims.size(); ++i) {
@@ -107,7 +110,7 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
           .AddOutput(transed_out_grad);
       in_trans_runner.Run(stream);
 
-      phi::DenseTensor sum_out;
+      Tensor sum_out;
       framework::DDim sum_dims(x_dims);
       sum_dims[0] = x_dims[dim];
       auto idx = 1;

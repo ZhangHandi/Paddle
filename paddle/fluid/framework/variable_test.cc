@@ -22,14 +22,14 @@ namespace framework {
 TEST(Variable, GetMutable) {
   std::unique_ptr<Variable> v(new Variable());
 
-  auto* t = v->GetMutable<String>();
+  auto* t = v->GetMutable<std::string>();
   *t = "1234";
 
-  const auto& tt = v->Get<String>();
+  const auto& tt = v->Get<std::string>();
   EXPECT_EQ("1234", tt);
 
   try {
-    v->GetMutable<phi::DenseTensor>();
+    v->GetMutable<Tensor>();
   } catch (std::exception& e) {
     return;
   }

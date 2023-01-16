@@ -96,10 +96,9 @@ class DeviceInterface {  // Driver / Runtime
 
   // Event
   // ! Create an event.
-  virtual void CreateEvent(
-      size_t dev_id,
-      event::Event* event,
-      event::Event::Flag flags = event::Event::Flag::Default);
+  virtual void CreateEvent(size_t dev_id,
+                           event::Event* event,
+                           event::Event::Flag flags);
 
   // ! Destroy an event.
   virtual void DestroyEvent(size_t dev_id, event::Event* event);

@@ -131,7 +131,7 @@ void TestHCCLAllReduceOp(f::Scope* scope,
                          int iter) {
   // init
   auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<phi::DenseTensor>();
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   int rank_id = atoi(getenv("RANK_ID"));
   int num1 = 3;
@@ -151,7 +151,7 @@ void TestHCCLAllReduceOp(f::Scope* scope,
   ctx.Wait();
 
   auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<phi::DenseTensor>();
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<T>(place);  // allocate
   ctx.Wait();

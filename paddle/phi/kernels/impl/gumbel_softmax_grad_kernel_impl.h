@@ -14,11 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/softmax.h"
-#include "paddle/phi/kernels/funcs/softmax_impl.h"
 
 namespace phi {
 
@@ -38,19 +37,13 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
     return;
   }
 
-  // For 0D Tensor
-  if (rank == 0) {
-    phi::funcs::set_constant(ctx, dx, 0.0);
-    return;
-  }
-
   const int size_to_axis = funcs::SizeToAxis(axis, dx->dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, dx->dims());
   DenseTensor dx_2d(*dx), out_2d(out), dout_2d(dout);
   dx_2d.Resize({size_to_axis, size_from_axis});
   out_2d.Resize({size_to_axis, size_from_axis});
   dout_2d.Resize({size_to_axis, size_from_axis});
-  phi::funcs::SoftmaxGradFunctor<Context, T>()(
+  paddle::operators::math::SoftmaxGradFunctor<Context, T>()(
       ctx, axis_dim, &out_2d, &dout_2d, &dx_2d);
 }
 

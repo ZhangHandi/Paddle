@@ -254,13 +254,9 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
         auto dev_ctxes = op->DeviceContext();
         auto &inputs = op->Inputs();
         for (auto &input : inputs) {
-          if (input && input->GeneratedOp() != nullptr) {
-            auto dev_ctxes = input->GeneratedOp()->DeviceContext();
-            for (auto &item : dev_ctxes) {
-              ((platform::XPUDeviceContext *)(item.second))->Wait();
-            }
-          } else {
-            VLOG(3) << "No generated op:" << op->Name();
+          auto dev_ctxes = input->GeneratedOp()->DeviceContext();
+          for (auto &item : dev_ctxes) {
+            ((platform::XPUDeviceContext *)(item.second))->Wait();
           }
         }
         op->Run(strategy_.use_device_);
@@ -278,8 +274,8 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
       }
     } catch (...) {
       error_state = 1;
-      exception_.Catch(std::current_exception());
       ready_ops->Push(nullptr);
+      exception_.Catch(std::current_exception());
     }
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -312,8 +308,8 @@ void BindThreadedSSAGraphExecutor::RunOpAsyncMainStream(
       }
     } catch (...) {
       error_state = 1;
-      exception_.Catch(std::current_exception());
       ready_ops->Push(nullptr);
+      exception_.Catch(std::current_exception());
     }
     {
       std::lock_guard<std::mutex> lock(mutex_);

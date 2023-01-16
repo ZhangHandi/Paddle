@@ -27,14 +27,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 struct LRNFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out,
-                  phi::DenseTensor* mid,
+                  const framework::Tensor& input,
+                  framework::Tensor* out,
+                  framework::Tensor* mid,
                   int N,
                   int C,
                   int H,
@@ -48,7 +49,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
     phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    phi::DenseTensor in_transpose, mid_transpose, out_transpose;
+    Tensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
       auto in_dims = input.dims();
@@ -71,7 +72,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     T* odata = out_transpose.data<T>();
     T* mdata = mid_transpose.data<T>();
 
-    phi::DenseTensor squared;
+    Tensor squared;
     T* sdata = squared.mutable_data<T>({1, C + n - 1, H, W}, place);
     std::memset(sdata, 0, sizeof(T) * squared.numel());
     for (int i = 0; i < mid->numel(); ++i) {
@@ -121,11 +122,11 @@ template struct LRNFunctor<phi::CPUContext, double>;
 template <typename T>
 struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const phi::DenseTensor& x,
-                  const phi::DenseTensor& out,
-                  const phi::DenseTensor& mid,
-                  phi::DenseTensor* x_g,
-                  const phi::DenseTensor& out_g,
+                  const framework::Tensor& x,
+                  const framework::Tensor& out,
+                  const framework::Tensor& mid,
+                  framework::Tensor* x_g,
+                  const framework::Tensor& out_g,
                   int N,
                   int C,
                   int H,
@@ -224,24 +225,35 @@ class LRNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
-        (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = framework::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
-      if (dl != phi::DataLayout::kAnyLayout) {
+      if (dl != framework::DataLayout::kAnyLayout) {
         return framework::OpKernelType(
             expected_kernel_type.data_type_, tensor.place(), dl);
       }
@@ -348,24 +360,35 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
-        (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = framework::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
-      if (dl != phi::DataLayout::kAnyLayout) {
+      if (dl != framework::DataLayout::kAnyLayout) {
         return framework::OpKernelType(
             expected_kernel_type.data_type_, tensor.place(), dl);
       }

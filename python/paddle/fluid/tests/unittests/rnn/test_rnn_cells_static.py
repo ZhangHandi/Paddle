@@ -17,20 +17,20 @@ import paddle
 paddle.framework.set_default_dtype("float64")
 paddle.enable_static()
 
+import numpy as np
 import unittest
 
-import numpy as np
 from convert import convert_params_for_cell_static
-from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
+from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
-        super().__init__(methodName="runTest")
+        super(TestSimpleRNNCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = (
-            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
-        )
+        self.place = paddle.CPUPlace() if place == "cpu" \
+            else paddle.CUDAPlace(0)
 
     def setUp(self):
         rnn1 = SimpleRNNCell(16, 32, bias=self.bias)
@@ -39,9 +39,10 @@ class TestSimpleRNNCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNNCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+                rnn2 = paddle.nn.SimpleRNNCell(16,
+                                               32,
+                                               bias_ih_attr=self.bias,
+                                               bias_hh_attr=self.bias)
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -74,15 +75,11 @@ class TestSimpleRNNCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 init_h = paddle.fluid.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "init_h", [-1, 32],
+                    dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
@@ -106,18 +103,17 @@ class TestSimpleRNNCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
         with paddle.static.scope_guard(scope):
-            y2, h2 = exe.run(
-                mp, feed=feed_dict, fetch_list=[y, h], use_prune=True
-            )
+            y2, h2 = exe.run(mp,
+                             feed=feed_dict,
+                             fetch_list=[y, h],
+                             use_prune=True)
 
         np.testing.assert_allclose(h1, h2, atol=1e-8, rtol=1e-5)
 
@@ -127,12 +123,12 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
-        super().__init__(methodName="runTest")
+        super(TestGRUCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = (
-            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
-        )
+        self.place = paddle.CPUPlace() if place == "cpu" \
+            else paddle.CUDAPlace(0)
 
     def setUp(self):
         rnn1 = GRUCell(16, 32, bias=self.bias)
@@ -141,9 +137,10 @@ class TestGRUCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRUCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+                rnn2 = paddle.nn.GRUCell(16,
+                                         32,
+                                         bias_ih_attr=self.bias,
+                                         bias_hh_attr=self.bias)
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -177,15 +174,11 @@ class TestGRUCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 init_h = paddle.fluid.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "init_h", [-1, 32],
+                    dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
@@ -209,18 +202,17 @@ class TestGRUCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
         with paddle.static.scope_guard(scope):
-            y2, h2 = exe.run(
-                mp, feed=feed_dict, fetch_list=[y, h], use_prune=True
-            )
+            y2, h2 = exe.run(mp,
+                             feed=feed_dict,
+                             fetch_list=[y, h],
+                             use_prune=True)
 
         np.testing.assert_allclose(h1, h2, atol=1e-8, rtol=1e-5)
 
@@ -230,12 +222,12 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
-        super().__init__(methodName="runTest")
+        super(TestLSTMCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = (
-            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
-        )
+        self.place = paddle.CPUPlace() if place == "cpu" \
+            else paddle.CUDAPlace(0)
 
     def setUp(self):
         rnn1 = LSTMCell(16, 32, bias=self.bias)
@@ -244,9 +236,10 @@ class TestLSTMCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTMCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+                rnn2 = paddle.nn.LSTMCell(16,
+                                          32,
+                                          bias_ih_attr=self.bias,
+                                          bias_hh_attr=self.bias)
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -281,20 +274,14 @@ class TestLSTMCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 init_h = paddle.fluid.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "init_h", [-1, 32],
+                    dtype=paddle.framework.get_default_dtype())
                 init_c = paddle.fluid.data(
-                    "init_c",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "init_c", [-1, 32],
+                    dtype=paddle.framework.get_default_dtype())
                 y, (h, c) = rnn2(x_data, (init_h, init_c))
 
         feed_dict = {x_data.name: x, init_h.name: prev_h, init_c.name: prev_c}
@@ -319,18 +306,17 @@ class TestLSTMCell(unittest.TestCase):
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.fluid.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
+                    "input", [-1, 16],
+                    dtype=paddle.framework.get_default_dtype())
                 y, (h, c) = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
         with paddle.static.scope_guard(scope):
-            y2, h2, c2 = exe.run(
-                mp, feed=feed_dict, fetch_list=[y, h, c], use_prune=True
-            )
+            y2, h2, c2 = exe.run(mp,
+                                 feed=feed_dict,
+                                 fetch_list=[y, h, c],
+                                 use_prune=True)
 
         np.testing.assert_allclose(h1, h2, atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2, atol=1e-8, rtol=1e-5)
@@ -342,9 +328,8 @@ class TestLSTMCell(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = (
-        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
-    )
+    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
+        else ["cpu"]
     for bias in [True, False]:
         for device in devices:
             for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:

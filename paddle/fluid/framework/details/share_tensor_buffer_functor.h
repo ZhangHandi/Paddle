@@ -40,22 +40,22 @@ namespace framework {
 namespace details {
 
 // TODO(zjl): support SelectedRows
-static inline const phi::DenseTensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->Get<phi::DenseTensor>();
+static inline const Tensor &GetTensorFromVar(const Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of LoDTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-static inline phi::DenseTensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->GetMutable<phi::DenseTensor>();
+static inline Tensor *GetMutableTensorFromVar(Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of LoDTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }

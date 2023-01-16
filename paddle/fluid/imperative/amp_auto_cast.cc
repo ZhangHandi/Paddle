@@ -22,7 +22,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-DECLARE_bool(low_precision_op_list);
 namespace paddle {
 namespace imperative {
 
@@ -194,16 +193,6 @@ AmpOperators::GetMutableUnsupportedBf16Ops() {
   return unsupported_bf16_ops_;
 }
 
-void AmpOperators::AddToAmpOpList(const std::string& op_name) {
-  if (FLAGS_low_precision_op_list) {
-    current_amp_ops_[op_name] += 1;
-  }
-}
-
-std::map<const std::string, int> AmpOperators::GetAmpOpList() {
-  return current_amp_ops_;
-}
-
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
@@ -364,9 +353,7 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
-             AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
-                 op_type)) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";

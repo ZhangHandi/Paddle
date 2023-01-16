@@ -25,11 +25,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const phi::DenseTensor& src,
+                             const framework::Tensor& src,
                              framework::Vector<size_t> index_lod,
-                             phi::DenseTensor* dst,
+                             framework::Tensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -41,32 +44,29 @@ class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* h0 = context.Input<phi::DenseTensor>("H0");
-    auto* weight = context.Input<phi::DenseTensor>("Weight");
+    auto* h0 = context.Input<Tensor>("H0");
+    auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* batch_gate = context.Input<phi::DenseTensor>("BatchGate");
+    auto* batch_gate = context.Input<LoDTensor>("BatchGate");
     auto* batch_reset_hidden_prev =
-        context.Input<phi::DenseTensor>("BatchResetHiddenPrev");
-    auto* batch_hidden = context.Input<phi::DenseTensor>("BatchHidden");
-    auto* hidden = context.Input<phi::DenseTensor>("Hidden");
+        context.Input<LoDTensor>("BatchResetHiddenPrev");
+    auto* batch_hidden = context.Input<LoDTensor>("BatchHidden");
+    auto* hidden = context.Input<LoDTensor>("Hidden");
     auto* hidden_grad =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Hidden"));
+        context.Input<LoDTensor>(framework::GradVarName("Hidden"));
     auto* input_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Input"));
-    auto* h0_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("H0"));
+        context.Output<LoDTensor>(framework::GradVarName("Input"));
+    auto* h0_grad = context.Output<Tensor>(framework::GradVarName("H0"));
     auto* weight_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
-    auto* bias_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+        context.Output<Tensor>(framework::GradVarName("Weight"));
+    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("Bias"));
 
     auto gate_dims = batch_gate->dims();
     auto hidden_dims = hidden->dims();
     int frame_size = hidden_dims[1];
 
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
-    phi::DenseTensor batch_hidden_grad, batch_gate_grad,
-        batch_reset_hidden_prev_grad;
+    LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,
@@ -77,7 +77,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
     zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
 
-    phi::DenseTensor ordered_h0, ordered_h0_grad;
+    Tensor ordered_h0, ordered_h0_grad;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -124,17 +124,16 @@ class GRUGradKernel : public framework::OpKernel<T> {
       int bend = static_cast<int>(batch_starts[n + 1]);
       int cur_batch_size = bend - bstart;
 
-      phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+      Tensor gate_t = batch_gate->Slice(bstart, bend);
       gru_value.gate_value = gate_t.data<T>();
-      phi::DenseTensor reset_hidden_prev_t =
-          batch_reset_hidden_prev->Slice(bstart, bend);
+      Tensor reset_hidden_prev_t = batch_reset_hidden_prev->Slice(bstart, bend);
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-      phi::DenseTensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
+      Tensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
       gru_grad.output_grad = hidden_grad_t.data<T>();
-      phi::DenseTensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
+      Tensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
       gru_grad.gate_grad = gate_grad_t.data<T>();
-      phi::DenseTensor reset_hidden_prev_grad_t =
+      Tensor reset_hidden_prev_grad_t =
           batch_reset_hidden_prev_grad.Slice(bstart, bend);
       gru_grad.reset_output_grad = reset_hidden_prev_grad_t.data<T>();
       if (n == 0) {
@@ -143,11 +142,9 @@ class GRUGradKernel : public framework::OpKernel<T> {
             h0 && h0_grad ? ordered_h0_grad.data<T>() : nullptr;
       } else {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
-        phi::DenseTensor hidden_prev_t =
-            batch_hidden->Slice(bstart_pre, bstart);
+        Tensor hidden_prev_t = batch_hidden->Slice(bstart_pre, bstart);
         gru_value.prev_out_value = hidden_prev_t.data<T>();
-        phi::DenseTensor hidden_prev_grad_t =
-            batch_hidden_grad.Slice(bstart_pre, bstart);
+        Tensor hidden_prev_grad_t = batch_hidden_grad.Slice(bstart_pre, bstart);
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;

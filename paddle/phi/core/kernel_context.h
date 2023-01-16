@@ -119,8 +119,6 @@ class KernelContext {
     return static_cast<TensorType*>(outputs_.at(idx));
   }
 
-  TensorBase* MutableOutputAt(size_t idx) { return outputs_.at(idx); }
-
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
@@ -140,16 +138,11 @@ class KernelContext {
   template <typename AttrType>
   const AttrType& AttrAt(size_t idx) const;
 
+  const RuntimeAttrs& GetRuntimeAttrs() const { return runtime_attrs_; }
+
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
-
-  void ClearInputOutput() {
-    inputs_.clear();
-    input_range_.clear();
-    outputs_.clear();
-    output_range_.clear();
-  }
 
  private:
   DeviceContext* dev_ctx_;
@@ -161,6 +154,8 @@ class KernelContext {
   paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
   paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
       output_range_;
+
+  RuntimeAttrs runtime_attrs_;
 };
 
 }  // namespace phi

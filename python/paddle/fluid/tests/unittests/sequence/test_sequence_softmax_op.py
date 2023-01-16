@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+from __future__ import print_function
+
 import unittest
-
 import numpy as np
-
 import paddle.fluid.core as core
+import sys
 
 sys.path.append("../")
 from op_test import OpTest
@@ -25,6 +25,7 @@ from test_softmax_op import stable_softmax
 
 
 class TestSequenceSoftmaxOp(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_softmax"
         self.use_cudnn = False
@@ -35,14 +36,13 @@ class TestSequenceSoftmaxOp(OpTest):
         out = np.zeros((110, 1)).astype(self.dtype)
         offset = 0
         for i in range(len(self.lod[0])):
-            if self.lod[0][i] == 0:
+            if (self.lod[0][i] == 0):
                 continue
-            sub_x = x[offset : offset + self.lod[0][i], :]
+            sub_x = x[offset:offset + self.lod[0][i], :]
             sub_x = sub_x.reshape(1, self.lod[0][i])
             sub_out = stable_softmax(sub_x)
-            out[offset : offset + self.lod[0][i], :] = sub_out.reshape(
-                self.lod[0][i], 1
-            )
+            out[offset:offset + self.lod[0][i], :] = sub_out.reshape(
+                self.lod[0][i], 1)
             offset += self.lod[0][i]
 
         self.inputs = {"X": (x, self.lod)}
@@ -73,25 +73,28 @@ class TestSequenceSoftmaxOp(OpTest):
 
 
 # ----------------cudnn Sequencesoftmax----------------
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
+
     def init_op_type(self):
         self.use_cudnn = True
 
 
 class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[40, 0, 40, 30]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 40, 70, 0]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 0, 0, 110]]
 

@@ -48,7 +48,7 @@ namespace reader = operators::reader;
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
 static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
-    const phi::DenseTensor &tensor,
+    const framework::LoDTensor &tensor,
     const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
@@ -117,7 +117,7 @@ template <typename QueueType>
 class MultiDeviceFeedReader {
  public:
   using ResultDictList =
-      std::vector<std::unordered_map<std::string, phi::DenseTensor>>;
+      std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
   using ResultList = std::vector<paddle::framework::LoDTensorArray>;
 
   static constexpr bool kKeepOrder =
@@ -356,7 +356,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
             auto &tensor_list = result_list[0];
             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
             var_list.reserve(tensor_list.size());
-            auto func = [](phi::DenseTensor &lod_tensor) {
+            auto func = [](framework::LoDTensor &lod_tensor) {
               std::string act_name =
                   imperative::GetCurrentTracer()->GenerateUniqueName(
                       "generated_var");
@@ -366,7 +366,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
               new_var->SetDataType(
                   framework::TransToProtoVarType(lod_tensor.dtype()));
               auto *tensor =
-                  new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+                  new_var->MutableVar()->GetMutable<framework::LoDTensor>();
               *tensor = std::move(lod_tensor);
               return new_var;
             };
@@ -387,7 +387,7 @@ void BindReader(py::module *module) {
   auto &m = *module;
 
   m.def("diff_tensor_shape",
-        [](const phi::DenseTensor &tensor,
+        [](const framework::LoDTensor &tensor,
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);

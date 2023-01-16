@@ -52,10 +52,10 @@ TEST(LoD, data) {
   }
 }
 
-TEST(DenseTensor, LoDInGPU) {
+TEST(LoDTensor, LoDInGPU) {
   paddle::framework::InitDevices();
 
-  phi::DenseTensor lod_tensor;
+  paddle::framework::LoDTensor lod_tensor;
   paddle::platform::CUDAPlace place(0);
 
   paddle::framework::LoD src_lod;

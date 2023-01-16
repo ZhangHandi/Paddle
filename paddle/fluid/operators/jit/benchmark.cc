@@ -135,11 +135,12 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   LOG(INFO) << loginfos.str();
 }
 
+using Tensor = paddle::framework::Tensor;
 template <typename KernelTuple, typename PlaceType>
 void BenchKernelXYZN() {
   using T = typename KernelTuple::data_type;
   for (int d : TestSizes()) {
-    phi::DenseTensor x, y, z;
+    Tensor x, y, z;
     x.Resize({d});
     y.Resize({d});
     z.Resize({d});
@@ -160,7 +161,7 @@ void BenchKernelAXYN() {
   using T = typename KernelTuple::data_type;
   for (int d : TestSizes()) {
     const T a = static_cast<T>(3);
-    phi::DenseTensor x, y;
+    Tensor x, y;
     x.Resize({d});
     y.Resize({d});
     T* x_data = x.mutable_data<T>(PlaceType());
@@ -176,7 +177,7 @@ template <typename KernelTuple, typename PlaceType>
 void BenchKernelXRN() {
   using T = typename KernelTuple::data_type;
   for (int d : TestSizes()) {
-    phi::DenseTensor x;
+    Tensor x;
     RandomVec<T>(d, x.mutable_data<T>({d}, PlaceType()));
     T res;
     BenchAllImpls<KernelTuple, PlaceType>(d, x.data<T>(), &res, d);
@@ -187,7 +188,7 @@ template <typename KernelTuple, typename PlaceType>
 void BenchKernelXYN() {
   using T = typename KernelTuple::data_type;
   for (int d : TestSizes()) {
-    phi::DenseTensor x, y;
+    Tensor x, y;
     x.Resize({d});
     y.Resize({d});
     T* x_data = x.mutable_data<T>(PlaceType());
@@ -204,7 +205,7 @@ void BenchKernelLSTM() {
     for (int d : TestSizes()) {
       const jit::lstm_attr_t attr(
           d, jit::kVSigmoid, jit::kVTanh, jit::kVTanh, use_peephole);
-      phi::DenseTensor x, ct_1, ct, ht, wp, checked;
+      Tensor x, ct_1, ct, ht, wp, checked;
       x.Resize({4 * d});
       ct_1.Resize({d});
       ct.Resize({d});
@@ -241,7 +242,7 @@ void BenchKernelGRU() {
   for (int d : TestSizes()) {
     const jit::gru_attr_t attr(d, jit::kVSigmoid, jit::kVTanh);
     auto place = PlaceType();
-    phi::DenseTensor x, ht_1, ht;
+    Tensor x, ht_1, ht;
     x.Resize({3 * d});
     ht_1.Resize({d});
     ht.Resize({d});
@@ -268,7 +269,7 @@ void BenchKernelSeqPool() {
       jit::seq_pool_attr_t attr(w, type);
       for (int h : TestSizes()) {
         attr.h = h;
-        phi::DenseTensor x, y;
+        Tensor x, y;
         x.Resize({h * w});
         y.Resize({w});
         RandomVec<T>(h * w, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
@@ -286,7 +287,7 @@ void BenchKernelEmbSeqPool() {
   std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
   int64_t tbl_h = 1e4;
   for (int tbl_w : {10, 16, 256}) {
-    phi::DenseTensor table;
+    Tensor table;
     table.Resize({tbl_h, tbl_w});
     RandomVec<T>(tbl_h * tbl_w, table.mutable_data<T>(PlaceType()), -2.f, 2.f);
     const T* table_data = table.data<T>();
@@ -296,7 +297,7 @@ void BenchKernelEmbSeqPool() {
           int64_t out_w = tbl_w * idx_w;
           jit::emb_seq_pool_attr_t attr(
               tbl_h, tbl_w, idx_h, idx_w, out_w, type);
-          phi::DenseTensor idx, out;
+          Tensor idx, out;
           idx.Resize({idx_h, idx_w});
           out.Resize({out_w});
           RandomVec<int64_t>(idx_h * idx_w,
@@ -347,12 +348,12 @@ void BenchKernelSgd() {
   for (int param_h : {1, 1000}) {
     for (int grad_w : {1, 2, 8, 16, 30, 256}) {
       // only benchmark inplace
-      phi::DenseTensor param;
+      Tensor param;
       param.Resize({param_h, grad_w});
       T* param_data = param.mutable_data<T>(PlaceType());
       RandomVec<T>(param_h * grad_w, param_data, -2.f, 2.f);
       for (int rows_size = 1; rows_size <= std::min(param_h, 10); ++rows_size) {
-        phi::DenseTensor grad;
+        Tensor grad;
         grad.Resize({rows_size, grad_w});
         std::vector<int64_t> rows =
             UnDuplicatedRandomVec(rows_size, 0, rows_size - 1);
@@ -374,7 +375,7 @@ void BenchKernelMatMul() {
   for (int m : {1, 2, 3, 4}) {
     for (int n : TestSizes()) {
       for (int k : TestSizes()) {
-        phi::DenseTensor a, b, c;
+        Tensor a, b, c;
         a.Resize({m * k});
         b.Resize({k * n});
         c.Resize({m * n});
@@ -396,7 +397,7 @@ void BenchKernelSoftmax() {
   using T = typename KernelTuple::data_type;
   for (int bs : {1, 2, 10}) {
     for (int n : TestSizes()) {
-      phi::DenseTensor x, y;
+      Tensor x, y;
       x.Resize({bs, n});
       y.Resize({bs, n});
       RandomVec<T>(bs * n, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
@@ -417,7 +418,7 @@ void BenchKernelLayerNorm() {
       for (int x_dim_1 : TestSizes()) {
         int right = x_dim_1;
         int sz = left * right;
-        phi::DenseTensor x, mean, var, scale, bias, out;
+        Tensor x, mean, var, scale, bias, out;
         x.Resize({n, x_dim_0, x_dim_1});
         out.Resize({n, x_dim_0, x_dim_1});
         mean.Resize({n, x_dim_0});
@@ -461,7 +462,7 @@ void BenchKernelCRFDecoding() {
     for (int tag_num : TestSizes()) {
       int x_sz = seq_len * tag_num;
       int w_sz = (tag_num + state_trans_base_idx) * tag_num;
-      phi::DenseTensor x, w, alpha, track;
+      Tensor x, w, alpha, track;
       x.Resize({seq_len, tag_num});
       w.Resize({tag_num + state_trans_base_idx, tag_num});
       alpha.Resize({seq_len, tag_num});
@@ -485,12 +486,12 @@ template <typename KernelTuple, typename PlaceType>
 void BenchKernelVBroadcast() {
   using T = typename KernelTuple::data_type;
   for (int64_t w : {1, 16, 64, 100, 256}) {
-    phi::DenseTensor x;
+    Tensor x;
     x.Resize({w});
     RandomVec<T>(w, x.mutable_data<T>(PlaceType()));
     const T* x_data = x.data<T>();
     for (int h : TestSizes()) {
-      phi::DenseTensor y;
+      Tensor y;
       y.Resize({h * w});
       T* y_data = y.mutable_data<T>(PlaceType());
       BenchAllImpls<KernelTuple, PlaceType>(

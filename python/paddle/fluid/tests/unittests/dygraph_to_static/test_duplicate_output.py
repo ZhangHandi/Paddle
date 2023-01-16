@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
 
 import numpy as np
+import unittest
 
 import paddle
 
@@ -27,12 +28,14 @@ else:
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
 
     def forward(self, x):
-        """forward with duplicate outputs."""
+        """ forward with duplicate outputs.
+        """
         x = self._linear(x)
         return x, x
 
@@ -58,4 +61,5 @@ class TestDuplicateOutput(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.fluid.framework._test_eager_guard():
+        unittest.main()

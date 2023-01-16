@@ -21,13 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 using EigenArrayMap =
@@ -52,7 +54,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -67,7 +69,7 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

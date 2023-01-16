@@ -183,10 +183,6 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
             .get());
-    ctx->SetHostZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
-            .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CUDAPinnedPlace())

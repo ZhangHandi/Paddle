@@ -25,15 +25,13 @@ template <typename T>
 class SetValueNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<phi::DenseTensor>("Input");
-    auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* in = ctx.Input<Tensor>("Input");
+    auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
+    auto* out = ctx.Output<Tensor>("Out");
 
-    auto starts_tensor_list =
-        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
-    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
-    auto steps_tensor_list =
-        ctx.MultiInput<phi::DenseTensor>("StepsTensorList");
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto steps_tensor_list = ctx.MultiInput<Tensor>("StepsTensorList");
 
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");
@@ -132,7 +130,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "OP(set_value) error index indices and value update not match "));
 
-    phi::DenseTensor value_t(in->type());
+    Tensor value_t(in->type());
     if (value_tensor != nullptr) {
       value_t.ShareDataWith(*value_tensor);
     } else {
@@ -148,7 +146,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
-    phi::DenseTensor value_temp(in->type());
+    Tensor value_temp(in->type());
     if (slice_dims_for_assign == value_t.dims()) {
       value_temp.ShareDataWith(value_t);
     } else {
@@ -165,7 +163,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     int64_t input_numel = phi::product(in_dims);
     int64_t index_numel = index_indices.size();
 
-    phi::DenseTensor in_temp, out_temp, val_temp;
+    Tensor in_temp, out_temp, val_temp;
     in_temp.ShareDataWith(*in);
     out_temp.ShareDataWith(*out);
     val_temp.ShareDataWith(value_temp);

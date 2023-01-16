@@ -28,7 +28,8 @@ def Singleton(cls):
     return _singleton
 
 
-class OpUpdateInfoHelper:
+class OpUpdateInfoHelper(object):
+
     def __init__(self, info):
         self._info = info
 
@@ -47,7 +48,8 @@ class OpUpdateInfoHelper:
 
 
 @Singleton
-class OpLastCheckpointChecker:
+class OpLastCheckpointChecker(object):
+
     def __init__(self):
         self.raw_version_map = core.get_op_version_map()
         self.checkpoints_map = {}
@@ -63,9 +65,8 @@ class OpLastCheckpointChecker:
         updates = []
         if op_name in self.checkpoints_map:
             for update in self.checkpoints_map[op_name]:
-                if (update.type() == type) or (
-                    type == core.OpUpdateType.kInvalid
-                ):
+                if (update.type() == type) or (type
+                                               == core.OpUpdateType.kInvalid):
                     if OpUpdateInfoHelper(update.info()).verify_key_value(key):
                         updates.append(update.info())
         return updates

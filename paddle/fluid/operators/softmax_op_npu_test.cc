@@ -35,7 +35,7 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<phi::DenseTensor>();
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   std::vector<T> init;
   for (int i = 3; i < 9; ++i) {
@@ -49,7 +49,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<phi::DenseTensor>();
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({2, 3});
   tensor_out->mutable_data<T>(place);  // allocate
 
@@ -85,7 +85,7 @@ template <typename T>
 void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<phi::DenseTensor>();
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   std::vector<T> out_init;
 
@@ -102,7 +102,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
+  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
 
   std::vector<T> dout_init;
   for (int i = 0; i < 6; ++i) {
@@ -115,7 +115,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<phi::DenseTensor>();
+  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
 
   ctx.Wait();
 

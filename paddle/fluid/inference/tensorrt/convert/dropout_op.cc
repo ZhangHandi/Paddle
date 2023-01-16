@@ -58,7 +58,8 @@ class DropoutOpConverter : public OpConverter {
     }
 
     platform::CPUPlace cpu_place;
-    std::unique_ptr<phi::DenseTensor> weight_tensor(new phi::DenseTensor());
+    std::unique_ptr<framework::LoDTensor> weight_tensor(
+        new framework::LoDTensor());
     weight_tensor->Resize(phi::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());

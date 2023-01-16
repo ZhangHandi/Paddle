@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -255,7 +257,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto input = ctx.Input<Tensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -430,8 +432,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
-  // @input: [batch_size, seq_len, embed_dim]
-  // @final_out: [batch_size, seq_len, num_heads, head_dim]
+  // @input: [batch_size, seq_len, embed_dim] 
+  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -445,7 +447,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);
-
+                
   }
   // out linear
   out = linear(out);
@@ -520,77 +522,52 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                         ctx->GetInputDim("OutLinearBias"));
     }
-    if (ctx->HasOutput(framework::GradVarName("OutLinearW"))) {
-      ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
-                        ctx->GetInputDim("OutLinearW"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("QKVW"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKVW"),
-                        ctx->GetInputDim("QKVW"));
-    }
+    ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
+                      ctx->GetInputDim("OutLinearW"));
+    ctx->SetOutputDim(framework::GradVarName("QKVW"), ctx->GetInputDim("QKVW"));
     if (ctx->HasOutput(framework::GradVarName("QKVBias"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBias"),
                         ctx->GetInputDim("QKVBias"));
     }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      if (ctx->HasOutput(framework::GradVarName("LnOut"))) {
-        ctx->SetOutputDim(framework::GradVarName("LnOut"),
-                          ctx->GetInputDim("LnOut"));
-      }
+      ctx->SetOutputDim(framework::GradVarName("LnOut"),
+                        ctx->GetInputDim("LnOut"));
     } else {
-      if (ctx->HasOutput(framework::GradVarName("BiasDropoutResidualOut"))) {
-        ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
-                          ctx->GetInputDim("BiasDropoutResidualOut"));
-      }
+      ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
+                        ctx->GetInputDim("BiasDropoutResidualOut"));
     }
-    if (ctx->HasOutput(framework::GradVarName("FMHAOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
-                        ctx->GetInputDim("FMHAOut"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("QKTVOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
-                        ctx->GetInputDim("QKTVOut"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("TransposeOut2"))) {
-      ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
-                        ctx->GetInputDim("TransposeOut2"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("QKOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKOut"),
-                        ctx->GetInputDim("QKOut"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("SoftmaxOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
-                        ctx->GetInputDim("SoftmaxOut"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("AttnDropoutOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
-                        ctx->GetInputDim("AttnDropoutOut"));
-    }
+    ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
+                      ctx->GetInputDim("FMHAOut"));
+    ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
+                      ctx->GetInputDim("QKTVOut"));
+    ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
+                      ctx->GetInputDim("TransposeOut2"));
+    ctx->SetOutputDim(framework::GradVarName("QKOut"),
+                      ctx->GetInputDim("QKOut"));
+    ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
+                      ctx->GetInputDim("SoftmaxOut"));
+    ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
+                      ctx->GetInputDim("AttnDropoutOut"));
 
     if (ctx->HasOutput(framework::GradVarName("SrcMaskOut"))) {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
                         ctx->GetInputDim("SrcMaskOut"));
     }
-    if (ctx->HasOutput(framework::GradVarName("QKVOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKVOut"),
-                        ctx->GetInputDim("QKVOut"));
-    }
+    ctx->SetOutputDim(framework::GradVarName("QKVOut"),
+                      ctx->GetInputDim("QKVOut"));
     if (ctx->HasOutput(framework::GradVarName("QKVBiasOut"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBiasOut"),
                         ctx->GetInputDim("QKVBiasOut"));
     }
-    if (ctx->HasOutput(framework::GradVarName("OutLinearOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
-                        ctx->GetInputDim("OutLinearOut"));
-    }
+    ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
+                      ctx->GetInputDim("OutLinearOut"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto input = ctx.Input<Tensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -727,14 +704,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
-                                    "QKVBiasOut",
-                                    "QKVOut",
-                                    "QKOut",
-                                    "QKTVOut",
-                                    "OutLinearOut",
-                                    "SrcMask");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -744,9 +713,7 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_attention_grad,
-                  ops::FusedAttentionGradOp,
-                  ops::FusedAttentionGradNoNeedBufferInferer);
+REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

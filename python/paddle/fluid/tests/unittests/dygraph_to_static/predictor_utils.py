@@ -13,14 +13,17 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+
+from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import create_paddle_predictor
 
 
-class PredictorTools:
+class PredictorTools(object):
     '''
     Paddle-Inference predictor
     '''
@@ -37,13 +40,12 @@ class PredictorTools:
 
     def _load_model_and_set_config(self):
         '''
-        load model from file and set analysis config
+        load model from file and set analysis config 
         '''
         if os.path.exists(os.path.join(self.model_path, self.params_file)):
             config = AnalysisConfig(
                 os.path.join(self.model_path, self.model_file),
-                os.path.join(self.model_path, self.params_file),
-            )
+                os.path.join(self.model_path, self.params_file))
         else:
             config = AnalysisConfig(os.path.join(self.model_path))
 
@@ -73,7 +75,7 @@ class PredictorTools:
         tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
         for i, name in enumerate(names):
-            # assert name in self.feeds_var, '{} not in feeded dict'.format(name)
+            #assert name in self.feeds_var, '{} not in feeded dict'.format(name)
             shape = tensor_shapes[name]
             tensor = predictor.get_input_tensor(name)
             feed_data = self.feeds_var[i]

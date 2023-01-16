@@ -17,10 +17,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
-using DataLayout = phi::DataLayout;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using DataLayout = framework::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
  public:
@@ -104,16 +110,21 @@ class LayerNormOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    if (begin_norm_axis !=
-        ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
-      this->SetDnnFallback(true);
+    if (library == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+#endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -209,17 +220,17 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(
         var,
         platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
-    const phi::DenseTensor *t = nullptr;
-    if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
+    const Tensor *t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
