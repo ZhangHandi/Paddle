@@ -169,6 +169,7 @@ class FcOpConverter : public OpConverter {
     if (op_desc.HasAttr("support_int8")) {
       support_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8"));
     }
+   
     float in_scale = 0;
     if (enable_int8 || support_int8) {
       if (enable_int8) {
@@ -201,8 +202,12 @@ class FcOpConverter : public OpConverter {
           //    true,
           //    platform::errors::InvalidArgument(
           //        "must have out threshold in fc layers in int8 mode"));
-          //out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-          out_scale = 0;
+          if (op_desc.HasAttr("out_threshold")) { 
+            out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          } else {
+            out_scale = 0;
+          }
+          //out_scale = 0;
         } else {
           out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
         }
