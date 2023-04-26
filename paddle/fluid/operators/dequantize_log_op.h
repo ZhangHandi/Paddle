@@ -34,7 +34,7 @@ struct DequantizeFunctor {
                   phi::DenseTensor* out);
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class DequantizeLogKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

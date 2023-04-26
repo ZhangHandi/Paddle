@@ -18,14 +18,14 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
 
-class Discriminator(paddle.nn.Layer):
+class Discriminator(fluid.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(1, 32)
@@ -38,7 +38,7 @@ class Discriminator(paddle.nn.Layer):
         return x
 
 
-class Generator(paddle.nn.Layer):
+class Generator(fluid.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(2, 64)
@@ -70,14 +70,18 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            img = paddle.static.data(name="img", shape=[2, 1])
-            noise = paddle.static.data(name="noise", shape=[2, 2])
+            img = fluid.layers.data(
+                name="img", shape=[2, 1], append_batch_size=False
+            )
+            noise = fluid.layers.data(
+                name="noise", shape=[2, 2], append_batch_size=False
+            )
 
             d_real = discriminator(img)
             d_loss_real = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_real,
-                    label=paddle.tensor.fill_constant(
+                    label=fluid.layers.fill_constant(
                         shape=[2, 1], dtype='float32', value=1.0
                     ),
                 )
@@ -87,7 +91,7 @@ class TestDygraphGAN(unittest.TestCase):
             d_loss_fake = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake,
-                    label=paddle.tensor.fill_constant(
+                    label=fluid.layers.fill_constant(
                         shape=[2, 1], dtype='float32', value=0.0
                     ),
                 )
@@ -102,13 +106,15 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            noise = paddle.static.data(name="noise", shape=[2, 2])
+            noise = fluid.layers.data(
+                name="noise", shape=[2, 2], append_batch_size=False
+            )
 
             d_fake = discriminator(generator(noise))
             g_loss = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake,
-                    label=paddle.tensor.fill_constant(
+                    label=fluid.layers.fill_constant(
                         shape=[2, 1], dtype='float32', value=1.0
                     ),
                 )
@@ -122,7 +128,7 @@ class TestDygraphGAN(unittest.TestCase):
             if not core.is_compiled_with_cuda()
             else fluid.CUDAPlace(0)
         )
-        static_params = {}
+        static_params = dict()
         with fluid.scope_guard(scope):
             img = np.ones([2, 1], np.float32)
             noise = np.ones([2, 2], np.float32)
@@ -142,7 +148,7 @@ class TestDygraphGAN(unittest.TestCase):
                     scope.find_var(param.name).get_tensor()
                 )
 
-        dy_params = {}
+        dy_params = dict()
         with fluid.dygraph.guard():
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
@@ -197,7 +203,7 @@ class TestDygraphGAN(unittest.TestCase):
             dy_g_loss = g_loss.numpy()
             dy_d_loss = d_loss.numpy()
 
-        dy_params2 = {}
+        dy_params2 = dict()
         with fluid.dygraph.guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.seed(1)

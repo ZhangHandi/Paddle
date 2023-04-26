@@ -25,7 +25,7 @@ class FusionRepeatedFCReluOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

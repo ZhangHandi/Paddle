@@ -337,18 +337,18 @@ class InterpolateOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
@@ -357,17 +357,16 @@ class InterpolateOp : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for pool
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
-        return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -590,24 +589,22 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 

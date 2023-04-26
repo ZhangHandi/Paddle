@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 class TestTransferDtypeOpFp32ToFp64(OpTest):
@@ -37,7 +33,7 @@ class TestTransferDtypeOpFp32ToFp64(OpTest):
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestTransferDtypeOpFp16ToFp32(OpTest):
@@ -52,7 +48,7 @@ class TestTransferDtypeOpFp16ToFp32(OpTest):
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_dygraph=False)
+        self.check_output(atol=1e-3)
 
 
 class TestTransferDtypeOpFp32ToFp16(OpTest):
@@ -67,7 +63,7 @@ class TestTransferDtypeOpFp32ToFp16(OpTest):
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_dygraph=False)
+        self.check_output(atol=1e-3)
 
 
 class TestTransferDtypeOpBf16ToFp32(OpTest):
@@ -82,7 +78,7 @@ class TestTransferDtypeOpBf16ToFp32(OpTest):
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestTransferDtypeFp32ToBf16(OpTest):
@@ -97,7 +93,7 @@ class TestTransferDtypeFp32ToBf16(OpTest):
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/is_test_pass.h"
-#if defined _WIN32 || defined __APPLE__
+#ifdef _WIN32
 #undef FALSE
 #undef TRUE
 #endif

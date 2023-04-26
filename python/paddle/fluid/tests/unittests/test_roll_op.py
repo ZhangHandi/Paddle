@@ -15,31 +15,25 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestRollOp(OpTest):
     def setUp(self):
         self.python_api = paddle.roll
         self.op_type = "roll"
-        self.public_python_api = paddle.roll
-        self.prim_op_type = "prim"
         self.init_dtype_type()
+        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
-        bf16_ut = self.dtype == np.uint16
-        x = np.random.random(self.x_shape).astype(
-            np.float32 if bf16_ut else self.dtype
-        )
-        out = np.roll(x, self.attrs['shifts'], self.attrs['axis'])
-        if bf16_ut:
-            x = convert_float_to_uint16(x)
-            out = convert_float_to_uint16(out)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
+        self.outputs = {
+            'Out': np.roll(
+                self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
+            )
+        }
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -48,13 +42,10 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRollOpCase2(TestRollOp):
@@ -63,98 +54,6 @@ class TestRollOpCase2(TestRollOp):
         self.x_shape = (100, 10, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
-
-
-class TestRollOpCase3(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.float32
-        self.x_shape = (11, 11)
-        self.shifts = [1, 1]
-        self.axis = [-1, 1]
-
-
-class TestRollFP16OP(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
-        self.x_shape = (100, 4, 5)
-        self.shifts = [101, -1]
-        self.axis = [0, -2]
-
-
-class TestRollFP16OpCase2(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
-        self.x_shape = (100, 10, 5)
-        self.shifts = [8, -1]
-        self.axis = [-1, -2]
-
-
-class TestRollFP16OpCase3(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
-        self.x_shape = (11, 11)
-        self.shifts = [1, 1]
-        self.axis = [-1, 1]
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestRollBF16OP(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.uint16
-        self.x_shape = (10, 4, 5)
-        self.shifts = [101, -1]
-        self.axis = [0, -2]
-        self.place = core.CUDAPlace(0)
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
-
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestRollBF16OpCase2(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.uint16
-        self.x_shape = (10, 5, 5)
-        self.shifts = [8, -1]
-        self.axis = [-1, -2]
-        self.place = core.CUDAPlace(0)
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
-
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestRollBF16OpCase3(TestRollOp):
-    def init_dtype_type(self):
-        self.dtype = np.uint16
-        self.x_shape = (11, 11)
-        self.shifts = [1, 1]
-        self.axis = [-1, 1]
-        self.place = core.CUDAPlace(0)
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
-
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 class TestRollAPI(unittest.TestCase):
@@ -169,8 +68,7 @@ class TestRollAPI(unittest.TestCase):
         paddle.enable_static()
         # case 1:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            x = fluid.layers.data(name='x', shape=[-1, 3])
             z = paddle.roll(x, shifts=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -183,8 +81,7 @@ class TestRollAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            x = fluid.layers.data(name='x', shape=[-1, 3])
             z = paddle.roll(x, shifts=1, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -222,8 +119,7 @@ class TestRollAPI(unittest.TestCase):
 
         def test_axis_out_range():
             with program_guard(Program(), Program()):
-                x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-                x.desc.set_need_check_feed(False)
+                x = fluid.layers.data(name='x', shape=[-1, 3])
                 z = paddle.roll(x, shifts=1, axis=10)
                 exe = fluid.Executor(fluid.CPUPlace())
                 (res,) = exe.run(

@@ -83,7 +83,7 @@ static __global__ void GenDensityPriorBox(const int height,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -188,10 +188,6 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(density_prior_box,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::DensityPriorBoxOpCUDAKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(density_prior_box,
+                        ops::DensityPriorBoxOpCUDAKernel<float>,
+                        ops::DensityPriorBoxOpCUDAKernel<double>);

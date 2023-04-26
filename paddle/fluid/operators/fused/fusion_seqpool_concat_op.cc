@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -68,10 +68,10 @@ void FusionSeqPoolConcatOp::InferShape(
   }
 }
 
-phi::KernelKey FusionSeqPoolConcatOp::GetExpectedKernelType(
+framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSeqPoolConcatOpMaker::Make() {
@@ -92,7 +92,7 @@ Fusion Sequence Pool of pooltype(sum, average and sqrt) and Concat Operator.
 )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -121,15 +121,15 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
                           "dims[1] is %d, w is %d.",
                           y_dims[1],
                           w));
-    phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
+    jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
-      attr.type = phi::jit::SeqPoolType::kAvg;
+      attr.type = jit::SeqPoolType::kAvg;
     } else if (pooltype == "SQRT") {
-      attr.type = phi::jit::SeqPoolType::kSqrt;
+      attr.type = jit::SeqPoolType::kSqrt;
     }
-    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                         platform::CPUPlace>::Cache()
-                       .At(attr);
+    auto seqpool =
+        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
+            attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
@@ -173,9 +173,6 @@ REGISTER_OPERATOR(fusion_seqpool_concat,
                   ops::FusionSeqPoolConcatOp,
                   ops::FusionSeqPoolConcatOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(fusion_seqpool_concat,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusionSeqPoolConcatKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fusion_seqpool_concat,
+                       ops::FusionSeqPoolConcatKernel<float>,
+                       ops::FusionSeqPoolConcatKernel<double>);

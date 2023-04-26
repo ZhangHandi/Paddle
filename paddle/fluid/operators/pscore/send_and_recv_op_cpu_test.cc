@@ -35,7 +35,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
 USE_OP_ITSELF(scale);
-PD_DECLARE_KERNEL(send_and_recv, CPU, ALL_LAYOUT);
+USE_OP(send_and_recv);
 
 std::string get_ip_port() {
   std::mt19937 rng;

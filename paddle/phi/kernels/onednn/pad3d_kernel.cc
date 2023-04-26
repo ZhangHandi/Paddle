@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/pad3d_kernel.h"
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/pad_kernel_impl.h"
 
@@ -32,10 +31,4 @@ void Pad3dKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pad3d,
-                   OneDNN,
-                   ONEDNN,
-                   phi::Pad3dKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   float) {}
+PD_REGISTER_KERNEL(pad3d, OneDNN, ONEDNN, phi::Pad3dKernel, float) {}

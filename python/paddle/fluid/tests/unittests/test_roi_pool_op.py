@@ -18,7 +18,7 @@ import unittest
 from decimal import ROUND_HALF_UP, Decimal
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -170,10 +170,10 @@ class TestROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestROIPoolInLodOp(TestROIPoolOp):

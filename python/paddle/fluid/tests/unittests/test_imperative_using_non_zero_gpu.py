@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid.dygraph import guard, to_variable
 
 

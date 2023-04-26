@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
 namespace phi {

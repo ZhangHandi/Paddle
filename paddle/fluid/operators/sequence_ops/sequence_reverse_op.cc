@@ -22,12 +22,9 @@ REGISTER_OPERATOR(sequence_reverse,
                   ops::SequenceReverseGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceReverseGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(sequence_reverse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceReverseOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          uint8_t) {}
+REGISTER_OP_CPU_KERNEL(sequence_reverse,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, uint8_t>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, int>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, int64_t>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, float>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, double>);

@@ -66,13 +66,13 @@ parser.add_argument(
 args = parser.parse_args()
 
 if not args.log_file:
-    args.log_file = f'/tmp/{args.good_commit}...{args.bad_commit}.log'
+    args.log_file = '/tmp/%s...%s.log' % (args.good_commit, args.bad_commit)
 
 
 def print_arguments():
     print('-----------  Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
-        print(f'{arg}: {value}')
+        print('%s: %s' % (arg, value))
     print('------------------------------------------------')
 
 
@@ -107,7 +107,7 @@ while True:
 
     if not commits:
         sys.stdout.write('no commits to bisect\n')
-        sys.exit()
+        exit()
     # checkout the picked branch.
     pick_idx = len(commits) / 2
     pick = commits[pick_idx]
@@ -128,12 +128,12 @@ while True:
     try:
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f'failed to build commit: {pick}\n{e}\n')
-        sys.exit()
+        sys.stderr.write('failed to build commit: %s\n%s\n' % (pick, e))
+        exit()
     # test the selected branch.
     passed = True
     try:
-        cmd = 'ctest --repeat-until-fail {} -R {} >> {}'.format(
+        cmd = 'ctest --repeat-until-fail %s -R %s >> %s' % (
             args.test_times,
             args.test_target,
             args.log_file,
@@ -143,7 +143,7 @@ while True:
     except subprocess.CalledProcessError as e:
         passed = False
         last_culprit = pick
-    sys.stdout.write(f'eval {pick} passed: {passed}\n')
+    sys.stdout.write('eval %s passed: %s\n' % (pick, passed))
     if passed:
         if pick_idx == 0:
             break

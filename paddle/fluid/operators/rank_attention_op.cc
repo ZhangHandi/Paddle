@@ -79,10 +79,11 @@ class RankAttentionOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -117,11 +118,11 @@ class RankAttentionGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -192,8 +193,9 @@ REGISTER_OPERATOR(rank_attention_grad,
                   ops::RankAttentionGradOp,
                   ops::RankAttentionGradOpNoNeedBufferVarsInference);
 
-PD_REGISTER_STRUCT_KERNEL(
-    rank_attention, CPU, ALL_LAYOUT, ops::RankAttentionKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(rank_attention,
+                       ops::RankAttentionKernel<phi::CPUContext, float>,
+                       ops::RankAttentionKernel<phi::CPUContext, double>);
 
 REGISTER_OP_VERSION(rank_attention)
     .AddCheckpoint(

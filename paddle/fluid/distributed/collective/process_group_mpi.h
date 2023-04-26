@@ -26,7 +26,6 @@
 #include <mutex>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
 #include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -58,7 +57,7 @@ struct TaskEntry {
   std::function<void(std::unique_ptr<TaskEntry>&)> run_;
 };
 
-class ProcessGroupMPI : public ProcessGroupWithoutStream {
+class ProcessGroupMPI : public ProcessGroup {
  public:
   class MPITask : public ProcessGroup::Task {
    public:

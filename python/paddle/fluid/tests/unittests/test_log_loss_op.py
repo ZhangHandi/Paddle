@@ -15,9 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
-
-from paddle.nn import functional as F
+from op_test import OpTest
 
 
 def sigmoid_array(x):
@@ -27,7 +25,6 @@ def sigmoid_array(x):
 class TestLogLossOp(OpTest):
     def setUp(self):
         self.op_type = 'log_loss'
-        self.python_api = F.log_loss
         samples_num = 100
 
         x = np.random.random((samples_num, 1)).astype("float32")

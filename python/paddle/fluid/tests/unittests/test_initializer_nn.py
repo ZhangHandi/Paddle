@@ -17,10 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import framework
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.nn as nn
+import paddle.nn.initializer as initializer
 from paddle.fluid.core import VarDesc
-from paddle.nn import initializer
 
 DELTA = 0.00001
 
@@ -352,10 +353,10 @@ class TestUniform(unittest.TestCase):
 
         min_value, max_value = get_uniform_min_and_max(linear.weight.numpy())
         self.assertTrue(
-            min_value >= -0.5, f'min value {min_value} should >= -0.5'
+            min_value >= -0.5, 'min value {} should >= -0.5'.format(min_value)
         )
         self.assertTrue(
-            max_value <= 0.5, f'max value {max_value} should <= 0.5'
+            max_value <= 0.5, 'max value {} should <= 0.5'.format(max_value)
         )
 
 
@@ -644,7 +645,7 @@ class TestAssign(unittest.TestCase):
 
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random(10000).astype(dtype)
+        np_array = numpy.random.random((10000)).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,

@@ -113,10 +113,11 @@ class NCEOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        platform::CPUPlace());
   }
 };
 
@@ -278,10 +279,11 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        platform::CPUPlace());
   }
 };
 
@@ -320,8 +322,9 @@ REGISTER_OPERATOR(nce_grad,
                   ops::NCEOpGrad,
                   ops::NCEOpGradVarTypeInference,
                   ops::NCEGradOpNoNeedBufferVarInferer);
-
-PD_REGISTER_STRUCT_KERNEL(nce, CPU, ALL_LAYOUT, ops::NCEKernel, float, double) {
-}
-PD_REGISTER_STRUCT_KERNEL(
-    nce_grad, CPU, ALL_LAYOUT, ops::NCEGradKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(nce,
+                       ops::NCEKernel<paddle::platform::CPUPlace, float>,
+                       ops::NCEKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(nce_grad,
+                       ops::NCEGradKernel<paddle::platform::CPUPlace, float>,
+                       ops::NCEGradKernel<paddle::platform::CPUPlace, double>);

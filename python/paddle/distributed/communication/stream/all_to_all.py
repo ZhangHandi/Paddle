@@ -14,12 +14,13 @@
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework
+import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
+import paddle.fluid.layer_helper as layer_helper
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-from paddle.fluid import data_feeder
 
 
 def _all_to_all_tensor_in_dygraph(
@@ -72,7 +73,7 @@ def _all_to_all_in_static_mode(
     op_type = 'alltoall'
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
-    helper = framework.LayerHelper(op_type, **locals())
+    helper = layer_helper.LayerHelper(op_type, **locals())
 
     in_tensor = in_tensor_or_tensor_list
     if isinstance(in_tensor_or_tensor_list, list):
@@ -220,7 +221,7 @@ def _alltoall_single_in_dygraph(
     sync_op,
     use_calc_stream,
 ):
-    world_size = dist.get_world_size(group)
+    world_size = dist.get_world_size()
     if out_split_sizes is None:
         out_split_sizes = [
             out_tensor.shape[0] // world_size for _ in range(world_size)

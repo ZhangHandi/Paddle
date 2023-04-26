@@ -18,7 +18,7 @@ import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -33,23 +33,26 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
-        dnn_data = paddle.static.data(
+        dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        lr_data = paddle.static.data(
+        lr_data = fluid.layers.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        label = paddle.static.data(
+        label = fluid.layers.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
+            append_batch_size=False,
         )
 
         # build dnn model
@@ -60,11 +63,11 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=paddle.nn.initializer.Constant(value=0.01),
+                initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=IS_SPARSE,
         )
-        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -74,7 +77,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.Constant(value=0.01)
+                    initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -87,15 +90,13 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=paddle.nn.initializer.Constant(value=0.01),
+                initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=IS_SPARSE,
         )
-        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
-        )
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
-        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'

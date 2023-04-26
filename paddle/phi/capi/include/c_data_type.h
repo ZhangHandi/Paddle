@@ -14,7 +14,8 @@
 
 #pragma once
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__APPLE__)
+
 #include <cstdint>
 
 #include "paddle/phi/backends/device_ext.h"

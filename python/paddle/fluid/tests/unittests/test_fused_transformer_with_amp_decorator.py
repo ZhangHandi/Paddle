@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.incubate.nn.layer.fused_transformer import (
     FusedFeedForward,
     FusedMultiHeadAttention,

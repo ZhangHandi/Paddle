@@ -26,9 +26,10 @@ class SeedOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::INT32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::INT32,
+                                   ctx.device_context());
   }
 };
 
@@ -53,7 +54,7 @@ REGISTER_OPERATOR(
     ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(seed, CPU, ALL_LAYOUT, ops::CPUSeedKernel, int) {}
+REGISTER_OP_CPU_KERNEL(seed, ops::CPUSeedKernel<phi::CPUContext, int>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(seed).AddCheckpoint(

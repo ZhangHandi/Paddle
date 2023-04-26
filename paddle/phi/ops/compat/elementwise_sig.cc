@@ -102,7 +102,12 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
 
 KernelSignature ElementwiseHeavisideOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("heaviside", {"X", "Y"}, {}, {"Out"});
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("elementwise_heaviside", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature(
+      "elementwise_heaviside_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwisePowOpArgumentMapping(
@@ -157,7 +162,7 @@ KernelSignature ElementwiseDivGradOpArgumentMapping(
 KernelSignature ElementwiseFMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "fmin_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+      "fmin_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
@@ -176,18 +181,18 @@ KernelSignature ElementwiseMulGradOpArgumentMapping(
 
 KernelSignature ElementwiseFMaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fmax", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("fmax_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseFMinOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fmin", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("fmin_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseFMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "fmax_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+      "fmax_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
@@ -210,25 +215,29 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "maximum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+      "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "minimum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+      "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "heaviside_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+  return KernelSignature("elementwise_heaviside_grad",
+                         {"X", "Y", "Out@GRAD"},
+                         {"axis"},
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "elementwise_pow_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
+  return KernelSignature("elementwise_pow_grad",
+                         {"X", "Y", "Out@GRAD"},
+                         {"axis"},
+                         {"X@GRAD", "Y@GRAD"});
 }
 }  // namespace phi
 
@@ -240,7 +249,6 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, remainder);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside, heaviside);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
@@ -257,7 +265,6 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmax_grad, fmax_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin_grad, fmin_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_max_grad, maximum_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min_grad, minimum_grad);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside_grad, heaviside_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);

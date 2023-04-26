@@ -18,13 +18,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
-#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SppKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -96,18 +96,17 @@ class SppKernel : public framework::OpKernel<T> {
       out_level.Resize(output_flatten_shape);
       // concat
       auto out_level_stride = phi::stride(out_level.dims());
-      phi::funcs::StridedMemcpy<T>(
-          context.template device_context<DeviceContext>(),
-          out_level.data<T>(),
-          out_level_stride,
-          out_level.dims(),
-          out_stride,
-          out->data<T>() + output_offset);
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
+                       out_level.data<T>(),
+                       out_level_stride,
+                       out_level.dims(),
+                       out_stride,
+                       out->data<T>() + output_offset);
       output_offset += out_level.dims()[1] * out_level_stride[1];
     }
   }
 };
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SppGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -151,21 +150,19 @@ class SppGradKernel : public framework::OpKernel<T> {
       outgrad_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
       auto flatten_stride = phi::stride(out_level.dims());
       // memcpy
-      phi::funcs::StridedMemcpy<T>(
-          context.template device_context<DeviceContext>(),
-          out->data<T>() + out_offset,
-          out_stride,
-          out_level.dims(),
-          flatten_stride,
-          out_level.data<T>());
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
+                       out->data<T>() + out_offset,
+                       out_stride,
+                       out_level.dims(),
+                       flatten_stride,
+                       out_level.data<T>());
 
-      phi::funcs::StridedMemcpy<T>(
-          context.template device_context<DeviceContext>(),
-          out_grad->data<T>() + out_offset,
-          out_stride,
-          outgrad_level.dims(),
-          flatten_stride,
-          outgrad_level.data<T>());
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
+                       out_grad->data<T>() + out_offset,
+                       out_stride,
+                       outgrad_level.dims(),
+                       flatten_stride,
+                       outgrad_level.data<T>());
       out_offset += out_level.dims()[1] * out_stride[1];
       // flatten backward to nchw
 

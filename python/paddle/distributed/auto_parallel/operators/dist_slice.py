@@ -70,7 +70,9 @@ class DistributedSliceImpl(DistributedOperatorImpl):
             if i not in decrease_axis:
                 ref_indices.append(i)
         if ref_indices == []:
-            assert len(out_dims_mapping) == 0
+            assert len(out_dims_mapping) == 1
+            if is_dim_shard(out_dims_mapping[0]):
+                return False
         else:
             for i in range(len(out_dims_mapping)):
                 ref_index = ref_indices[i]
@@ -140,7 +142,9 @@ class DistributedSliceImpl(DistributedOperatorImpl):
                 ref_indices.append(i)
 
         if ref_dims_mapping == []:
+            ref_dims_mapping = [-1]
             assert len(ref_dims_mapping) == len(out_dims_mapping)
+            assert ref_dims_mapping[0] == out_dims_mapping[0]
             changed = False
         else:
             assert len(ref_dims_mapping) == len(out_dims_mapping)
@@ -156,10 +160,6 @@ class DistributedSliceImpl(DistributedOperatorImpl):
                 if out_dims_mapping[i] != compatible_dim_mapping:
                     out_dims_mapping[i] = compatible_dim_mapping
                     changed = True
-
-        if changed:
-            op_dist_attr.set_input_dims_mapping(in_name, in_dims_mapping)
-            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
 
         return changed
 

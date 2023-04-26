@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
@@ -21,7 +20,7 @@ namespace operators {
 namespace details {
 
 TEST(test_reduce_rank_check, all) {
-  using EnforceNotMet = phi::EnforceNotMet;
+  using EnforceNotMet = paddle::platform::EnforceNotMet;
   constexpr int kMaxRank = framework::DDim::kMaxRank;
 
   for (int rank = 0; rank < kMaxRank; rank++) {
@@ -43,7 +42,7 @@ TEST(test_reduce_rank_check, all) {
         phi::funcs::details::CheckReduceRank(reduce_rank, rank);
       } else {
         ASSERT_THROW(phi::funcs::details::CheckReduceRank(reduce_rank, rank),
-                     EnforceNotMet);
+                     paddle::platform::EnforceNotMet);
       }
     }
   }

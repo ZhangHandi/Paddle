@@ -175,7 +175,7 @@ __global__ void correlation_forward(T *output,
 }
 
 // class CorrelationKernel<phi::GPUContext, T>
-template <typename T, typename DeviceContext>
+template <typename T>
 class CorrelationCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -443,7 +443,7 @@ __global__ void correlation_backward_input2(int item,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -564,12 +564,9 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(
-    correlation, GPU, ALL_LAYOUT, ops::CorrelationCUDAKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(correlation_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CorrelationCUDAGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(correlation,
+                        ops::CorrelationCUDAKernel<float>,
+                        ops::CorrelationCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(correlation_grad,
+                        ops::CorrelationCUDAGradKernel<float>,
+                        ops::CorrelationCUDAGradKernel<double>);

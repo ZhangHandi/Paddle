@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
 int CommonGraphSampler::load_from_ssd(std::string path) {
@@ -30,9 +30,9 @@ int CommonGraphSampler::load_from_ssd(std::string path) {
     }
     auto src_id = std::stoll(values[0]);
     _db->put(0,
-             reinterpret_cast<char *>(&src_id),
+             (char *)&src_id,
              sizeof(uint64_t),
-             reinterpret_cast<char *>(neighbor_data.data()),
+             (char *)neighbor_data.data(),
              sizeof(uint64_t) * neighbor_data.size());
     int gpu_shard = src_id % gpu_num;
     if (gpu_edges_count[gpu_shard] + neighbor_data.size() <=

@@ -118,10 +118,11 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -171,10 +172,11 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 }  // namespace operators

@@ -79,6 +79,4 @@ class HashOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(hash, ops::HashOp, ops::HashOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    hash, CPU, ALL_LAYOUT, ops::HashKernel, int, int64_t) {}
+REGISTER_OP_CPU_KERNEL(hash, ops::HashKernel<int>, ops::HashKernel<int64_t>);

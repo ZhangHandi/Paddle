@@ -55,20 +55,18 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "Seed") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
     return framework::OperatorWithKernel::GetKernelTypeForVar(
         var_name, tensor, expected_kernel_type);
@@ -125,11 +123,11 @@ class ShuffleBatchOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -159,19 +157,14 @@ REGISTER_OPERATOR(shuffle_batch,
                   ops::ShuffleBatchGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shuffle_batch_grad, ops::ShuffleBatchOpGrad);
 
-PD_REGISTER_STRUCT_KERNEL(shuffle_batch,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleBatchKernel,
-                          float,
-                          double,
-                          int32_t,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(shuffle_batch_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleBatchGradKernel,
-                          float,
-                          double,
-                          int32_t,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(shuffle_batch,
+                       ops::ShuffleBatchKernel<float>,
+                       ops::ShuffleBatchKernel<double>,
+                       ops::ShuffleBatchKernel<int32_t>,
+                       ops::ShuffleBatchKernel<int64_t>);
+
+REGISTER_OP_CPU_KERNEL(shuffle_batch_grad,
+                       ops::ShuffleBatchGradKernel<float>,
+                       ops::ShuffleBatchGradKernel<double>,
+                       ops::ShuffleBatchGradKernel<int32_t>,
+                       ops::ShuffleBatchGradKernel<int64_t>);

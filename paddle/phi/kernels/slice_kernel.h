@@ -22,14 +22,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceKernel(const Context& ctx,
-                 const DenseTensor& input,
-                 const std::vector<int64_t>& axes,
-                 const IntArray& starts,
-                 const IntArray& ends,
-                 const std::vector<int64_t>& infer_flags,
-                 const std::vector<int64_t>& decrease_axis,
-                 DenseTensor* out);
+void SliceRawKernel(const Context& ctx,
+                    const DenseTensor& input,
+                    const std::vector<int64_t>& axes,
+                    const IntArray& starts,
+                    const IntArray& ends,
+                    const std::vector<int64_t>& infer_flags,
+                    const std::vector<int64_t>& decrease_axis,
+                    DenseTensor* out);
 
 template <typename T, typename Context>
 void SliceArrayKernel(const Context& dev_ctx,
@@ -45,18 +45,18 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Slice(const Context& ctx,
-                  const DenseTensor& input,
-                  const std::vector<int64_t>& axes,
-                  const IntArray& starts,
-                  const IntArray& ends) {
+DenseTensor SliceKernel(const Context& ctx,
+                        const DenseTensor& input,
+                        const std::vector<int64_t>& axes,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const std::vector<int64_t>& infer_flags,
+                        const std::vector<int64_t>& decrease_axis) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  std::vector<int64_t> infer_flags = {1};
-  std::vector<int64_t> decrease_axis = {};
   SliceRawInferMeta(
       input, axes, starts, ends, infer_flags, decrease_axis, &meta_out);
-  SliceKernel<T, Context>(
+  SliceRawKernel<T, Context>(
       ctx, input, axes, starts, ends, infer_flags, decrease_axis, &dense_out);
   return dense_out;
 }

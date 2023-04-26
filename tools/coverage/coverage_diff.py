@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -103,12 +104,12 @@ def get_info_file_lines(info_file, diff_file):
                 continue
 
             elif line.startswith('LF:'):
-                print(f'LF:{current_lf}')
+                print('LF:{}'.format(current_lf))
 
                 continue
 
             elif line.startswith('LH:'):
-                print(f'LH:{current_lh}')
+                print('LH:{}'.format(current_lh))
 
                 continue
 
@@ -117,7 +118,7 @@ def get_info_file_lines(info_file, diff_file):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        sys.exit()
+        exit()
 
     info_file = sys.argv[1]
     diff_file = sys.argv[2]

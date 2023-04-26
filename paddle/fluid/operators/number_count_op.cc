@@ -28,7 +28,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the numbers should be same as int64
     auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
@@ -37,7 +37,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
                       framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the number_dtype should be int64"));
-    return phi::KernelKey(number_dtype, ctx.GetPlace());
+    return framework::OpKernelType(number_dtype, ctx.GetPlace());
   }
 };
 
@@ -58,9 +58,10 @@ class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+REGISTER_OP_CPU_KERNEL(number_count,
+                       ops::NumberCountOpCPUKernel<int>,
+                       ops::NumberCountOpCPUKernel<int64_t>);
+
 REGISTER_OP_WITHOUT_GRADIENT(number_count,
                              ops::NumberCountOp,
                              ops::NumberCountOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    number_count, CPU, ALL_LAYOUT, ops::NumberCountOpCPUKernel, int, int64_t) {}

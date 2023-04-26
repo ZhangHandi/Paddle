@@ -16,13 +16,14 @@ import unittest
 
 import numpy as np
 
-import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.dygraph as dygraph
+from paddle.distributed import init_parallel_env
 from paddle.nn import Linear
 
 
-class MLP(paddle.nn.Layer):
+class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 
@@ -38,9 +39,9 @@ class MLP(paddle.nn.Layer):
 class TestDataParallelStateDict(unittest.TestCase):
     def test_data_parallel_state_dict(self):
         with fluid.dygraph.guard():
-            paddle.distributed.init_parallel_env()
+            init_parallel_env()
             mlp = MLP()
-            parallel_mlp = paddle.DataParallel(mlp)
+            parallel_mlp = dygraph.parallel.DataParallel(mlp)
 
             single_state = mlp.state_dict()
             parallel_state = parallel_mlp.state_dict()

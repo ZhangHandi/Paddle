@@ -16,7 +16,7 @@
 import os
 import unittest
 
-from paddle.distributed.fleet.base import role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestPSCloudRoleMakerCase1(unittest.TestCase):

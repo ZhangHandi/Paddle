@@ -17,12 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
-from op import Operator
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
 
@@ -42,10 +43,10 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -66,10 +67,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -148,10 +149,16 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=0.002, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ["X"], "Out", max_relative_error=0.05, check_eager=True
+            )
 
 
 class TestScaleBF16Op(OpTest):
@@ -166,14 +173,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.8,
-        )
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
 
 
 @unittest.skipIf(
@@ -244,7 +247,7 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3], dtype)
+        data = layers.data('data', [2, 3], False, dtype)
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -252,6 +255,7 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.scale_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -275,7 +279,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3], dtype)
+        data = layers.data('data', [2, 3], False, dtype)
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -283,6 +287,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.scale_wrapper, [data], out, x_init=[data_arr], place=place
         )

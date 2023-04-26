@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 os.environ['CPU_NUM'] = '1'
 
@@ -54,10 +54,8 @@ class TestCaseBase(unittest.TestCase):
         return ret
 
     def run_main(self, reader, use_sample_generator, iterable, drop_last):
-        image = paddle.static.data(
-            name='image', dtype='float32', shape=[-1, 784]
-        )
-        label = paddle.static.data(name='label', dtype='int64', shape=[-1, 1])
+        image = fluid.layers.data(name='image', dtype='float32', shape=[784])
+        label = fluid.layers.data(name='label', dtype='int64', shape=[1])
         py_reader = fluid.io.PyReader(
             feed_list=[image, label],
             capacity=16,

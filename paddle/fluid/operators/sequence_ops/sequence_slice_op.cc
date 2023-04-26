@@ -56,10 +56,11 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -80,11 +81,11 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -158,19 +159,14 @@ REGISTER_OPERATOR(sequence_slice,
 REGISTER_OPERATOR(sequence_slice_grad,
                   ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_slice,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSliceOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_slice_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSliceGradOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(sequence_slice,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, float>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, double>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, int>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_slice_grad,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, float>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, double>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, int>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, int64_t>);

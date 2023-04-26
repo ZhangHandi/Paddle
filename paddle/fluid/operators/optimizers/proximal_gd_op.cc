@@ -52,10 +52,10 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("ParamOut", param_dim);
   }
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 
@@ -106,6 +106,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(proximal_gd,
                              ops::ProximalGDOp,
                              ops::ProximalGDOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    proximal_gd, CPU, ALL_LAYOUT, ops::ProximalGDOpKernel, float) {}
+REGISTER_OP_CPU_KERNEL(proximal_gd,
+                       ops::ProximalGDOpKernel<phi::CPUContext, float>);

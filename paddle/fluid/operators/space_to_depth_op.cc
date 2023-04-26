@@ -204,11 +204,11 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 }  // namespace operators
@@ -224,19 +224,13 @@ REGISTER_OPERATOR(space_to_depth,
 REGISTER_OPERATOR(space_to_depth_grad,
                   ops::SpaceToDepthGradOp,
                   ops::SpaceToDepthGradOpNoBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(space_to_depth,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SpaceToDepthKernel,
-                          int,
-                          int64_t,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(space_to_depth_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SpaceToDepthGradKernel,
-                          int,
-                          int64_t,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(space_to_depth,
+                       ops::SpaceToDepthKernel<phi::CPUContext, float>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, double>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, int>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(space_to_depth_grad,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, float>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, double>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, int>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, int64_t>);

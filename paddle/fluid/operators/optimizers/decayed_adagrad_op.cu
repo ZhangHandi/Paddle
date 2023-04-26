@@ -14,6 +14,5 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/decayed_adagrad_op.h"
 
 namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(
-    decayed_adagrad, GPU, ALL_LAYOUT, ops::DecayedAdagradOpKernel, float) {}
+REGISTER_OP_CUDA_KERNEL(decayed_adagrad,
+                        ops::DecayedAdagradOpKernel<phi::GPUContext, float>);

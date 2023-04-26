@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):
@@ -45,9 +45,7 @@ class TestTopkOp(OpTest):
 
     def setUp(self):
         self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 20)
         self.init_args()
@@ -59,10 +57,10 @@ class TestTopkOp(OpTest):
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestTopkOp1(TestTopkOp):
@@ -79,7 +77,7 @@ class TestTopkOp2(TestTopkOp):
         self.largest = False
 
 
-class TestTopkOp3(TestTopkOp):
+class TestTopkOp3(OpTest):
     def init_args(self):
         self.k = 6
         self.axis = 1
@@ -87,9 +85,7 @@ class TestTopkOp3(TestTopkOp):
 
     def setUp(self):
         self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(16, 100)
         self.init_args()
@@ -109,9 +105,7 @@ class TestTopkOp4(TestTopkOp):
 
     def setUp(self):
         self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
@@ -131,9 +125,7 @@ class TestTopkOp5(TestTopkOp):
 
     def setUp(self):
         self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
@@ -145,19 +137,17 @@ class TestTopkOp5(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-class TestTopkOp6(TestTopkOp):
+class TestTopkOp6(OpTest):
     def init_args(self):
-        self.k = 3
+        self.k = 100
         self.axis = 1
         self.largest = True
 
     def setUp(self):
         self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
-        self.dtype = np.float32
-        self.input_data = np.random.rand(10, 10, 5)
+        self.dtype = np.float64
+        self.input_data = np.random.rand(80, 16384)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
@@ -165,78 +155,6 @@ class TestTopkOp6(TestTopkOp):
             self.input_data, axis=self.axis, k=self.k, largest=self.largest
         )
         self.outputs = {'Out': output, 'Indices': indices}
-
-
-class TestTopkOp7(TestTopkOp):
-    def init_args(self):
-        self.k = 10
-        self.axis = 1
-        self.largest = True
-
-    def setUp(self):
-        self.op_type = "top_k_v2"
-        self.prim_op_type = "prim"
-        self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
-        self.dtype = np.float16
-        self.input_data = np.random.rand(10, 20, 10)
-        self.init_args()
-        self.inputs = {'X': self.input_data}
-        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(
-            self.input_data, axis=self.axis, k=self.k, largest=self.largest
-        )
-        self.outputs = {'Out': output, 'Indices': indices}
-
-
-class TestTopkFP16Op(TestTopkOp):
-    def setUp(self):
-        self.op_type = "top_k_v2"
-        self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
-        self.dtype = np.float16
-        self.prim_op_type = "prim"
-        self.input_data = np.random.rand(10, 20).astype(self.dtype)
-        self.init_args()
-        self.inputs = {'X': self.input_data}
-        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(
-            self.input_data, axis=self.axis, k=self.k, largest=self.largest
-        )
-        self.outputs = {'Out': output, 'Indices': indices}
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
-class TestTopkBF16Op(TestTopkOp):
-    def setUp(self):
-        self.op_type = "top_k_v2"
-        self.python_api = paddle.topk
-        self.public_python_api = paddle.topk
-        self.dtype = np.uint16
-        self.prim_op_type = "prim"
-        self.input_data = np.random.rand(10, 20).astype(np.float32)
-        self.init_args()
-        self.inputs = {'X': convert_float_to_uint16(self.input_data)}
-        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(
-            self.input_data, axis=self.axis, k=self.k, largest=self.largest
-        )
-        self.outputs = {
-            'Out': convert_float_to_uint16(output),
-            'Indices': indices,
-        }
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X'}, 'Out', check_eager=True)
 
 
 class TestTopKAPI(unittest.TestCase):

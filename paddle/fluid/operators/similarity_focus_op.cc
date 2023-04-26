@@ -74,10 +74,11 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -91,9 +92,6 @@ REGISTER_OPERATOR(
     ops::SimilarityFocusOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(similarity_focus,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SimilarityFocusKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(similarity_focus,
+                       ops::SimilarityFocusKernel<float>,
+                       ops::SimilarityFocusKernel<double>);

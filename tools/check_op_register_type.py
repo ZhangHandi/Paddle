@@ -23,10 +23,10 @@ import difflib
 import re
 import sys
 
-from paddle import fluid
+import paddle.fluid as fluid
 
-INTS = {'int', 'int64_t'}
-FLOATS = {'float', 'double'}
+INTS = set(['int', 'int64_t'])
+FLOATS = set(['float', 'double'])
 
 
 def get_all_kernels():

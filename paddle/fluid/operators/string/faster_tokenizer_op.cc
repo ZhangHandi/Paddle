@@ -407,8 +407,8 @@ int BertTokenizer::Encode(
 
 void BertTokenizer::BatchEncode(
     vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
-    const framework::Strings& batch_text,
-    const framework::Strings& batch_text_pair /* = vector<string>() */,
+    const vector<string>& batch_text,
+    const vector<string>& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */,
     const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */) const {
@@ -469,19 +469,19 @@ class FasterTokenizerOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::INT64,
-                          paddle::platform::CPUPlace());
+    return framework::OpKernelType(framework::proto::VarType::INT64,
+                                   paddle::platform::CPUPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          tensor.layout(),
-                          expected_kernel_type.dtype());
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
@@ -541,5 +541,4 @@ REGISTER_OPERATOR(faster_tokenizer,
                   ops::FasterTokenizerOp,
                   ops::FasterTokenizerOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(
-    faster_tokenizer, CPU, ALL_LAYOUT, ops::FasterTokenizerKernel, int64_t) {}
+REGISTER_OP_CPU_KERNEL(faster_tokenizer, ops::FasterTokenizerKernel<int64_t>);

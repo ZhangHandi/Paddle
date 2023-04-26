@@ -61,10 +61,11 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -175,9 +176,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(anchor_generator,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::AnchorGeneratorOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(anchor_generator,
+                       ops::AnchorGeneratorOpKernel<float>,
+                       ops::AnchorGeneratorOpKernel<double>);

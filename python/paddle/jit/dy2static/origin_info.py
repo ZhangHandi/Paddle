@@ -286,7 +286,7 @@ def update_op_callstack_with_origin_info(program):
         An example of callstack:
 
             File "path1/to/file.py", line 10, in func_1
-                y = paddle.tensor.fill_constant(x, shape=[1], dtype="int32")
+                y = fluid.layers.fill_constant(x, shape=[1], dtype="int32")
             File "path2/to/file.py", line 740, in fill_constant
                 stop_gradient=True)
             File "path3/to/file.py", line 43, in append_op
@@ -315,7 +315,7 @@ def update_op_callstack_with_origin_info(program):
             callstack[i] = '  File "{}", line {}, in {}'.format(
                 filepath, lineno, funcname
             )
-            callstack[i + 1] = f'    {code}'
+            callstack[i + 1] = '    {}'.format(code)
 
         return callstack
 
@@ -329,11 +329,6 @@ def update_op_callstack_with_origin_info(program):
 
                 callstack = get_new_op_callstack(callstack)
 
-                try:
-                    # (@xiongkun) In 2-order derivative for paddle science, there may exists `pow_grad`
-                    # which has op_proto == nullptr and causes _set_attr failed. so we add a try...except.
-                    op._set_attr(callstack_var_name, callstack)
-                except:
-                    pass
+                op._set_attr(callstack_var_name, callstack)
 
     return program

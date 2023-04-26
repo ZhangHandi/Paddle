@@ -18,7 +18,7 @@
 
 namespace ops = paddle::operators;
 
-class ReduceAMaxOpMaker : public ops::ReduceBaseOpMaker {
+class ReduceAMaxOpMaker : public ops::ReduceOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_amax"; }
   virtual std::string GetOpType() const { return "Reduce reduce_amax"; }
@@ -30,7 +30,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_amax,
 
 REGISTER_OPERATOR(
     reduce_amax,
-    ops::ReduceBaseOp,
+    ops::ReduceOp,
     ReduceAMaxOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,

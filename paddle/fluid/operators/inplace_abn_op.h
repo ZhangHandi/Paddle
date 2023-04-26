@@ -22,8 +22,6 @@
 namespace paddle {
 namespace operators {
 
-USE_PHI_FUNCTOR(LeakyRelu)
-
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>

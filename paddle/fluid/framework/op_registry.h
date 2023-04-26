@@ -34,8 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -219,9 +217,9 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type UNUSED,
-                  const char* library_type UNUSED,
-                  int customized_type_value UNUSED) const {}
+  void operator()(const char* op_type,
+                  const char* library_type,
+                  int customized_type_value) const {}
 };
 
 // User can register many kernel in one place. The data type could be
@@ -377,6 +375,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_NPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_MLU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -416,6 +417,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_NPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, NPU, ::paddle::platform::NPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
@@ -476,54 +483,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
 // clang-format on
-
-template <typename StructureKernel, typename enable = void>
-struct StructKernelImpl;
-
-template <typename StructureKernel>
-struct StructKernelImpl<
-    StructureKernel,
-    typename std::enable_if<std::is_base_of<paddle::framework::OpKernelBase,
-                                            StructureKernel>::value>::type> {
-  static void Compute(phi::KernelContext* ctx) {
-    auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
-    StructureKernel().Compute(*exe_ctx);
-  }
-};
-
-template <typename StructureKernel>
-struct StructKernelImpl<
-    StructureKernel,
-    typename std::enable_if<!std::is_base_of<paddle::framework::OpKernelBase,
-                                             StructureKernel>::value>::type> {
-  static void Compute(phi::KernelContext* ctx) {
-    auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
-    StructureKernel()(*exe_ctx);
-  }
-};
-
-#define PHI_STRUCTURE_KERNEL(...) \
-  ::paddle::framework::StructKernelImpl<__VA_ARGS__>::Compute
-#define PHI_STRUCTURE_VARIADIC_KERNEL(...) nullptr
-#define STRUCTURE_ARG_PARSE_FUNCTOR(...) nullptr
-
-#define STRUCTURE_KERNEL_INSTANTIATION(        \
-    meta_kernel_structure, cpp_dtype, context) \
-  template class meta_kernel_structure<cpp_dtype, context>;
-
-#define PD_REGISTER_STRUCT_KERNEL(                            \
-    kernel_name, backend, layout, meta_kernel_structure, ...) \
-  _PD_REGISTER_KERNEL(::phi::RegType::INNER,                  \
-                      kernel_name,                            \
-                      backend,                                \
-                      ::phi::backend##Context,                \
-                      layout,                                 \
-                      meta_kernel_structure,                  \
-                      STRUCTURE_KERNEL_INSTANTIATION,         \
-                      STRUCTURE_ARG_PARSE_FUNCTOR,            \
-                      PHI_STRUCTURE_KERNEL,                   \
-                      PHI_STRUCTURE_VARIADIC_KERNEL,          \
-                      __VA_ARGS__)
 
 }  // namespace framework
 }  // namespace paddle

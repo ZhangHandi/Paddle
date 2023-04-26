@@ -24,6 +24,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -33,7 +43,6 @@ class TopKOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a top_k op to tensorrt TopK layer";
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);

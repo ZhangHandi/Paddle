@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 
 class TestRawProgramOptimizer(unittest.TestCase):

@@ -109,7 +109,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
 #ifdef PADDLE_WITH_MKLDNN
-      // Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
@@ -151,36 +151,39 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
               phi::DataLayout::kNHWC) {
-        return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
-                              expected_kernel_type.dtype());
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       phi::DataLayout::kNHWC);
       }
 #endif
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -297,23 +300,26 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -339,22 +345,25 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -371,7 +380,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     if (ctx.HasInput("DDX") == false) {
@@ -390,19 +399,22 @@ class ElementwiseOpDoubleGradWithoutDXDY
       input_data_type =
           OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
     }
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -434,23 +446,26 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };

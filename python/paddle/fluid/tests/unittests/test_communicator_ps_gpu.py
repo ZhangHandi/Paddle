@@ -21,9 +21,9 @@ import paddle
 
 paddle.enable_static()
 
-from paddle import fluid
-from paddle.distributed import fleet
-from paddle.distributed.fleet.base import role_maker
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 
 class TestCommunicator(unittest.TestCase):
@@ -51,8 +51,8 @@ class TestCommunicator(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker()
 
         fleet.init(role)
-        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
-        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         slots_vars = [x, y]
 
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)

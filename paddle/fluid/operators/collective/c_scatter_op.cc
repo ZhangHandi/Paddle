@@ -52,10 +52,10 @@ class CScatterOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -88,12 +88,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_scatter, ops::CScatterOp, ops::CScatterOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(c_scatter,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CScatterOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_scatter,
+                       ops::CScatterOpCPUKernel<float>,
+                       ops::CScatterOpCPUKernel<double>,
+                       ops::CScatterOpCPUKernel<int>,
+                       ops::CScatterOpCPUKernel<int64_t>,
+                       ops::CScatterOpCPUKernel<plat::float16>);

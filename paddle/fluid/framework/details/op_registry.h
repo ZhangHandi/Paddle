@@ -32,8 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -48,7 +46,6 @@ enum OpInfoFillType {
   kInplaceOpInference = 5,
   kNoNeedBufferVarsInference = 6,
   kGradOpBaseMaker = 7,
-  kGradCompOpDescMaker = 8,
   kUnknown = -1
 };
 
@@ -64,7 +61,6 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
     TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
-    TypePair<prim::CompositeGradOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
     TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
@@ -162,7 +158,7 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type UNUSED, OpInfo* info UNUSED) {}
+  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
 };
 
 template <typename T>
@@ -257,30 +253,6 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 };
 
 template <typename T>
-struct OpInfoFiller<T, kGradCompOpDescMaker> {
-  void operator()(const char* op_type, OpInfo* info) const {
-    PADDLE_ENFORCE_EQ(
-        info->grad_comp_op_maker_,
-        nullptr,
-        platform::errors::AlreadyExists(
-            "CompositeGradOpMakerBase of %s has been registered", op_type));
-
-    info->grad_comp_op_maker_ =
-        [](const OpDesc& fwd_op,
-           const std::unordered_set<std::string>& no_grad_set,
-           std::unordered_map<std::string, std::string>* grad_to_var,
-           const BlockDesc* current_block,
-           const std::vector<BlockDesc*>& grad_block) {
-          T maker(fwd_op, no_grad_set, grad_to_var, current_block, grad_block);
-          return maker();
-        };
-    // TODO(jiabin): Support this later or just not.
-    info->use_default_grad_op_desc_maker_ = false;
-    info->use_empty_grad_op_desc_maker_ = false;
-  }
-};
-
-template <typename T>
 struct OpInfoFiller<T, kGradOpBaseMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
@@ -320,7 +292,7 @@ struct OpInfoFiller<T, kVarTypeInference> {
 
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
-  void operator()(const char* op_type UNUSED, OpInfo* info) const {
+  void operator()(const char* op_type, OpInfo* info) const {
     // Note: if fill InferShapeFN by this Filler, the infershape here
     // will overwrite the op->InferShape func registered in kOperator Filler
     info->infer_shape_ = [](InferShapeContext* ctx) {
@@ -360,7 +332,7 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
 // A fake OpInfoFiller of void
 template <>
 struct OpInfoFiller<void, kUnknown> {
-  void operator()(const char* op_type UNUSED, OpInfo* info UNUSED) const {}
+  void operator()(const char* op_type, OpInfo* info) const {}
 };
 
 }  // namespace details

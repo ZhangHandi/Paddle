@@ -118,9 +118,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SparseMomentumOpInferVarType);
-PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SparseMomentumOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(sparse_momentum,
+                       ops::SparseMomentumOpKernel<phi::CPUContext, float>,
+                       ops::SparseMomentumOpKernel<phi::CPUContext, double>);

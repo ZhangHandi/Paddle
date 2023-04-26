@@ -20,17 +20,17 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-std::tuple<paddle::Tensor,
-           paddle::Tensor,
-           paddle::Tensor,
-           paddle::Tensor,
-           paddle::Tensor>
+std::tuple<paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor>
 fused_bias_dropout_residual_layer_norm_dygraph_function(
-    const paddle::Tensor& X,
-    const paddle::Tensor& Residual,
-    const paddle::Tensor& Bias,
-    const paddle::Tensor& LnScale,
-    const paddle::Tensor& LnBias,
+    const paddle::experimental::Tensor& X,
+    const paddle::experimental::Tensor& Residual,
+    const paddle::experimental::Tensor& Bias,
+    const paddle::experimental::Tensor& LnScale,
+    const paddle::experimental::Tensor& LnBias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_bias_dropout_residual_layer_norm dygraph",
@@ -43,7 +43,8 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Residual}};
     if (Bias.initialized()) amp_tensors_vector.push_back({Bias});
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
@@ -149,16 +150,16 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       true,
       {});
 
-  paddle::Tensor BiasDropoutResidualOut;
+  paddle::experimental::Tensor BiasDropoutResidualOut;
   egr::EagerUtils::GetOutput(outs["BiasDropoutResidualOut"][0],
                              &BiasDropoutResidualOut);
-  paddle::Tensor DropoutMaskOut;
+  paddle::experimental::Tensor DropoutMaskOut;
   egr::EagerUtils::GetOutput(outs["DropoutMaskOut"][0], &DropoutMaskOut);
-  paddle::Tensor LnMean;
+  paddle::experimental::Tensor LnMean;
   egr::EagerUtils::GetOutput(outs["LnMean"][0], &LnMean);
-  paddle::Tensor LnVariance;
+  paddle::experimental::Tensor LnVariance;
   egr::EagerUtils::GetOutput(outs["LnVariance"][0], &LnVariance);
-  paddle::Tensor Y;
+  paddle::experimental::Tensor Y;
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
@@ -220,6 +221,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Y, 4);
       egr::EagerUtils::SetHistory(p_autograd_Y, grad_node);
       grad_node->SetGradInMeta(Y, 4);
+      egr::EagerUtils::CheckAndRetainGrad(Y);
     }
   }
 

@@ -38,7 +38,7 @@ __global__ void PolygonBoxTransformKernel(
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -73,10 +73,7 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(polygon_box_transform,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::PolygonBoxTransformOpCUDAKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(
+    polygon_box_transform,
+    paddle::operators::PolygonBoxTransformOpCUDAKernel<float>,
+    paddle::operators::PolygonBoxTransformOpCUDAKernel<double>);

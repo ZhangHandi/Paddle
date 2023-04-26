@@ -14,7 +14,7 @@
 
 import contextlib
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 @contextlib.contextmanager

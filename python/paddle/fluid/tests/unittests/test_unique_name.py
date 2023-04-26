@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestUniqueName(unittest.TestCase):

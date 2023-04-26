@@ -18,7 +18,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
@@ -64,7 +64,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(paddle.nn.Layer):
+class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -95,7 +95,7 @@ class ConvBNLayer(paddle.nn.Layer):
         return y
 
 
-class SqueezeExcitation(paddle.nn.Layer):
+class SqueezeExcitation(fluid.dygraph.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
         super().__init__()
@@ -129,7 +129,7 @@ class SqueezeExcitation(paddle.nn.Layer):
         return y
 
 
-class BottleneckBlock(paddle.nn.Layer):
+class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -192,7 +192,7 @@ class BottleneckBlock(paddle.nn.Layer):
         return y
 
 
-class SeResNeXt(paddle.nn.Layer):
+class SeResNeXt(fluid.dygraph.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
@@ -444,12 +444,10 @@ class TestImperativeResneXt(unittest.TestCase):
                 drop_last=True,
             )
 
-            img = paddle.static.data(
-                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
+            img = fluid.layers.data(
+                name='pixel', shape=[3, 224, 224], dtype='float32'
             )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
             softmax_out = paddle.nn.function.softmax(out)
             loss = paddle.nn.functional.cross_entropy(

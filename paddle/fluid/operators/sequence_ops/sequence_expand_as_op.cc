@@ -83,10 +83,10 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Y", /*->*/ "Out");
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -166,11 +166,11 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
@@ -209,19 +209,14 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_expand_as_grad,
                   ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_expand_as,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceExpandAsKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_expand_as_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceExpandAsGradKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(sequence_expand_as,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, float>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, double>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_expand_as_grad,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, float>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, double>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int64_t>);

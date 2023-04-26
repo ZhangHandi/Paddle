@@ -47,13 +47,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class BatchNormGradOp : public framework::OperatorWithKernel {
@@ -62,13 +62,13 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
@@ -77,7 +77,7 @@ class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

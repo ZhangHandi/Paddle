@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -42,7 +42,7 @@ class TestSearchSorted(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")

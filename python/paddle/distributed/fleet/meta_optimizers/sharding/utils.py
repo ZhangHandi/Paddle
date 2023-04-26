@@ -465,7 +465,9 @@ class FuseHelper:
                 continue
 
             fused_var = block.create_var(
-                name=unique_name.generate(f'Fused{prefix}_{group[0].name}'),
+                name=unique_name.generate(
+                    'Fused{}_{}'.format(prefix, group[0].name)
+                ),
                 dtype=group[0].dtype,
                 persistable=False,
                 stop_gradient=True,
@@ -828,7 +830,7 @@ def get_grad_device(grad_name, shard):
 
     assert (
         base_name in shard.global_param2device
-    ), f"[{base_name}] should be a param variable."
+    ), "[{}] should be a param variable.".format(base_name)
 
     return shard.global_param2device[base_name]
 
@@ -898,7 +900,7 @@ def get_var_size(param):
     """
     assert -1 not in param.shape
     return (
-        reduce(lambda x, y: x * y, param.shape, 1)
+        reduce(lambda x, y: x * y, param.shape)
         * DtypeToSize[param.dtype]
         / 1024.0
         / 1024.0
@@ -945,14 +947,14 @@ def comm_analyse(main_program):
     gap = 1
 
     for k, v in broadcast_vars.items():
-        print(f"broadcast: {k}: {v} KB")
+        print("broadcast: {}: {} KB".format(k, v))
         if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:
             varsize_count[int(v / gap)] = 1
 
     for k, v in reduce_vars.items():
-        print(f"allreduce: {k}: {v} KB")
+        print("allreduce: {}: {} KB".format(k, v))
         if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:
@@ -961,8 +963,10 @@ def comm_analyse(main_program):
     with open("nccl_size.txt", 'w') as f:
         sorted_varsize = sorted(varsize_count.items(), key=lambda x: x[0])
         for varsize, count in sorted_varsize:
-            print(f"NCCL size {varsize}~{varsize + 1} KB: {count}")
-            f.write(f"NCCL size {varsize}~{varsize + 1} KB: {count}\n")
+            print("NCCL size {}~{} KB: {}".format(varsize, varsize + 1, count))
+            f.write(
+                "NCCL size {}~{} KB: {}\n".format(varsize, varsize + 1, count)
+            )
 
 
 def add_sync_comm(program, sharding_ring_id):
@@ -977,7 +981,7 @@ def add_sync_comm(program, sharding_ring_id):
 
     assert sharding_ring_id >= 0, "sharding_ring_id should larger than zero"
     block = program.global_block()
-    not_sync_vars = set()
+    not_sync_vars = set([])
     for op in block.ops:
         if op.type in ["c_broadcast", "c_allreduce"]:
             for input_name in op.desc.input_arg_names():

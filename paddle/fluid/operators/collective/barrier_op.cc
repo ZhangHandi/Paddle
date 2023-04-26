@@ -44,6 +44,4 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(barrier, ops::BarrierOp, ops::BarrierOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    barrier, CPU, ALL_LAYOUT, ops::BarrierOpCPUKernel, int) {}
+REGISTER_OP_CPU_KERNEL(barrier, ops::BarrierOpCPUKernel<int>);

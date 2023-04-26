@@ -52,7 +52,7 @@ struct ModifiedHuberLossForward {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class ModifiedHuberLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -79,7 +79,7 @@ class ModifiedHuberLossKernel : public framework::OpKernel<T> {
 };
 
 // CPU backward kernel
-template <typename T, typename DeviceContext>
+template <typename T>
 class ModifiedHuberLossGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

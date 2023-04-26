@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -67,10 +67,10 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }
 
-phi::KernelKey FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
+framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSeqPoolCVMConcatOpMaker::Make() {
@@ -96,7 +96,7 @@ Fusion Sequence Pool of pooltype(sum, average and sqrt) and Concat Operator.
 )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -122,15 +122,15 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
                       0,
                       paddle::platform::errors::InvalidArgument(
                           "The output of dims[1] should be dividable of w"));
-    phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
+    jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
-      attr.type = phi::jit::SeqPoolType::kAvg;
+      attr.type = jit::SeqPoolType::kAvg;
     } else if (pooltype == "SQRT") {
-      attr.type = phi::jit::SeqPoolType::kSqrt;
+      attr.type = jit::SeqPoolType::kSqrt;
     }
-    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                         platform::CPUPlace>::Cache()
-                       .At(attr);
+    auto seqpool =
+        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
+            attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
@@ -172,9 +172,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(fusion_seqpool_cvm_concat,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusionSeqPoolCVMConcatKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
+                       ops::FusionSeqPoolCVMConcatKernel<float>,
+                       ops::FusionSeqPoolCVMConcatKernel<double>);

@@ -16,6 +16,7 @@
 
 #include <ThreadPool.h>
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/core/enforce.h"
 

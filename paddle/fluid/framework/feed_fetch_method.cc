@@ -47,7 +47,7 @@ void SetFeedVariable(Scope* scope,
 }
 
 void SetFeedVariable(Scope* scope,
-                     const std::vector<std::string>& input,
+                     const Strings& input,
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -59,7 +59,7 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index] = Strings(input);
+  feed_inputs[index] = input;
 }
 
 FetchType& GetFetchVariable(const Scope& scope,
@@ -95,7 +95,7 @@ phi::DenseTensor& GetVariableTensor(const Scope& scope,
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
                     platform::errors::InvalidArgument(
-                        "Only support DenseTensor in GetVariableTensor now."));
+                        "Only support lod tensor in GetVariableTensor now."));
   return *var->GetMutable<phi::DenseTensor>();
 }
 

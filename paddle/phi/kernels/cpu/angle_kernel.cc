@@ -26,6 +26,4 @@ PD_REGISTER_KERNEL(angle,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+                   phi::dtype::complex<double>) {}

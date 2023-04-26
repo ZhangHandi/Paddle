@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 
 // only can include the headers in paddle/top/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace paddle {
@@ -42,11 +43,11 @@ void LaunchSameDimsElementwiseCudaKernel(
   std::vector<std::unique_ptr<phi::DenseTensor>> pt_outputs_tmp;
   for (auto in : ins) {
     pt_inputs_tmp.emplace_back(
-        std::move(std::make_unique<phi::DenseTensor>(*in)));
+        std::move(paddle::experimental::MakePhiDenseTensor(*in)));
   }
   for (auto out : *outs) {
     pt_outputs_tmp.emplace_back(
-        std::move(std::make_unique<phi::DenseTensor>(*out)));
+        std::move(paddle::experimental::MakePhiDenseTensor(*out)));
   }
   for (int i = 0; i < pt_inputs_tmp.size(); i++) {
     pt_inputs.push_back(pt_inputs_tmp[i].get());

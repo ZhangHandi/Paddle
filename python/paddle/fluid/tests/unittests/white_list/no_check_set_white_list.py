@@ -37,6 +37,4 @@ no_check_set_white_list = [
     'class_center_sample',
     'einsum',
     'rmsprop',
-    'rrelu',
-    'layer_norm',
 ]

@@ -32,7 +32,6 @@ namespace ir {
 class MultiGRUFusePass : public FusePassBase {
  public:
   virtual ~MultiGRUFusePass() {}
-  MultiGRUFusePass();
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

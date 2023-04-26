@@ -31,11 +31,11 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("StepOut", dim);
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "LearningRate");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 

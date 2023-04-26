@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 def smooth_l1_loss_forward(val, delta):
@@ -54,12 +54,8 @@ class SmoothL1Loss(unittest.TestCase):
             else fluid.CPUPlace()
         )
         with fluid.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
+            label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             ret = smooth_l1_loss(input, label)
 
@@ -97,12 +93,8 @@ class SmoothL1Loss(unittest.TestCase):
             else fluid.CPUPlace()
         )
         with fluid.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
+            label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             ret = smooth_l1_loss(input, label)
 
@@ -140,12 +132,8 @@ class SmoothL1Loss(unittest.TestCase):
             else fluid.CPUPlace()
         )
         with fluid.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
+            label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             ret = smooth_l1_loss(input, label)
 
@@ -184,12 +172,8 @@ class SmoothL1Loss(unittest.TestCase):
             else fluid.CPUPlace()
         )
         with fluid.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
+            label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             ret = smooth_l1_loss(input, label)
 

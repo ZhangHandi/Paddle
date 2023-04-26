@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 fluid.disable_dygraph()
 
@@ -41,23 +41,26 @@ def net(batch_size=4, lr=0.01):
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
     with fluid.device_guard("cpu"):
-        dnn_data = paddle.static.data(
+        dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        lr_data = paddle.static.data(
+        lr_data = fluid.layers.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        label = paddle.static.data(
+        label = fluid.layers.data(
             name="click",
             shape=[-1, 1],
             dtype="float32",
             lod_level=0,
+            append_batch_size=False,
         )
 
         datas = [dnn_data, lr_data, label]
@@ -70,11 +73,11 @@ def net(batch_size=4, lr=0.01):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=paddle.nn.initializer.Constant(value=0.01),
+                initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )
-        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -86,13 +89,11 @@ def net(batch_size=4, lr=0.01):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=paddle.nn.initializer.Constant(value=0.01),
+                initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )
-        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
-        )
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
     with fluid.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -101,14 +102,14 @@ def net(batch_size=4, lr=0.01):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.Constant(value=0.01)
+                    initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
             dnn_out = fc
 
-        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
-        label = paddle.cast(label, dtype="int64")
+        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        label = fluid.layers.cast(label, dtype="int64")
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )

@@ -38,7 +38,6 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
@@ -141,19 +140,18 @@ void InterpolateKernel(
         errors::InvalidArgument("XPU nearest is only support NCHW"));
   }
 
-  int r =
-      xpu::interpolate2d<XPUType>(ctx.x_context(),
-                                  reinterpret_cast<const XPUType*>(x.data<T>()),
-                                  reinterpret_cast<XPUType*>(output->data<T>()),
-                                  n,
-                                  c,
-                                  in_h,
-                                  in_w,
-                                  out_h,
-                                  out_w,
-                                  nearest,
-                                  trans_mode,
-                                  (data_layout == DataLayout::kNCHW));
+  int r = xpu::interpolate2d<T>(ctx.x_context(),
+                                x.data<T>(),
+                                output->data<T>(),
+                                n,
+                                c,
+                                in_h,
+                                in_w,
+                                out_h,
+                                out_w,
+                                nearest,
+                                trans_mode,
+                                (data_layout == DataLayout::kNCHW));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d");
 }
 
@@ -223,23 +221,13 @@ void NearestInterpKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::BilinearInterpKernel,
-                   phi::dtype::float16,
-                   float) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+PD_REGISTER_KERNEL(
+    bilinear_interp, XPU, ALL_LAYOUT, phi::BilinearInterpKernel, float) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(nearest_interp,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::NearestInterpKernel,
-                   phi::dtype::float16,
-                   float) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+PD_REGISTER_KERNEL(
+    nearest_interp, XPU, ALL_LAYOUT, phi::NearestInterpKernel, float) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

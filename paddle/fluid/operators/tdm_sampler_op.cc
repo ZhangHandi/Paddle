@@ -118,10 +118,10 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -136,12 +136,9 @@ REGISTER_OPERATOR(
     ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::TDMSamplerKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(
+    tdm_sampler,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int>,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int64_t>);

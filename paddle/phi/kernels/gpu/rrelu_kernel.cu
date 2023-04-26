@@ -110,5 +110,4 @@ PD_REGISTER_KERNEL(rrelu,
                    phi::RReluKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    double) {}

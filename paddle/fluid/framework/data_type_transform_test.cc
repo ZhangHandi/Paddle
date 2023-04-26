@@ -19,26 +19,47 @@ limitations under the License. */
 TEST(DataTypeTransform, CPUTransform) {
   auto place = paddle::platform::CPUPlace();
 
-  auto kernel_fp16 = phi::KernelKey(
-      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT16);
+  auto kernel_fp16 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP16,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_bf16 = phi::KernelKey(
-      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::BFLOAT16);
+  auto kernel_bf16 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BF16,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp32 = phi::KernelKey(
-      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+  auto kernel_fp32 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp64 = phi::KernelKey(
-      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT64);
+  auto kernel_fp64 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP64,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
   auto kernel_int32 =
-      phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, phi::DataType::INT32);
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT32,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
   auto kernel_int64 =
-      phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, phi::DataType::INT64);
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT64,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
   auto kernel_bool =
-      phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BOOL,
+                                      place,
+                                      phi::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
   // data type transform from float32
   {

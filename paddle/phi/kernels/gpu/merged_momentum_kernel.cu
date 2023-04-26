@@ -22,9 +22,4 @@ PD_REGISTER_KERNEL(merged_momentum,
                    phi::MergedMomentumKernel,
                    phi::dtype::float16,
                    float,
-                   double) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-  }
-}
+                   double) {}

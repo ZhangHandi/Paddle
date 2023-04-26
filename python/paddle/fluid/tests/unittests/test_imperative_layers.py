@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import nn
+import paddle.nn as nn
 
 
 class TestLayerPrint(unittest.TestCase):

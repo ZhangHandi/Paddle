@@ -19,14 +19,14 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import nn
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.nn as nn
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     PipelineLayer,
     SharedLayerDesc,
 )
-from paddle.nn import Layer
+from paddle.fluid.dygraph.layers import Layer
 
 
 def print_hook_fn(grad):

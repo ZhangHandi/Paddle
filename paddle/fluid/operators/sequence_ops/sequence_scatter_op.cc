@@ -126,10 +126,11 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -145,11 +146,11 @@ class SequenceScatterGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          platform::CPUPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   platform::CPUPlace());
   }
 };
 
@@ -186,19 +187,13 @@ REGISTER_OPERATOR(sequence_scatter,
 REGISTER_OPERATOR(sequence_scatter_grad,
                   ops::SequenceScatterGradOp,
                   ops::SequenceScatterGradNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_scatter,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceScatterOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_scatter_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceScatterGradientOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(sequence_scatter,
+                       ops::SequenceScatterOpKernel<float>,
+                       ops::SequenceScatterOpKernel<double>,
+                       ops::SequenceScatterOpKernel<int>,
+                       ops::SequenceScatterOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_scatter_grad,
+                       ops::SequenceScatterGradientOpKernel<float>,
+                       ops::SequenceScatterGradientOpKernel<double>,
+                       ops::SequenceScatterGradientOpKernel<int>,
+                       ops::SequenceScatterGradientOpKernel<int64_t>);

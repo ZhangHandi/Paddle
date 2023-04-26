@@ -39,7 +39,8 @@ void send_shape_info(const phi::DenseTensor& x,
                           "NCCLComm and Stream should be provided if use NCCL "
                           "to send the shape info."));
   }
-  phi::DataType shape_dytpe = phi::DataType::INT32;
+  paddle::experimental::DataType shape_dytpe =
+      paddle::experimental::DataType::INT32;
   ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
   auto dims = x.dims();
@@ -104,7 +105,7 @@ void send_shape_info(const phi::DenseTensor& x,
 }
 #endif
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class SendOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -217,17 +218,13 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(send_v2,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SendOpV2CUDAKernel,
-                          float,
-                          double,
+REGISTER_OP_CUDA_KERNEL(send_v2,
+                        ops::SendOpV2CUDAKernel<float>,
+                        ops::SendOpV2CUDAKernel<double>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+                        ops::SendOpV2CUDAKernel<plat::bfloat16>,
 #endif
-                          int,
-                          int64_t,
-                          int8_t,
-                          plat::float16) {
-}
+                        ops::SendOpV2CUDAKernel<int>,
+                        ops::SendOpV2CUDAKernel<int64_t>,
+                        ops::SendOpV2CUDAKernel<int8_t>,
+                        ops::SendOpV2CUDAKernel<plat::float16>);

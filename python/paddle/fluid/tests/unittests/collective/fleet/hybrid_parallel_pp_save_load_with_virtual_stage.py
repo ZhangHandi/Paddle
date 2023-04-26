@@ -25,7 +25,7 @@ from hybrid_parallel_pp_transformer_with_virtual_stage import (
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 batch_size = 8
 length = 8

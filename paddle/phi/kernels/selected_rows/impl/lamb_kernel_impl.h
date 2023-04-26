@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "glog/logging.h"
-
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
@@ -154,7 +151,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      skip_update->place().GetType() == phi::AllocationType::CPU &&
+      paddle::platform::is_cpu_place(skip_update->place()) &&
       (*skip_update_flag)) {
     return;
   }
@@ -224,10 +221,10 @@ void ComputeRowImpl(const Context& dev_ctx,
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
+  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     SparseLambMomentREGUpdateFunctor<T> moment_update_functor(
@@ -296,7 +293,7 @@ void ComputeRowImpl(const Context& dev_ctx,
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  memory_utils::Buffer buffer(dev_ctx.GetPlace());
+  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
   phi::funcs::SquaredL2Norm(
       dev_ctx,
       reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
@@ -312,7 +309,8 @@ void ComputeRowImpl(const Context& dev_ctx,
     auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn =
         phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
+    auto dtype = paddle::framework::DataTypeToString(
+        paddle::framework::DataTypeTrait<T>::DataType());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

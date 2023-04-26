@@ -16,9 +16,9 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class GRUActivationType(OpTest):
@@ -124,13 +124,10 @@ class TestGRUUnitOp(OpTest):
         self.set_outputs()
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight'], ['Hidden'], check_dygraph=False
-        )
+        self.check_grad(['Input', 'HiddenPrev', 'Weight'], ['Hidden'])
 
 
 class TestGRUUnitOpOriginMode(TestGRUUnitOp):
@@ -157,19 +154,13 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         }
 
     def test_check_grad(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight', 'Bias'],
-            ['Hidden'],
-            check_dygraph=False,
-        )
+        self.check_grad(['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'])
 
     def test_check_grad_ingore_input(self):
         self.check_grad(
             ['HiddenPrev', 'Weight', 'Bias'],
             ['Hidden'],
             no_grad_set=set('Input'),
-            check_dygraph=False,
         )
 
 

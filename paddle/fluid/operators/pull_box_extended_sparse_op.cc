@@ -72,9 +72,10 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 
@@ -130,11 +131,11 @@ class PushBoxExtendedSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -151,15 +152,10 @@ REGISTER_OPERATOR(
 
 REGISTER_OPERATOR(push_box_extended_sparse, ops::PushBoxExtendedSparseOp);
 
-PD_REGISTER_STRUCT_KERNEL(pull_box_extended_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PullBoxExtendedSparseCPUKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(push_box_extended_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PushBoxExtendedSparseCPUKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(pull_box_extended_sparse,
+                       ops::PullBoxExtendedSparseCPUKernel<float>,
+                       ops::PullBoxExtendedSparseCPUKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(push_box_extended_sparse,
+                       ops::PushBoxExtendedSparseCPUKernel<float>,
+                       ops::PushBoxExtendedSparseCPUKernel<double>);

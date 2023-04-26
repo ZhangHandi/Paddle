@@ -77,10 +77,11 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -186,6 +187,6 @@ REGISTER_OPERATOR(
     ops::TargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(
-    target_assign, CPU, ALL_LAYOUT, ops::TargetAssignKernel, int, float) {}
+REGISTER_OP_CPU_KERNEL(target_assign,
+                       ops::TargetAssignKernel<phi::CPUContext, int, float>,
+                       ops::TargetAssignKernel<phi::CPUContext, float, float>);

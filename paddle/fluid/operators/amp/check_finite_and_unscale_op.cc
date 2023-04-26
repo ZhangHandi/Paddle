@@ -29,13 +29,13 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = framework::proto::VarType::FP32;
     if (ctx.MultiInputVar("X").size() >= 1) {
       dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     }
-    return phi::KernelKey(dtype, ctx.GetPlace());
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 
@@ -49,6 +49,12 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Scale",
              "(Tensor) 1-dim tensor, the scale of check_finite_and_unscale "
              "operator.");
+#ifdef PADDLE_WITH_ASCEND_CL
+    AddInput("FloatStatus",
+             "(Tensor) 1-dim tensor of shape [8], allocated by "
+             "alloc_float_status op")
+        .AsDispensable();
+#endif
     AddOutput("Out",
               "(Tensors) The scaled output tensor of "
               "check_finite_and_unscale operator.")

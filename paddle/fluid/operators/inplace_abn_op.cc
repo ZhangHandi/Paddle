@@ -30,7 +30,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
   using paddle::operators::BatchNormOp::BatchNormOp;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
@@ -61,7 +61,11 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
                       platform::errors::InvalidArgument(
                           "Variance input should be of float type"));
 
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -131,7 +135,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
     auto input_data_type = framework::TransToProtoVarType(
@@ -150,8 +154,11 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
       PADDLE_THROW(
           platform::errors::InvalidArgument("gradient variable of Y is empty"));
     }
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -210,7 +217,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -270,7 +277,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -373,11 +380,9 @@ REGISTER_OPERATOR(inplace_abn,
                   InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
-PD_REGISTER_STRUCT_KERNEL(
-    inplace_abn, CPU, ALL_LAYOUT, ops::InplaceABNKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(inplace_abn_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::InplaceABNGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(inplace_abn,
+                       ops::InplaceABNKernel<phi::CPUContext, float>,
+                       ops::InplaceABNKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn_grad,
+                       ops::InplaceABNGradKernel<phi::CPUContext, float>,
+                       ops::InplaceABNGradKernel<phi::CPUContext, double>);

@@ -13,8 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include "glog/logging.h"
-
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
@@ -104,7 +103,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor out;
   VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;
-  EinsumInferKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
+  EinsumKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
   return out;
 }
 
@@ -158,8 +157,7 @@ void EinsumGradKernel(const Context& dev_ctx,
     new_operands.push_back(&out_grad);
     DenseTensor before_tile;
     VLOG(5) << "new_equation is " << new_equation;
-    EinsumInferKernel<T, Context>(
-        dev_ctx, new_operands, new_equation, &before_tile);
+    EinsumKernel<T, Context>(dev_ctx, new_operands, new_equation, &before_tile);
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,

@@ -81,9 +81,7 @@ class DnnWorkspaceHandle {
 class PADDLE_API GPUContext : public DeviceContext,
                               public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
-  explicit GPUContext(const GPUPlace& place,
-                      bool init = true,
-                      int stream_priority = 0);
+  explicit GPUContext(const GPUPlace& place, bool init = true);
 
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
@@ -200,7 +198,7 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   // Note that this is a trick implementation, which can be used to partially
   // initialize when the SetAllocator interface is not called.
-  void PartialInitWithoutAllocator(int stream_priority = 0);
+  void PartialInitWithoutAllocator();
   // Note that this is a trick implementation that can be used to initialize
   // resources that require an Allocator when the SetAllocator interface is
   // called.
@@ -277,31 +275,4 @@ using GPUDNNContext = GPUContext;
 using KPSContext = GPUContext;
 #endif
 
-}  // namespace phi
-
-namespace Eigen {
-struct DefaultDevice;
-}  // namespace Eigen
-
-namespace phi {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// Currently, GPUPinnedContext is only used to data copying.
-class GPUPinnedContext
-    : public DeviceContext,
-      public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
- public:
-  GPUPinnedContext();
-  explicit GPUPinnedContext(GPUPinnedPlace place);
-
-  const Place& GetPlace() const override;
-
-  Eigen::DefaultDevice* eigen_device() const;
-
-  static const char* name() { return "GPUPinnedContext"; }
-
- private:
-  GPUPinnedPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-};
-#endif
 }  // namespace phi

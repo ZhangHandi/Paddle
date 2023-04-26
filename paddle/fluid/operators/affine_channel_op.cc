@@ -145,11 +145,11 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
@@ -184,7 +184,7 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class AffineChannelKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -228,7 +228,7 @@ class AffineChannelKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class AffineChannelGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -353,12 +353,9 @@ REGISTER_OPERATOR(affine_channel_grad,
                   ops::AffineChannelNoNeedBufferVarsInference,
                   ops::AffineChannelGradInplaceInferer);
 
-PD_REGISTER_STRUCT_KERNEL(
-    affine_channel, CPU, ALL_LAYOUT, ops::AffineChannelKernel, float, double) {}
-
-PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::AffineChannelGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(affine_channel,
+                       ops::AffineChannelKernel<CPU, float>,
+                       ops::AffineChannelKernel<CPU, double>);
+REGISTER_OP_CPU_KERNEL(affine_channel_grad,
+                       ops::AffineChannelGradKernel<CPU, float>,
+                       ops::AffineChannelGradKernel<CPU, double>);

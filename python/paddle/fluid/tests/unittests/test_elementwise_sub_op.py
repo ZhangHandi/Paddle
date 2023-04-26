@@ -12,268 +12,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import warnings
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+import paddle.fluid as fluid
 
 
 class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-    def init_dtype(self):
-        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set("X"),
-            check_prim=self.check_prim,
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X")
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set('Y'),
-            check_prim=self.check_prim,
-        )
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-
-class TestElementwiseFP16OP(TestElementwiseOp):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-    def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', max_relative_error=0.1
-        )
-
-    def test_check_grad_ingore_x(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.1
-        )
-
-    def test_check_grad_ingore_y(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.1
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y')
         )
 
 
 class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, []).astype(self.dtype),
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-
-class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseSubBF16OP_ZeroDim1(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, []).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, []).astype(self.dtype),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-
-class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseSubBF16OP_ZeroDim2(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, []).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
 
-class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
 class TestBF16ElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
         self.dtype = np.uint16
         x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
         y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -284,25 +90,18 @@ class TestBF16ElementwiseOp(OpTest):
             'Y': convert_float_to_uint16(y),
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.if_check_prim()
-        self.if_enable_cinn()
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', no_grad_set=set("X"), check_prim=self.check_prim
-        )
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
@@ -311,41 +110,29 @@ class TestBF16ElementwiseOp(OpTest):
 class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 3, 4).astype(self.dtype),
-            'Y': np.random.rand(1).astype(self.dtype),
+            'X': np.random.rand(10, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.random((100,)).astype(self.dtype),
-            'Y': np.random.random((100,)).astype(self.dtype),
+            'X': np.random.random((100,)).astype("float64"),
+            'Y': np.random.random((100,)).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
 
 
 class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(100, 3, 2).astype(self.dtype),
-            'Y': np.random.rand(100).astype(self.dtype),
+            'X': np.random.rand(100, 3, 2).astype(np.float64),
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.attrs = {'axis': 0}
@@ -353,414 +140,96 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
         }
 
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set("X"),
-            check_dygraph=False,
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set('Y'),
-            check_dygraph=False,
-        )
-
-
-class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseSubOp_broadcast_0):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
+class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(100, 3, 2).astype(np.float32),
-            'Y': np.random.rand(100).astype(np.float32),
-        }
-        self.outputs = {
-            'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
-        }
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.attrs = {'axis': 0}
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
-
-    def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_dygraph=False
-        )
-
-    def test_check_grad_ingore_x(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False
-        )
-
-    def test_check_grad_ingore_y(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False
-        )
-
-
-class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_0):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.init_dtype()
-        self.inputs = {
-            'X': np.random.rand(2, 100, 3).astype(self.dtype),
-            'Y': np.random.rand(100).astype(self.dtype),
+            'X': np.random.rand(2, 100, 3).astype(np.float64),
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
         }
-
-
-class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseSubOp_broadcast_1):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.inputs = {
-            'X': np.random.rand(2, 100, 3).astype(np.float32),
-            'Y': np.random.rand(100).astype(np.float32),
-        }
-        self.outputs = {
-            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
-        }
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.attrs = {'axis': 1}
 
 
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(self.dtype),
-            'Y': np.random.rand(100).astype(self.dtype),
+            'X': np.random.rand(2, 3, 100).astype(np.float64),
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
         }
-        self.if_check_prim()
 
 
-class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseSubOp_broadcast_2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
+class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(np.float32),
-            'Y': np.random.rand(100).astype(np.float32),
-        }
-        self.outputs = {
-            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
-        }
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.inputs = {
-            'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
-            'Y': np.random.rand(10, 12).astype(np.float32),
-        }
-        self.outputs = {
-            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
-        }
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.attrs = {'axis': 1}
-
-
-class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_0):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.init_dtype()
-        self.inputs = {
-            'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
-            'Y': np.random.rand(10, 12).astype(self.dtype),
+            'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
+            'Y': np.random.rand(10, 12).astype(np.float64),
         }
 
         self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
         }
-
-
-class TestElementwiseSubFP16OP_broadcast_3(TestElementwiseSubOp_broadcast_3):
-    def init_dtype(self):
-        self.dtype = np.float16
 
 
 class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 5, 3, 12).astype(self.dtype),
-            'Y': np.random.rand(2, 5, 1, 12).astype(self.dtype),
+            'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
+            'Y': np.random.rand(2, 5, 1, 12).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.inputs = {
-            'X': np.random.rand(2, 5, 3, 12).astype(np.float32),
-            'Y': np.random.rand(2, 5, 1, 12).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-
-
-class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseSubOp_broadcast_4):
-    def init_dtype(self):
-        self.dtype = np.float16
 
 
 class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(self.dtype),
-            'Y': np.random.rand(1, 1, 100).astype(self.dtype),
+            'X': np.random.rand(2, 3, 100).astype(np.float64),
+            'Y': np.random.rand(1, 1, 100).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-
-
-class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseSubOp_commonuse_1):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(np.float32),
-            'Y': np.random.rand(1, 1, 100).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 3, 1, 4).astype(self.dtype),
-            'Y': np.random.rand(10, 1, 12, 1).astype(self.dtype),
+            'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
+            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-
-
-class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseSubOp_commonuse_2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.rand(10, 3, 1, 4).astype(np.float32),
-            'Y': np.random.rand(10, 1, 12, 1).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 12).astype(self.dtype),
-            'Y': np.random.rand(2, 3, 10, 12).astype(self.dtype),
+            'X': np.random.rand(10, 12).astype(np.float64),
+            'Y': np.random.rand(2, 3, 10, 12).astype(np.float64),
         }
+
         self.attrs = {'axis': 2}
 
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
-        self.if_check_prim()
-
-
-class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
-    TestElementwiseSubOp_xsize_lessthan_ysize
-):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.rand(10, 12).astype(np.float32),
-            'Y': np.random.rand(2, 3, 10, 12).astype(np.float32),
-        }
-        self.attrs = {'axis': 2}
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
 
 
 class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -772,8 +241,6 @@ class TestComplexElementwiseSubOp(OpTest):
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
     def init_base_dtype(self):
         self.dtype = np.float64
@@ -803,7 +270,6 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_prim=self.check_prim,
         )
 
     def test_check_grad_ingore_x(self):
@@ -813,7 +279,6 @@ class TestComplexElementwiseSubOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_prim=self.check_prim,
         )
 
     def test_check_grad_ingore_y(self):
@@ -823,14 +288,7 @@ class TestComplexElementwiseSubOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_prim=self.check_prim,
         )
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
@@ -848,12 +306,6 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def if_check_prim(self):
-        self.check_prim = False
-
 
 class TestSubtractApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
@@ -861,8 +313,8 @@ class TestSubtractApi(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = self._executed_api(x, y, name='subtract_res')
             self.assertEqual(('subtract_res' in y_1.name), True)
@@ -872,12 +324,12 @@ class TestSubtractApi(unittest.TestCase):
 
             def gen_data():
                 return {
-                    "x": np.array([2, 3, 4]).astype(np.float32),
-                    "y": np.array([1, 5, 2]).astype(np.float32),
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
-            x = paddle.static.data(name="x", shape=[3], dtype=np.float32)
-            y = paddle.static.data(name="y", shape=[3], dtype=np.float32)
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1018,32 +470,6 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         )
 
         paddle.enable_static()
-
-
-class TestTensorSubAPIWarnings(unittest.TestCase):
-    def test_warnings(self):
-
-        with warnings.catch_warnings(record=True) as context:
-            warnings.simplefilter("always")
-
-            paddle.enable_static()
-            helper = LayerHelper("elementwise_sub")
-            data = paddle.static.data(
-                name='data', shape=[None, 3, 32, 32], dtype=np.float32
-            )
-            out = helper.create_variable_for_type_inference(dtype=data.dtype)
-            os.environ['FLAGS_print_extra_attrs'] = "1"
-            helper.append_op(
-                type="elementwise_sub",
-                inputs={'X': data, 'Y': data},
-                outputs={'Out': out},
-                attrs={'axis': 1, 'use_mkldnn': False},
-            )
-            self.assertTrue(
-                "op elementwise_sub's attr axis = 1 is not the default value: -1"
-                in str(context[-1].message)
-            )
-            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':

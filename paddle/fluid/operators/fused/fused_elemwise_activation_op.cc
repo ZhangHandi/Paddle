@@ -172,14 +172,14 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.Input<phi::DenseTensor>("X")->dtype(),
                       ctx.Input<phi::DenseTensor>("Y")->dtype(),
                       platform::errors::InvalidArgument(
                           "The element's type of input should be the same."));
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -389,11 +389,11 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
@@ -461,19 +461,15 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 
-PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedElemwiseActivationKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_activation,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
-PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedElemwiseActivationGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_activation_grad,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
 
 // for memory optimization, we register the fused_elemwise_add_activation OP
 REGISTER_OPERATOR(
@@ -486,16 +482,12 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
                   ops::FusedElemwiseAddActivationNoNeddBufVarInferer,
                   ops::FusedElemwiseAddActivationOpGrad);
 
-PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedElemwiseAddActivationKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
-PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedElemwiseAddActivationGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation_grad,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);

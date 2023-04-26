@@ -34,30 +34,17 @@ def init_communicator(block, rank, ranks, ring_id):
     comm_id_var = block.create_var(
         name=comm_var_name, persistable=True, type=core.VarDesc.VarType.RAW
     )
-    if core.is_compiled_with_cuda():
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': comm_id_var},
-            attrs={
-                'rank': local_rank,
-                'endpoint': cur_ep,
-                'other_endpoints': other_eps,
-                'ring_id': ring_id,
-            },
-        )
-    elif core.is_compiled_with_xpu():
-        block.append_op(
-            type='c_gen_bkcl_id',
-            inputs={},
-            outputs={'Out': comm_id_var},
-            attrs={
-                'rank': local_rank,
-                'endpoint': cur_ep,
-                'other_endpoints': other_eps,
-                'ring_id': ring_id,
-            },
-        )
+    block.append_op(
+        type='c_gen_nccl_id',
+        inputs={},
+        outputs={'Out': comm_id_var},
+        attrs={
+            'rank': local_rank,
+            'endpoint': cur_ep,
+            'other_endpoints': other_eps,
+            'ring_id': ring_id,
+        },
+    )
     block.append_op(
         type='c_comm_init',
         inputs={'X': comm_id_var},
@@ -479,7 +466,7 @@ class DistributedFusedLamb(Optimizer):
                 'clip_after_allreduce': self._clip_after_allreduce,
                 'rank': rank,
                 'nranks': nranks,
-                'ring_ids': ring_ids,
+                'ring_id': ring_ids,
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,

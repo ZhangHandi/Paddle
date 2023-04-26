@@ -34,9 +34,10 @@ class AllocFloatStatusOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -51,7 +52,7 @@ class AllocFloatStatusMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class AllocFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -73,5 +74,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(
-    alloc_float_status, CPU, ALL_LAYOUT, ops::AllocFloatStatusKernel, float) {}
+REGISTER_OP_CPU_KERNEL(alloc_float_status,
+                       ops::AllocFloatStatusKernel<CPU, float>);

@@ -166,7 +166,7 @@ void DeformablePSROIPoolForwardCPUKernel(const int count,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -468,7 +468,7 @@ void DeformablePSROIPoolBackwardAccCPUKernel(const int count,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

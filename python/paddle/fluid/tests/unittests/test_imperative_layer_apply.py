@@ -17,10 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+import paddle.fluid as fluid
+import paddle.nn as nn
 
 
-class LeNetDygraph(paddle.nn.Layer):
+class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super().__init__()
         self.num_classes = num_classes
@@ -52,20 +53,20 @@ class LeNetDygraph(paddle.nn.Layer):
 
 def init_weights(layer):
     if type(layer) == nn.Linear:
-        new_weight = paddle.tensor.fill_constant(
+        new_weight = paddle.fluid.layers.fill_constant(
             layer.weight.shape, layer.weight.dtype, value=0.9
         )
         layer.weight.set_value(new_weight)
-        new_bias = paddle.tensor.fill_constant(
+        new_bias = paddle.fluid.layers.fill_constant(
             layer.bias.shape, layer.bias.dtype, value=-0.1
         )
         layer.bias.set_value(new_bias)
     elif type(layer) == nn.Conv2D:
-        new_weight = paddle.tensor.fill_constant(
+        new_weight = paddle.fluid.layers.fill_constant(
             layer.weight.shape, layer.weight.dtype, value=0.7
         )
         layer.weight.set_value(new_weight)
-        new_bias = paddle.tensor.fill_constant(
+        new_bias = paddle.fluid.layers.fill_constant(
             layer.bias.shape, layer.bias.dtype, value=-0.2
         )
         layer.bias.set_value(new_bias)

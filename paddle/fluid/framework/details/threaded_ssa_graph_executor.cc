@@ -41,8 +41,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   platform::EmplaceDeviceContexts(
       &fetch_ctxs_,
       places,
-      /*disable_setting_default_stream_for_allocator=*/true,
-      /*stream_priority=*/0);
+      /*disable_setting_default_stream_for_allocator=*/true);
 
   if (strategy_.num_iteration_per_run_ > 1) {
     int read_op_num = 0;

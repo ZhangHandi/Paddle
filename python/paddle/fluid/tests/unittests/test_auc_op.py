@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import metrics
 
 
@@ -65,7 +65,7 @@ class TestAucOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestGlobalAucOp(OpTest):
@@ -105,7 +105,7 @@ class TestGlobalAucOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestAucAPI(unittest.TestCase):
@@ -142,12 +142,8 @@ class TestAucOpError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             def test_type1():
-                data1 = paddle.static.data(
-                    name="input1", shape=[-1, 2], dtype="int"
-                )
-                label1 = paddle.static.data(
-                    name="label1", shape=[-1], dtype="int"
-                )
+                data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
+                label1 = fluid.data(name="label1", shape=[-1], dtype="int")
                 ins_tag_w1 = paddle.static.data(
                     name="label1", shape=[-1], dtype="int"
                 )
@@ -158,12 +154,10 @@ class TestAucOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type1)
 
             def test_type2():
-                data2 = paddle.static.data(
+                data2 = fluid.data(
                     name="input2", shape=[-1, 2], dtype="float32"
                 )
-                label2 = paddle.static.data(
-                    name="label2", shape=[-1], dtype="float32"
-                )
+                label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
                 result2 = paddle.static.auc(input=data2, label=label2)
 
             self.assertRaises(TypeError, test_type2)

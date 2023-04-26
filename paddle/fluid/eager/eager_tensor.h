@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/variable.h"
 // Phi deps
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 namespace egr {
@@ -26,7 +27,7 @@ namespace egr {
 /**
  * VariableCompatTensor class is used by Eager mode for now. It's painful to
  * do this in Eager Mode, the better choice is to design the special Tensor
- * directly in phi and use it in paddle::Tensor.
+ * directly in phi and use it in paddle::experimental::Tensor.
  * However, we have some special operators, and they use special input variable
  * type, such as vector<string>, unordered_map<wstring, int>, these type cannot
  * cover by DenseTensor or SparseTensor. So, we have to provide a compatible
@@ -178,22 +179,22 @@ class VariableCompatTensor
   std::shared_ptr<Placeholder> holder_;
 };
 
-inline bool IsVariableCompatTensor(const paddle::Tensor& tensor) {
+inline bool IsVariableCompatTensor(const paddle::experimental::Tensor& tensor) {
   return VariableCompatTensor::classof(tensor.impl().get());
 }
 
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
- * Mode, the better choice is to use paddle::Tensor directly.
+ * Mode, the better choice is to use paddle::experimental::Tensor directly.
  * However, we have a punch of nested kernel code, and they use
  * paddle::framework::Variable in inner logic code. So, we have to provide
  * variable in paddle::framework::ExecutionContext to support it. We should
  * remove this as soon as we finish our latest Phi Lib, and use
- * paddle::Tensor instead.
+ * paddle::experimental::Tensor instead.
  *
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in
- * paddle::Tensor with access method of
+ * paddle::experimental::Tensor with access method of
  * paddle::framework::Variable no more members are acceptable.
  * **/
 class EagerVariable final {
@@ -204,7 +205,8 @@ class EagerVariable final {
 
   explicit EagerVariable(const std::string& name) : name_(name) {}
 
-  explicit EagerVariable(const paddle::Tensor& tensor) : name_(tensor.name()) {
+  explicit EagerVariable(const paddle::experimental::Tensor& tensor)
+      : name_(tensor.name()) {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
@@ -282,7 +284,7 @@ class EagerVariable final {
   }
 
   template <typename VarType>
-  void ConstructVariableFromTensor(const paddle::Tensor& tensor) {
+  void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
     // Contruct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
@@ -298,7 +300,8 @@ class EagerVariable final {
   }
 
   template <typename VarType>
-  void ConstructVariableFromCompatTensor(const paddle::Tensor& tensor) {
+  void ConstructVariableFromCompatTensor(
+      const paddle::experimental::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
     // Contruct phi::DenseTensor from egr::EagerVariable
     auto* compat_tensor =

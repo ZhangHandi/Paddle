@@ -17,8 +17,8 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -39,7 +39,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.Constant(value=0.01)
+            initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -50,7 +50,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.Constant(value=0.01)
+            initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
 
@@ -64,7 +64,7 @@ def cnn_model(data):
         size=SIZE,
         activation="softmax",
         weight_attr=fluid.param_attr.ParamAttr(
-            initializer=paddle.nn.initializer.Constant(value=0.01)
+            initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
     return predict
@@ -77,12 +77,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
         if dist_strategy:
             fleet.init(is_collective=True)
         with fluid.device_guard("gpu:0"):
-            images = paddle.static.data(
-                name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+            images = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype=DTYPE
             )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
             if dist_strategy:
                 data_loader = fluid.io.DataLoader.from_generator(

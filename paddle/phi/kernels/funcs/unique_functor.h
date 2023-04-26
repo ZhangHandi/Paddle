@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <set>
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -84,9 +82,9 @@ struct UniqueOpFunctor {
                         phi::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
-                            DataTypeToString(index_type),
-                            DataTypeToString(DataType::INT32),
-                            DataTypeToString(DataType::INT64)));
+                            phi::DataTypeToString(index_type),
+                            phi::DataTypeToString(DataType::INT32),
+                            phi::DataTypeToString(DataType::INT64)));
 
       if (index_type == DataType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
@@ -314,15 +312,15 @@ static void UniqueDim(const Context& context,
       out_trans.dims().size(), context, out_trans, out, permute);
 
   if (return_inverse) {
-    phi::TensorFromVector(inverse_vec, context, index);
+    paddle::framework::TensorFromVector(inverse_vec, context, index);
   }
 
   if (return_counts) {
-    phi::TensorFromVector(counts_vec, context, count);
+    paddle::framework::TensorFromVector(counts_vec, context, count);
   }
 
   if (return_index) {
-    phi::TensorFromVector(indices_vec, context, indices);
+    paddle::framework::TensorFromVector(indices_vec, context, indices);
   }
 }
 

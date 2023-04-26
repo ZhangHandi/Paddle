@@ -17,11 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.nn import Linear
 
 
-class SimpleImgConvPool(paddle.nn.Layer):
+class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -68,7 +68,7 @@ class SimpleImgConvPool(paddle.nn.Layer):
         return x
 
 
-class MNIST(paddle.nn.Layer):
+class MNIST(fluid.dygraph.Layer):
     def __init__(self, dtype="float32"):
         super().__init__()
 

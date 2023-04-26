@@ -225,14 +225,14 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "W"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
   bool should_use_term(math::bloomfilter* _filter,
@@ -465,10 +465,10 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "W"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
   }
 };
 
@@ -492,7 +492,7 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
  public:
   void hash_embedding_bp(const T* hash_id,
@@ -584,11 +584,8 @@ REGISTER_OPERATOR(pyramid_hash,
                   ops::PyramidHashGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
-PD_REGISTER_STRUCT_KERNEL(
-    pyramid_hash, CPU, ALL_LAYOUT, ops::CPUPyramidHashOPKernel, float, int8_t) {
-}
-PD_REGISTER_STRUCT_KERNEL(pyramid_hash_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CPUPyramidHashOPGradKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(pyramid_hash,
+                       ops::CPUPyramidHashOPKernel<phi::CPUContext, float>,
+                       ops::CPUPyramidHashOPKernel<phi::CPUContext, int8_t>);
+REGISTER_OP_CPU_KERNEL(pyramid_hash_grad,
+                       ops::CPUPyramidHashOPGradKernel<phi::CPUContext, float>);

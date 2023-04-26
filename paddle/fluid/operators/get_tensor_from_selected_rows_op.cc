@@ -47,14 +47,14 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
-template <typename T, typename DeviceContext>
 class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -102,22 +102,24 @@ REGISTER_OPERATOR(get_tensor_from_selected_rows,
                   ops::GetTensorFromSelectedRowsOpProtoMaker,
                   ops::GetTensorFromSelectedRowsOpVarTypeInference);
 
-PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GetTensorFromSelectedRowsKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
+                               float,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               double,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               int,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               int64_t,
+                               ops::GetTensorFromSelectedRowsKernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::GetTensorFromSelectedRowsKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
+                                float,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                double,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                int,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                int64_t,
+                                ops::GetTensorFromSelectedRowsKernel);
 #endif

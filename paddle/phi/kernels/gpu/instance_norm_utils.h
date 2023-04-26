@@ -27,7 +27,6 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -52,23 +51,22 @@ static __global__ void add_param(const T *input,
                                  T *output,
                                  const int repeat_num,
                                  const int C) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  typedef cub::BlockReduce<MPType, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ou_storage;
   for (int i = blockIdx.x; i < C; i += gridDim.x) {
-    MPType ou = static_cast<MPType>(0);
+    T ou = static_cast<T>(0);
     for (int j = threadIdx.x; j < repeat_num; j += blockDim.x) {
       const int index = j * C + i;
-      ou = ou + static_cast<MPType>(input[index]);
+      ou += static_cast<T>(input[index]);
     }
     ou = BlockReduce(ou_storage).Reduce(ou, cub::Sum());
     if (threadIdx.x == 0) {
-      output[i] = static_cast<T>(ou);
+      output[i] = ou;
     }
     __syncthreads();
 
     if (AVG) {
-      output[i] = static_cast<T>(static_cast<MPType>(output[i]) / repeat_num);
+      output[i] /= repeat_num;
     }
   }
 }

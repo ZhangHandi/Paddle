@@ -72,7 +72,7 @@ def get_dtype_bytes(dtype):
     elif dtype == paddle.uint8:
         num_bytes = 1
     else:
-        raise ValueError(f"Unrecognized dtype {dtype}.")
+        raise ValueError("Unrecognized dtype {}.".format(dtype))
     return num_bytes
 
 

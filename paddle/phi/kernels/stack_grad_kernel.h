@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void StackGradKernel(const Context& dev_ctx,
-                     const DenseTensor& out_grad,
+                     const DenseTensor& out,
                      int axis,
                      std::vector<DenseTensor*> x_grad);
 

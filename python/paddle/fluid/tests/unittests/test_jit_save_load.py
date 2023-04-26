@@ -22,8 +22,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import unique_name
+from paddle.fluid.layers.utils import flatten
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
@@ -51,7 +52,7 @@ def random_batch_reader(input_size, label_size):
     return __reader__
 
 
-class LinearNet(paddle.nn.Layer):
+class LinearNet(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -61,7 +62,7 @@ class LinearNet(paddle.nn.Layer):
         return self._linear(x)
 
 
-class LinearNetWithInputSpec(paddle.nn.Layer):
+class LinearNetWithInputSpec(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -71,7 +72,7 @@ class LinearNetWithInputSpec(paddle.nn.Layer):
         return self._linear(x)
 
 
-class LinearNetNotDeclarative(paddle.nn.Layer):
+class LinearNetNotDeclarative(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -136,7 +137,7 @@ class LinerNetWithUselessInput(paddle.nn.Layer):
         return out
 
 
-class LinearNetReturnLoss(paddle.nn.Layer):
+class LinearNetReturnLoss(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -149,7 +150,7 @@ class LinearNetReturnLoss(paddle.nn.Layer):
         return z, loss
 
 
-class LinearNetMultiInput(paddle.nn.Layer):
+class LinearNetMultiInput(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
@@ -168,7 +169,7 @@ class LinearNetMultiInput(paddle.nn.Layer):
         return x_out, y_out, loss
 
 
-class LinearNetMultiInput1(paddle.nn.Layer):
+class LinearNetMultiInput1(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
@@ -187,7 +188,7 @@ class LinearNetMultiInput1(paddle.nn.Layer):
         return x_out, y_out, loss
 
 
-class MultiLoadingLinearNet(paddle.nn.Layer):
+class MultiLoadingLinearNet(fluid.dygraph.Layer):
     def __init__(self, size, model_path):
         super().__init__()
         self._linear = Linear(size, size)
@@ -203,7 +204,7 @@ class MultiLoadingLinearNet(paddle.nn.Layer):
         return y
 
 
-class LinearNetReturnHidden(paddle.nn.Layer):
+class LinearNetReturnHidden(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -217,7 +218,7 @@ class LinearNetReturnHidden(paddle.nn.Layer):
         return y, loss
 
 
-class LinearNetWithNestOut(paddle.nn.Layer):
+class LinearNetWithNestOut(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -278,7 +279,7 @@ class NoParamLayer(paddle.nn.Layer):
         return x + y
 
 
-class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
+class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_0 = Linear(in_size, out_size)
@@ -454,14 +455,14 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         )
 
         net = LinearNetWithNestOut(8, 8)
-        dy_outs = paddle.utils.flatten(net(x))
+        dy_outs = flatten(net(x))
         net = to_static(net, input_spec=[InputSpec([None, 8], name='x')])
 
         model_path = os.path.join(self.temp_dir.name, "net_with_nest_out/model")
         paddle.jit.save(net, model_path)
 
         load_net = paddle.jit.load(model_path)
-        load_outs = paddle.utils.flatten(load_net(x))
+        load_outs = flatten(load_net(x))
 
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):
@@ -1102,7 +1103,7 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
 
     def test_save_load_empty_layer(self):
         layer = EmptyLayer()
-        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x = paddle.to_tensor(np.random.random((10)).astype('float32'))
         out = layer(x)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1124,8 +1125,8 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
 
     def test_save_load_no_param_layer(self):
         layer = NoParamLayer()
-        x = paddle.to_tensor(np.random.random(5).astype('float32'))
-        y = paddle.to_tensor(np.random.random(5).astype('float32'))
+        x = paddle.to_tensor(np.random.random((5)).astype('float32'))
+        y = paddle.to_tensor(np.random.random((5)).astype('float32'))
         out = layer(x, y)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1433,7 +1434,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         result_11 = layer_finetune(inps1)
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
-        self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
+        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
 # NOTE(weixin): When there are multiple test functions in an

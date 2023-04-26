@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/eigvals_kernel.h"
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -259,6 +257,4 @@ PD_REGISTER_KERNEL(eigvals,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
-}
+                   phi::dtype::complex<double>) {}

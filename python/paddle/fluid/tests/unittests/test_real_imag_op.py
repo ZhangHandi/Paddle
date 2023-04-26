@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid, static
+import paddle.fluid as fluid
+import paddle.static as static
 
 numpy_apis = {
     "real": np.real,
@@ -57,7 +58,7 @@ class TestRealOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -65,6 +66,7 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
         )
 
 

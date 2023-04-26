@@ -108,7 +108,7 @@ def load(
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
 
-    Examples:
+    Exampels:
         .. code-block:: python
 
             import os

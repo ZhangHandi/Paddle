@@ -86,10 +86,10 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -156,11 +156,11 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -194,19 +194,14 @@ REGISTER_OPERATOR(sequence_unpad,
 REGISTER_OPERATOR(sequence_unpad_grad,
                   ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_unpad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceUnpadOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_unpad_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceUnpadGradOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(sequence_unpad,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, float>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, double>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_unpad_grad,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, float>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, double>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int64_t>);

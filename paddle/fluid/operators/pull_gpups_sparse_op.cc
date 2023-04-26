@@ -64,9 +64,10 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 
@@ -128,11 +129,11 @@ class PushGpuPSSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 }  // namespace operators
@@ -145,16 +146,9 @@ REGISTER_OPERATOR(pull_gpups_sparse,
                   ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
-
-PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PullGpuPSSparseCPUKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PushGpuPSSparseCPUKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(pull_gpups_sparse,
+                       ops::PullGpuPSSparseCPUKernel<float>,
+                       ops::PullGpuPSSparseCPUKernel<double>)
+REGISTER_OP_CPU_KERNEL(push_gpups_sparse,
+                       ops::PushGpuPSSparseCPUKernel<float>,
+                       ops::PushGpuPSSparseCPUKernel<double>)

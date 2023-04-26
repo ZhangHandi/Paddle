@@ -24,6 +24,8 @@
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
+
 namespace phi {
 
 // Utils
@@ -111,16 +113,11 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   double) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
-}
+                   double) {}
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    CPU,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   double) {
-  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
-  kernel->OutputAt(3).SetDataType(phi::DataType::INT32);
-}
+                   double) {}

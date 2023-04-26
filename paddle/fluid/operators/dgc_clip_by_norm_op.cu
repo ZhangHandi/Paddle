@@ -15,5 +15,5 @@ limitations under the License. */
 #include "paddle/fluid/operators/dgc_clip_by_norm_op.h"
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(
-    dgc_clip_by_norm, GPU, ALL_LAYOUT, ops::DGCClipByNormKernel, float) {}
+REGISTER_OP_CUDA_KERNEL(dgc_clip_by_norm,
+                        ops::DGCClipByNormKernel<phi::GPUContext, float>);

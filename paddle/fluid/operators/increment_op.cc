@@ -39,12 +39,11 @@ class IncrementOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // IncrementOp kernel's device type is decided by input tensor place
-    kt.set_backend(
-        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
     return kt;
   }
 };

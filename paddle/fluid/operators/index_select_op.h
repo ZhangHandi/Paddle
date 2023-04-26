@@ -17,7 +17,6 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -119,8 +118,7 @@ struct IndexSelectAdd<
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };

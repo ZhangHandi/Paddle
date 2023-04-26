@@ -103,7 +103,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("Embs");
     auto input_data_type = framework::proto::VarType::Type(0);
@@ -119,7 +119,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "All Inputs of fused_embedding_eltwise_layernorm OP are Empty!"));
     }
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

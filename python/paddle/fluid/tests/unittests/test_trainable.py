@@ -18,12 +18,12 @@ from collections import Counter
 from simple_nets import init_data
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 def test_trainable():
-    x = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
-    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+    x = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     feature = paddle.static.nn.fc(
         x, size=10, weight_attr=fluid.ParamAttr(trainable=False)
     )

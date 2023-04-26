@@ -106,7 +106,7 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
     case DataLayout::kAnyLayout:
       return "Undefined(AnyLayout)";
     case DataLayout::kMKLDNN:
-      return "ONEDNN";
+      return "MKLDNN";
     case DataLayout::SPARSE_COO:
       return "SPARSE_COO";
     case DataLayout::SPARSE_CSR:

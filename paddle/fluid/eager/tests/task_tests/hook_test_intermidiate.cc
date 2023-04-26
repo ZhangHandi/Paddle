@@ -35,7 +35,8 @@ PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
-paddle::Tensor hook_function(const paddle::Tensor& t) {
+paddle::experimental::Tensor hook_function(
+    const paddle::experimental::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
 
   auto ret_meta = phi::DenseTensorMeta(
@@ -52,7 +53,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
-  paddle::Tensor ret = paddle::Tensor();
+  paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
   return ret;
@@ -66,8 +67,8 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   VLOG(6) << "Make Dim";
   paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
 
-  VLOG(6) << "Make paddle::Tensor";
-  paddle::Tensor tensor =
+  VLOG(6) << "Make paddle::experimental::Tensor";
+  paddle::experimental::Tensor tensor =
       egr_utils_api::CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -100,7 +101,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
 
   eager_test::CompareTensorWithValue<float>(output_tensor, 0.5);
 
-  std::vector<paddle::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
 
   if (is_remove_gradient_hook) {
     std::shared_ptr<GradNodeBase> grad_node_tmp = EagerUtils::grad_node(tensor);
@@ -132,7 +133,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
+  paddle::experimental::Tensor X =
       egr_utils_api::CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -142,7 +143,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
-  paddle::Tensor Y =
+  paddle::experimental::Tensor Y =
       egr_utils_api::CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -166,7 +167,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   auto output_tensor = elementwise_add_dygraph_function(X, Y, {});
 
   eager_test::CompareTensorWithValue<float>(output_tensor, 5);
-  std::vector<paddle::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
 
   if (is_remove_gradient_hook) {
     std::shared_ptr<GradNodeBase> grad_node_tmp = EagerUtils::grad_node(Y);
@@ -196,7 +197,7 @@ void test_matmul(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
+  paddle::experimental::Tensor X =
       egr_utils_api::CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -206,7 +207,7 @@ void test_matmul(bool is_remove_gradient_hook) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
-  paddle::Tensor Y =
+  paddle::experimental::Tensor Y =
       egr_utils_api::CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -231,7 +232,7 @@ void test_matmul(bool is_remove_gradient_hook) {
       X, Y, {{"trans_x", false}, {"trans_y", false}});
 
   eager_test::CompareTensorWithValue<float>(output_tensor, 96);
-  std::vector<paddle::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
 
   if (is_remove_gradient_hook) {
     std::shared_ptr<GradNodeBase> grad_node_tmp = EagerUtils::grad_node(Y);
@@ -257,9 +258,9 @@ void test_backward_final_hooks() {
   VLOG(6) << "Init Env";
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
-  VLOG(6) << "Make paddle::Tensor";
+  VLOG(6) << "Make paddle::experimental::Tensor";
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
+  paddle::experimental::Tensor X =
       egr_utils_api::CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -269,7 +270,7 @@ void test_backward_final_hooks() {
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::Tensor Y =
+  paddle::experimental::Tensor Y =
       egr_utils_api::CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -297,7 +298,7 @@ void test_backward_final_hooks() {
 
   eager_test::CompareTensorWithValue<float>(X, 3.0);
 
-  std::vector<paddle::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
 
   VLOG(6) << "Runing Backward";
   Backward(target_tensors, {});

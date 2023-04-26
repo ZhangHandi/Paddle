@@ -29,6 +29,7 @@ class ASPOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "GraphExecutionOptimizer",
             "RecomputeOptimizer",
             "GradientMergeOptimizer",
         ]

@@ -16,9 +16,10 @@ import copy
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
@@ -269,11 +270,7 @@ class TestMatrixNMSOp(OpTest):
         )
 
         empty = len(det_outs) == 0
-        det_outs = (
-            np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
-            if empty
-            else det_outs
-        )
+        det_outs = np.array([], dtype=np.float32) if empty else det_outs
         index_outs = np.array([], dtype=np.float32) if empty else index_outs
         nmsed_outs = det_outs.astype('float32')
 
@@ -296,7 +293,7 @@ class TestMatrixNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
@@ -328,10 +325,10 @@ class TestMatrixNMSError(unittest.TestCase):
         scores_np = np.transpose(scores, (0, 2, 1))
 
         with program_guard(Program(), Program()):
-            boxes_data = paddle.static.data(
+            boxes_data = fluid.data(
                 name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32'
             )
-            scores_data = paddle.static.data(
+            scores_data = fluid.data(
                 name='scores', shape=[N, C, M], dtype='float32'
             )
 

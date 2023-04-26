@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/phi/common/transform.h"
+#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
@@ -176,7 +176,7 @@ class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
                               phi::DenseTensor *out) const = 0;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
@@ -190,7 +190,7 @@ class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeQuantizeDequantizeAbsMaxKernel
     : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
@@ -205,7 +205,7 @@ class FakeQuantizeDequantizeAbsMaxKernel
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -232,7 +232,7 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
     : public framework::OpKernel<T> {
  public:
@@ -257,7 +257,7 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -304,7 +304,7 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -367,9 +367,9 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
                               phi::DenseTensor *out) const = 0;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeQuantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
+    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
@@ -382,9 +382,9 @@ class FakeQuantizeMovingAverageAbsMaxKernel
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
+    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
@@ -397,7 +397,7 @@ class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -445,7 +445,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

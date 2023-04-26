@@ -197,7 +197,7 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
 
 }  // namespace details
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -395,7 +395,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

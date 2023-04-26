@@ -15,12 +15,8 @@ endif()
 cc_library(
   scalar
   SRCS scalar.cc
-  DEPS phi_enforce phi_tensor_utils)
+  DEPS phi_enforce tensor)
 cc_library(
   int_array
   SRCS int_array.cc
-  DEPS phi_enforce phi_tensor_utils)
-cc_library(
-  memory_utils
-  SRCS memory_utils.cc
-  DEPS phi_enforce phi_place)
+  DEPS phi_enforce tensor)

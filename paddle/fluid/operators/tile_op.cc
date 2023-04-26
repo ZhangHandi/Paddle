@@ -18,9 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -32,23 +29,22 @@ class TileOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -125,24 +121,22 @@ class TileGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -160,25 +154,6 @@ class TileGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("repeat_times_tensor", this->Input("repeat_times_tensor"));
     op->SetInput("RepeatTimes", this->Input("RepeatTimes"));
     op->SetAttrMap(this->Attrs());
-  }
-};
-
-class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
-
-    auto dx_ptr = this->GetOutputPtr(&x_grad);
-    std::string dx_name = this->GetOutputName(x_grad);
-    auto repeat_times = this->Attr<std::vector<int>>("repeat_times");
-    VLOG(6) << "Runing tile_grad composite func";
-    prim::tile_grad<prim::DescTensor>(
-        x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);
-    this->RecoverOutputName(x_grad, dx_name);
   }
 };
 
@@ -218,7 +193,6 @@ REGISTER_OPERATOR(tile,
                   ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>,
-                  ops::TileCompositeGradOpMaker,
                   TileInferMetaFunctor);
 REGISTER_OPERATOR(tile_grad,
                   ops::TileGradOp,

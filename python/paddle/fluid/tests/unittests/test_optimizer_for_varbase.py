@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import optimizer
+import paddle.optimizer as optimizer
 
 
 class TestOptimizerForVarBase(unittest.TestCase):

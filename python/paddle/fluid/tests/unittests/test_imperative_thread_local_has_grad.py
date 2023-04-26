@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 
 class SimpleNet(nn.Layer):

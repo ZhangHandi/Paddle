@@ -51,9 +51,9 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -134,9 +134,7 @@ REGISTER_OPERATOR(distributed_push_sparse,
                   ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(distributed_push_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DistributedPushSparseKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    distributed_push_sparse,
+    ops::DistributedPushSparseKernel<phi::CPUContext, float>,
+    ops::DistributedPushSparseKernel<phi::CPUContext, double>);

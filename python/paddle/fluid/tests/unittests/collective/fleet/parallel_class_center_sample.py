@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 def set_random_seed(seed):

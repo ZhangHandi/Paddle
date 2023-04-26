@@ -22,33 +22,27 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
+inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const phi::DenseTensor* seed,
                                     const bool is_fix_seed,
                                     const int seed_val,
                                     const int offset,
                                     uint64_t* seed_data,
-                                    uint64_t* increment,
-                                    bool use_copy = true) {
+                                    uint64_t* increment) {
   auto gen_cuda = dev_ctx.GetGenerator();
 
   if (seed) {
-    if (use_copy) {
-      phi::DenseTensor seed_cpu_tensor;
-      phi::Copy(dev_ctx, *seed, phi::CPUPlace(), true, &seed_cpu_tensor);
-      *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
-    }
+    phi::DenseTensor seed_cpu_tensor;
+    phi::Copy(dev_ctx, *seed, phi::CPUPlace(), true, &seed_cpu_tensor);
+    *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
     *increment = offset;
-    return true;
   } else if (!is_fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);
     *seed_data = seed_offset.first;
     *increment = seed_offset.second;
-    return false;
   } else {
     *seed_data = seed_val;
     *increment = offset;
-    return false;
   }
 }
 

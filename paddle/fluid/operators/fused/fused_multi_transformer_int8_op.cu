@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -662,9 +662,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer_int8,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedMultiTransformerINT8OpKernel,
-                          float,
-                          plat::float16) {}
+REGISTER_OP_CUDA_KERNEL(fused_multi_transformer_int8,
+                        ops::FusedMultiTransformerINT8OpKernel<plat::float16>,
+                        ops::FusedMultiTransformerINT8OpKernel<float>);

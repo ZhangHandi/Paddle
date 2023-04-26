@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/bfloat16.h"
 
 TEST(DataTransform, DataLayoutFunction) {
   auto place = paddle::platform::CPUPlace();
@@ -25,16 +24,22 @@ TEST(DataTransform, DataLayoutFunction) {
   in.set_layout(phi::DataLayout::kNHWC);
 
   auto kernel_nhwc =
-      phi::KernelKey(place, phi::DataLayout::kNHWC, phi::DataType::FLOAT32);
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      phi::DataLayout::kNHWC,
+                                      paddle::framework::LibraryType::kPlain);
   auto kernel_ncwh =
-      phi::KernelKey(place, phi::DataLayout::kNCHW, phi::DataType::FLOAT32);
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      phi::DataLayout::kNCHW,
+                                      paddle::framework::LibraryType::kPlain);
 
-  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out, place);
+  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
 
   EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
   EXPECT_TRUE(out.dims() == phi::make_ddim({2, 2, 3, 1}));
 
-  paddle::framework::TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out, place);
+  TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out);
 
   EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == phi::make_ddim({2, 3, 1, 2}));

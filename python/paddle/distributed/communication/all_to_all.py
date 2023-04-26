@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.communication import stream
+import paddle.distributed.communication.stream as stream
 
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):

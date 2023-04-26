@@ -223,7 +223,13 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
 
       // For layer_norm, reduce to calculate mean and std
       sum_i += static_cast<float>(tmp_3);
+#if defined(PADDLE_WITH_CUDA) && __CUDA_ARCH__ >= 530
+      square_sum_i += static_cast<float>(__hmul(tmp_3, tmp_3));
+#elif defined(PADDLE_WITH_CUDA)
       square_sum_i += static_cast<float>(tmp_3) * static_cast<float>(tmp_3);
+#else
+      square_sum_i += static_cast<float>(tmp_3 * tmp_3);
+#endif
     }
     auto pair = BlockReduce(temp_storage)
                     .Reduce(PairForLayerNorm<float>(sum_i, square_sum_i),
@@ -276,9 +282,9 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
       half tmp_0 = __hdiv(__hsub(save_ptr[save_index], mean_i), std_i);
       half tmp_1 = scale ? __hmul(scale[j], tmp_0) : tmp_0;
 #else
-      half tmp_0 = static_cast<half>((static_cast<float>(save_ptr[save_index]) -
-                                      static_cast<float>(mean_i)) /
-                                     static_cast<float>(std_i));
+      half tmp_0 = static_cast<float>(static_cast<float>(save_ptr[save_index]) +
+                                      static_cast<float>(mean_i) /
+                                          static_cast<float>(std_i));
       half tmp_1 = scale ? static_cast<half>(static_cast<float>(scale[j]) *
                                              static_cast<float>(tmp_0))
                          : tmp_0;
@@ -374,7 +380,7 @@ void AddReluAddLayerNorm(gpuStream_t stream,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -394,16 +400,19 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    blas.GEMM(CblasNoTrans,
-              CblasNoTrans,
+    blas.GEMM(false,
+              false,
               M,
               N,
               K,
               static_cast<T>(1.0),
               x_data,
+              K,
               w_data,
+              N,
               static_cast<T>(0.0),
-              out_data);
+              out_data,
+              N);
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
     auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");
@@ -449,12 +458,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-PD_REGISTER_STRUCT_KERNEL(fused_fc_elementwise_layernorm,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedFCElementwiseLayerNormOpKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+REGISTER_OP_CUDA_KERNEL(
+    fused_fc_elementwise_layernorm,
+    ops::FusedFCElementwiseLayerNormOpKernel<phi::dtype::float16>,
+    ops::FusedFCElementwiseLayerNormOpKernel<float>,
+    ops::FusedFCElementwiseLayerNormOpKernel<double>);

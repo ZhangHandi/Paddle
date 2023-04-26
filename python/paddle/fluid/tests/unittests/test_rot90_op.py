@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestRot90_API(unittest.TestCase):
@@ -28,9 +28,7 @@ class TestRot90_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[0, 1])
             output = paddle.rot90(output, k=1, axes=[0, 1])
             output = output.rot90(k=1, axes=[0, 1])
@@ -55,13 +53,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_k_0(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=0, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -84,13 +80,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_k_2(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=2, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -113,13 +107,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_k_3(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=3, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -142,13 +134,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_neg_k_1(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=-1, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -171,13 +161,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_neg_k_2(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=-2, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -200,13 +188,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_neg_k_3(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=-3, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -229,13 +215,11 @@ class TestRot90_API(unittest.TestCase):
 
     def test_static_neg_k_4(self):
         paddle.enable_static()
-        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=-4, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -261,40 +245,32 @@ class TestRot90_API(unittest.TestCase):
 
         # dims error
         def run1():
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[0])
 
         self.assertRaises(ValueError, run1)
 
         # input dims error
         def run2():
-            input = paddle.static.data(name='input', dtype='float32', shape=[2])
+            input = fluid.data(name='input', dtype='float32', shape=[2])
             output = paddle.rot90(input, k=1, axes=[0, 1])
 
         self.assertRaises(ValueError, run2)
 
         def run3():
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[0, 0])
 
         self.assertRaises(ValueError, run3)
 
         def run4():
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[3, 1])
 
         self.assertRaises(ValueError, run4)
 
         def run5():
-            input = paddle.static.data(
-                name='input', dtype='float32', shape=[2, 3]
-            )
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[0, 3])
 
         self.assertRaises(ValueError, run5)

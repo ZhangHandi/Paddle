@@ -16,7 +16,7 @@
 
 #include "paddle/phi/capi/include/common.h"
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__APPLE__)
 
 namespace phi {
 namespace capi {

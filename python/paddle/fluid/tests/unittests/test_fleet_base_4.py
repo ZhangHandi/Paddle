@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 

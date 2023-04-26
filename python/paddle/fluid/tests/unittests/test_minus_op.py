@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -30,11 +30,10 @@ class TestMinusOp(OpTest):
         self.outputs = {'Out': (self.inputs['X'] - self.inputs['Y'])}
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":

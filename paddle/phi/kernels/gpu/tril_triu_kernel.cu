@@ -25,8 +25,7 @@ PD_REGISTER_KERNEL(tril_triu,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(triu,
                    GPU,
@@ -37,8 +36,7 @@ PD_REGISTER_KERNEL(triu,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(tril,
                    GPU,
@@ -49,5 +47,4 @@ PD_REGISTER_KERNEL(tril,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}

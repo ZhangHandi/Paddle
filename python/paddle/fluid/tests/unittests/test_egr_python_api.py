@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     EagerParamBase,
     _current_expected_place,
@@ -75,12 +75,12 @@ class EagerScaleTestCase(unittest.TestCase):
 
         out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
         self.assertIsNone(data_eager.grad)
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             AssertionError, "The type of grad_tensor must be paddle.Tensor"
         ):
             out_eager.backward(grad_data, False)
 
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             AssertionError,
             "Tensor shape not match, Tensor of grad_tensor /*",
         ):
@@ -265,17 +265,17 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         zero_dim_param = EagerParamBase(shape=[], dtype="float32")
         self.assertEqual(zero_dim_param.shape, [])
 
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             ValueError, "The shape of Parameter should not be None"
         ):
             eager_param = EagerParamBase(shape=None, dtype="float32")
 
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             ValueError, "The dtype of Parameter should not be None"
         ):
             eager_param = EagerParamBase(shape=[1, 1], dtype=None)
 
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             ValueError,
             "Each dimension of shape for Parameter must be greater than 0, but received /*",
         ):
@@ -285,7 +285,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(eager_param.trainable)
         eager_param.trainable = False
         self.assertFalse(eager_param.trainable)
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             ValueError, "The type of trainable MUST be bool, but the type is /*"
         ):
             eager_param.trainable = "False"
@@ -296,7 +296,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(eager_param_2.trainable)
         eager_param_2.trainable = False
         self.assertFalse(eager_param_2.trainable)
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
             ValueError, "The type of trainable MUST be bool, but the type is /*"
         ):
             eager_param_2.trainable = "False"
@@ -911,19 +911,19 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.nn.initializer.Uniform(),
+            weight_attr=paddle.fluid.initializer.Uniform(),
         )
         linear3 = paddle.nn.Linear(
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.nn.initializer.TruncatedNormal(),
+            weight_attr=paddle.fluid.initializer.TruncatedNormalInitializer(),
         )
         linear4 = paddle.nn.Linear(
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.nn.initializer.KaimingUniform(),
+            weight_attr=paddle.fluid.initializer.MSRAInitializer(),
         )
         res = [
             linear1.weight.numpy(),

@@ -23,13 +23,13 @@ namespace operators {
 class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
  protected:
   using BatchSizeLikeOp::BatchSizeLikeOp;
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    phi::KernelKey kernel_type = phi::KernelKey(
+    framework::OpKernelType kernel_type = framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        ctx.device_context());
     if (ctx.Attr<bool>("force_cpu")) {
-      kernel_type.set_backend(phi::Backend::CPU);
+      kernel_type.place_ = platform::CPUPlace();
     }
     return kernel_type;
   }

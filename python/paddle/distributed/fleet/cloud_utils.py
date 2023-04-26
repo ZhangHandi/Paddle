@@ -65,7 +65,9 @@ paddlecloud environment.".format(
                     paddle_ports_num >= len(devices_per_proc)
                     and paddle_port != args_port
                 ):
-                    logger.warning(f"Use Cloud specified port:{paddle_port}.")
+                    logger.warning(
+                        "Use Cloud specified port:{}.".format(paddle_port)
+                    )
                     started_port = paddle_port
 
             except Exception as e:
@@ -73,7 +75,9 @@ paddlecloud environment.".format(
 
         if started_port is None:
             started_port = 6170
-        ports = list(range(started_port, started_port + len(devices_per_proc)))
+        ports = [
+            x for x in range(started_port, started_port + len(devices_per_proc))
+        ]
         trainer_endpoints = []
         for ip in node_ips:
             trainer_endpoints.append(["%s:%d" % (ip, port) for port in ports])

@@ -14,17 +14,44 @@
 
 #include "paddle/phi/kernels/full_kernel.h"
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
+
 namespace phi {
+
+template <typename InType, typename OutType>
+void TensorSetConstantXPU(phi::DenseTensor* tensor,
+                          InType value,
+                          phi::Place place) {
+  auto* begin = tensor->mutable_data<OutType>(place);
+  int64_t numel = tensor->numel();
+  std::unique_ptr<OutType[]> data_cpu(new OutType[numel]);
+  std::fill(
+      data_cpu.get(), data_cpu.get() + numel, static_cast<OutType>(value));
+  paddle::memory::Copy(place,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(OutType));
+}
+
+template <typename T, typename Context, typename VType>
+void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
+  dev_ctx.template Alloc<T>(tensor);
+
+  PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
+                       TensorSetConstantXPU<VType, data_t>(
+                           tensor, val, dev_ctx.GetPlace());
+                     }));
+}
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
@@ -32,18 +59,8 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  using XPUInTDType = typename XPUTypeTrait<T>::Type;
   out->Resize(phi::make_ddim(shape.GetData()));
-  int numel = out->numel();
-  dev_ctx.template Alloc<T>(out);
-  auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-  if (numel > 0) {
-    int r = xpu::constant(dev_ctx.x_context(),
-                          out_data,
-                          out->numel(),
-                          static_cast<XPUInTDType>(val.to<T>()));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  }
+  FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
 template <typename T, typename Context>
@@ -86,32 +103,18 @@ void FullLikeKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument("The filled value is Inf."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-  if (out->numel() > 0) {
-    int r = xpu::constant(dev_ctx.x_context(),
+  int ret = xpu::constant(dev_ctx.x_context(),
                           out_data,
                           out->numel(),
                           static_cast<XPUInTDType>(value));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  }
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      phi::errors::External("XPU CONSTANT API return wrong value[%d %s].",
+                            ret,
+                            XPUAPIErrorMsg[ret]));
 }
 
-template <typename T, typename Context>
-void FullBatchSizeLikeKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const std::vector<int>& shape,
-                             const Scalar& val,
-                             DataType dtype,
-                             int x_batch_size_dim,
-                             int out_batch_size_dim,
-                             DenseTensor* out) {
-  if (x.lod().size() && x_batch_size_dim == 0) {
-    // set the correct batch size for the LoDTensor.
-    auto odims = out->dims();
-    odims[out_batch_size_dim] = static_cast<int>(x.lod().back().size()) - 1;
-    FullKernel<T, Context>(dev_ctx, phi::vectorize(odims), val, dtype, out);
-  }
-  FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, out);
-}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,
@@ -119,36 +122,24 @@ PD_REGISTER_KERNEL(full,
                    ALL_LAYOUT,
                    phi::FullKernel,
                    float,
-                   int8_t,
+                   double,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
                    float,
-                   uint8_t,
-                   int16_t,
                    int,
                    int64_t,
-                   bool,
-                   phi::dtype::float16) {
-  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
-}
-
-PD_REGISTER_KERNEL(full_batch_size_like,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::FullBatchSizeLikeKernel,
-                   float,
-                   int,
-                   int64_t,
-                   bool,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }

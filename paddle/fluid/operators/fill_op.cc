@@ -51,9 +51,9 @@ class FillOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }

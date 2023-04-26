@@ -31,7 +31,7 @@ Diff:  set(['test_parallel_executor_crf'])
     """
     if len(sys.argv) < 2:
         print(usage)
-        sys.exit(0)
+        exit(0)
 
     logfile = sys.argv[1]
     started = set()

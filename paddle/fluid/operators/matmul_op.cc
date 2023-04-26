@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -16,6 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -66,7 +69,7 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
@@ -234,8 +237,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               bool trans_b,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -300,7 +302,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
     ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
-    phi::DDim dx_dims;
+    framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
@@ -308,7 +310,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    phi::DDim dy_dims;
+    framework::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
@@ -343,18 +345,6 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
-phi::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                         std::string input_name) {
-  auto dim = ctx.GetInputDim(input_name);
-  PADDLE_ENFORCE_GT(dim.size(),
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
-  return dim;
-}
-
 template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
@@ -366,8 +356,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               bool flag,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -438,7 +427,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
 
     ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
-    phi::DDim dx_dims;
+    framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
@@ -446,7 +435,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    phi::DDim dy_dims;
+    framework::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
@@ -454,7 +443,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    phi::DDim ddout_dims;
+    framework::DDim ddout_dims;
     if (ddout) {
       ddout_dims = ddout->dims();
       if (ddout_dims != dout.dims()) {
@@ -570,12 +559,12 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = GetDimForInput(*context, "X");
-    auto dim_y = GetDimForInput(*context, "Y");
+    auto dim_x = context->GetInputDim("X");
+    auto dim_y = context->GetInputDim("Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    // For NHWC execution output shape needs to be
-    // computed like instead x*y we are to do y*x
+    // (jczaja): For NHWC execution output shape needs
+    // to be computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -606,7 +595,7 @@ class MatMulOp : public framework::OperatorWithKernel {
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
           true,
-          phi::errors::InvalidArgument(
+          platform::errors::InvalidArgument(
               "The batch size of the two matrices should be equal, or "
               "at least one is zero.\n"
               "But received X's shape: %s, Y's shape: %s.",
@@ -622,7 +611,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LE(
           head_number,
           mat_dim_x.width_,
-          phi::errors::InvalidArgument(
+          platform::errors::InvalidArgument(
               "Unsatisfied mkl acceleration library requirements: "
               "The number of heads "
               "(%d) must be equal to X's width. But received X's shape: %s.",
@@ -636,7 +625,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 #else
     PADDLE_ENFORCE_EQ(mat_dim_x.width_,
                       mat_dim_y.height_,
-                      phi::errors::InvalidArgument(
+                      platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
                           "but received X's shape: [%s], "
                           "Y's shape: [%s].",
@@ -670,42 +659,45 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
 
-    phi::DDim ddim_out = phi::make_ddim(dim_out);
+    framework::DDim ddim_out = phi::make_ddim(dim_out);
 
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
               phi::DataLayout::kNHWC) {
-        return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
-                              expected_kernel_type.dtype());
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       phi::DataLayout::kNHWC);
       }
 #endif
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -729,6 +721,34 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false)
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a shape attribute of fused reshape for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a axis attribute of fused transpose for `Out` output.)DOC")
+        .SetDefault({})
         .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
@@ -826,11 +846,11 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

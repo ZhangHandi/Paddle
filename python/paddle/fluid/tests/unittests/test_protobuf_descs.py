@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid import core
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program
 
 

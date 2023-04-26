@@ -29,7 +29,7 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     """
 
     def __init__(self):
-        super().__init__()
+        super(BaseQuanter, self).__init__()
 
     @abc.abstractmethod
     def forward(self, input):

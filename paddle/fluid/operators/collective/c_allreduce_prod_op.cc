@@ -35,8 +35,6 @@ class CAllReduceProdOpMaker : public CAllReduceOpMaker {
 
 DECLARE_INPLACE_OP_INFERER(AllreduceProdInplaceInferer, {"X", "Out"});
 
-DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceProd, kRedProd)
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -48,12 +46,9 @@ REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_prod,
                              ops::CAllReduceProdOpMaker,
                              ops::AllreduceProdInplaceInferer)
 
-PD_REGISTER_STRUCT_KERNEL(c_allreduce_prod,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CAllReduceProdCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_allreduce_prod,
+                       ops::CAllReduceOpCPUKernel<ops::kRedProd, float>,
+                       ops::CAllReduceOpCPUKernel<ops::kRedProd, double>,
+                       ops::CAllReduceOpCPUKernel<ops::kRedProd, int>,
+                       ops::CAllReduceOpCPUKernel<ops::kRedProd, int64_t>,
+                       ops::CAllReduceOpCPUKernel<ops::kRedProd, plat::float16>)

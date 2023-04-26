@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 

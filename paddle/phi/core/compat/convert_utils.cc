@@ -41,11 +41,12 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::NPU;
     case AllocationType::IPU:
       return Backend::IPU;
+    case AllocationType::MLU:
+      return Backend::MLU;
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
-          phi::CustomRegisteredDeviceMap::Instance()
-              .GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
+          GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported transform %s to phi Backend.", place));
@@ -90,15 +91,11 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      std::string device_type =
-          phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
-              device_type_id_);
+      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
       if (!device_type.empty()) {
         return phi::CustomPlace(
             device_type,
             set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
-      } else if (backend == Backend::CUSTOM) {
-        return phi::CustomPlace();
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -123,7 +120,8 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype) {
+dnnl::memory::data_type TransToOneDNNDataType(
+    const paddle::experimental::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:
       return dnnl::memory::data_type::f32;

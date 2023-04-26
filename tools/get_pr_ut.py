@@ -19,7 +19,6 @@ import platform
 import re
 import ssl
 import subprocess
-import sys
 import time
 import urllib.request
 
@@ -53,7 +52,7 @@ class PRChecker:
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('PREC No PR ID')
-            sys.exit(0)
+            exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
             self.suffix = suffix
@@ -64,7 +63,7 @@ class PRChecker:
             try:
                 commits = self.pr.get_commits().get_page(ix)
                 if len(commits) == 0:
-                    raise ValueError(f"no commit found in {ix} page")
+                    raise ValueError("no commit found in {} page".format(ix))
                 last_commit = commits[-1].commit
             except Exception as e:
                 break
@@ -87,7 +86,7 @@ class PRChecker:
                 else:
                     proxy = '--no-proxy'
             code = subprocess.call(
-                f'wget -q {proxy} --no-check-certificate {url}',
+                'wget -q {} --no-check-certificate {}'.format(proxy, url),
                 shell=True,
             )
             if code == 0:
@@ -162,7 +161,7 @@ class PRChecker:
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith(not_white_files):
+        elif filename.startswith((not_white_files)):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -265,12 +264,12 @@ class PRChecker:
         for l in diff_lines:
             if l not in comment_lines:
                 return False
-        print(f'PREC {f} is only comment')
+        print('PREC {} is only comment'.format(f))
         return True
 
     def get_all_count(self):
         p = subprocess.Popen(
-            f"cd {PADDLE_ROOT}build && ctest -N",
+            "cd {}build && ctest -N".format(PADDLE_ROOT),
             shell=True,
             stdout=subprocess.PIPE,
         )
@@ -307,12 +306,12 @@ class PRChecker:
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/new_precise_test_map/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
             print('PREC download file_ut.json failed')
-            sys.exit(1)
+            exit(1)
 
         with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -330,7 +329,9 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
+                    filterFiles.append(filename)
+                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
                         (
                             PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
@@ -343,13 +344,12 @@ class PRChecker:
                 elif (
                     ('/xpu/' in filename.lower())
                     or ('/npu/' in filename.lower())
+                    or ('/mlu/' in filename.lower())
                     or ('/ipu/' in filename.lower())
                 ):
                     filterFiles.append(filename)
                 else:
                     file_list.append(filename)
-            elif filename.startswith(PADDLE_ROOT + 'test/'):
-                file_list.append(filename)
             else:
                 if file_dict[filename] == 'added':
                     file_list.append(filename)
@@ -362,7 +362,7 @@ class PRChecker:
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/new_precise_test_map/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                 'prec_delta',
             )
             if ret:
@@ -371,7 +371,7 @@ class PRChecker:
                         ut_list.append(ut.rstrip('\r\n'))
             else:
                 print('PREC download prec_delta failed')
-                sys.exit(1)
+                exit(1)
             PRECISION_TEST_Cases_ratio = format(
                 float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
@@ -405,7 +405,7 @@ class PRChecker:
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif (
-                        'test/xpu' in f_judge
+                        'tests/unittests/xpu' in f_judge
                         or 'tests/unittests/npu' in f_judge
                         or 'op_npu.cc' in f_judge
                     ):
@@ -441,9 +441,7 @@ class PRChecker:
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
                             if self.file_is_unnit_test(f_judge):
-                                ut_list.append(
-                                    os.path.split(f_judge)[1].split(".")[0]
-                                )
+                                ut_list.append(f_judge.split(".")[0])
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
@@ -474,7 +472,7 @@ class PRChecker:
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/new_precise_test_map/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                         'prec_delta',
                     )
                     if ret:
@@ -484,7 +482,7 @@ class PRChecker:
                                     ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
-                        sys.exit(1)
+                        exit(1)
                     print("hitMapFiles: %s" % hitMapFiles)
                     print("ipipe_log_param_PRECISION_TEST: true")
                     print(

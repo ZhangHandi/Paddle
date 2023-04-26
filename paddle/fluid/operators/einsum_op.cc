@@ -68,11 +68,11 @@ class EinsumGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(dtype, ctx.GetPlace());
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 

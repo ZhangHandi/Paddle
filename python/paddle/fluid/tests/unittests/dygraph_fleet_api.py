@@ -33,7 +33,7 @@ class TestDygraphFleetAPI(unittest.TestCase):
 
     def test_dygraph_fleet_api(self):
         import paddle.distributed as dist
-        from paddle.distributed import fleet
+        import paddle.distributed.fleet as fleet
 
         strategy = fleet.DistributedStrategy()
         strategy.amp = True

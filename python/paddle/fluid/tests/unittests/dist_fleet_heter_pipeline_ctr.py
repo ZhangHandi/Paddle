@@ -22,7 +22,7 @@ import ctr_dataset_reader
 from test_dist_fleet_heter_base import FleetDistHeterRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -49,23 +49,26 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
         with fluid.device_guard("cpu"):
-            dnn_data = paddle.static.data(
+            dnn_data = fluid.layers.data(
                 name="dnn_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
+                append_batch_size=False,
             )
-            lr_data = paddle.static.data(
+            lr_data = fluid.layers.data(
                 name="lr_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
+                append_batch_size=False,
             )
-            label = paddle.static.data(
+            label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="float32",
                 lod_level=0,
+                append_batch_size=False,
             )
 
             datas = [dnn_data, lr_data, label]
@@ -78,11 +81,11 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 param_attr=fluid.ParamAttr(
                     name="deep_embedding",
-                    initializer=paddle.nn.initializer.Constant(value=0.01),
+                    initializer=fluid.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
-            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            dnn_pool = fluid.layers.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -94,11 +97,11 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[lr_input_dim, 1],
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=paddle.nn.initializer.Constant(value=0.01),
+                    initializer=fluid.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
-            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            lr_pool = fluid.layers.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
 
@@ -109,15 +112,15 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                     size=dim,
                     activation="relu",
                     weight_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.Constant(value=0.01)
+                        initializer=fluid.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )
                 dnn_out = fc
 
         with fluid.device_guard("cpu"):
-            merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
-            label = paddle.cast(label, dtype="int64")
+            merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+            label = fluid.layers.cast(label, dtype="int64")
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )
@@ -162,7 +165,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         filelist = fleet.util.get_file_shard(train_file_list)
-        print(f"filelist: {filelist}")
+        print("filelist: {}".format(filelist))
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
@@ -186,7 +189,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 debug=int(os.getenv("Debug", "0")),
             )
             pass_time = time.time() - pass_start
-            print(f"do_dataset_training done. using time {pass_time}")
+            print("do_dataset_training done. using time {}".format(pass_time))
         exe.close()
 
     def do_dataset_heter_training(self, fleet):
@@ -212,7 +215,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         )
         exe.close()
         pass_time = time.time() - pass_start
-        print(f"do_dataset_heter_training done. using time {pass_time}")
+        print("do_dataset_heter_training done. using time {}".format(pass_time))
 
         # for epoch_id in range(1):
         #    pass_start = time.time()

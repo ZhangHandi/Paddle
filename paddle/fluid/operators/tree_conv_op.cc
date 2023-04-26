@@ -151,11 +151,11 @@ class TreeConvOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
-        ctx.GetPlace());
+        ctx.device_context());
   }
 };
 
@@ -215,11 +215,11 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
-        ctx.GetPlace());
+        ctx.device_context());
   }
 };
 }  // namespace operators
@@ -234,7 +234,10 @@ REGISTER_OPERATOR(tree_conv,
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(
-    tree_conv, CPU, ALL_LAYOUT, ops::TreeConvKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    tree_conv_grad, CPU, ALL_LAYOUT, ops::TreeConvGradKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(tree_conv,
+                       ops::TreeConvKernel<phi::CPUContext, float>,
+                       ops::TreeConvKernel<phi::CPUContext, double>);
+
+REGISTER_OP_CPU_KERNEL(tree_conv_grad,
+                       ops::TreeConvGradKernel<phi::CPUContext, float>,
+                       ops::TreeConvGradKernel<phi::CPUContext, double>);

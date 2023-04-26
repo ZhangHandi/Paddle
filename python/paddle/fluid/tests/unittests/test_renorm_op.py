@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 paddle.set_device('cpu')
@@ -38,6 +38,7 @@ class TestRenormAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
+            # x = fluid.layers.data(name = 'x',shape=[-1, 2, 3])
             x = paddle.static.data(name="x", shape=[-1, 2, 3], dtype='float64')
             z = paddle.renorm(x, self.p, self.dim, self.max_norm)
             exe = fluid.Executor(fluid.CPUPlace())

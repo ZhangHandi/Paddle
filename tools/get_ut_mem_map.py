@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +27,7 @@ def get_ut_mem(rootPath):
                 continue
             ut = f.replace('^', '').replace('$.log', '')
             case_dic[ut] = {}
-            filename = f'{parent}/{f}'
+            filename = '%s/%s' % (parent, f)
             fi = open(filename, mode='rb')
             lines = fi.readlines()
             mem_reserved1 = -1

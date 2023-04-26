@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def anchor_generator_in_python(
@@ -77,7 +77,7 @@ class TestAnchorGeneratorOp(OpTest):
         self.outputs = {'Anchors': self.out_anchors, 'Variances': self.out_var}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "anchor_generator"

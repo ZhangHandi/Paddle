@@ -18,7 +18,7 @@ paddle.enable_static()
 
 import unittest
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -28,8 +28,12 @@ class EntryAttrChecks(unittest.TestCase):
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = paddle.static.data(
-                    name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
+                input = fluid.layers.data(
+                    name="dnn_data",
+                    shape=[-1, 1],
+                    dtype="int64",
+                    lod_level=1,
+                    append_batch_size=False,
                 )
                 emb = fluid.layers.embedding(
                     input=input,
@@ -38,10 +42,7 @@ class EntryAttrChecks(unittest.TestCase):
                     is_distributed=True,
                     param_attr=fluid.ParamAttr(name="deep_embedding"),
                 )
-
-                pool = paddle.static.nn.sequence_lod.sequence_pool(
-                    input=emb, pool_type="sum"
-                )
+                pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
                 predict = paddle.static.nn.fc(
                     x=pool, size=2, activation='softmax'
                 )

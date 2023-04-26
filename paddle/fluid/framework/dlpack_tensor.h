@@ -44,7 +44,5 @@ class DLPackTensor {
   ShapeType shape_[DDim::kMaxRank];
 };
 
-DLManagedTensor* toDLPack(const phi::DenseTensor& src);
-
 }  // namespace framework
 }  // namespace paddle

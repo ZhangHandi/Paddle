@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/scatter_nd_add_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -54,5 +53,4 @@ PD_REGISTER_KERNEL(scatter_nd_add_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}

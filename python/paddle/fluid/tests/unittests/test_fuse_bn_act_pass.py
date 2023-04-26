@@ -15,16 +15,14 @@
 import unittest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestFuseBatchNormActPass(unittest.TestCase):
     def build_program(self, main_program, startup_program, use_cuda, seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x = paddle.static.data(
-                name='x', shape=[-1, 1, 28, 28], dtype='float32'
-            )
-            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
             hidden1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
@@ -37,11 +35,11 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             )
             param_attr = fluid.ParamAttr(
                 name='batch_norm_w',
-                initializer=paddle.nn.initializer.Constant(value=1.0),
+                initializer=fluid.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='batch_norm_b',
-                initializer=paddle.nn.initializer.Constant(value=0.0),
+                initializer=fluid.initializer.Constant(value=0.0),
             )
             hidden2 = paddle.static.nn.batch_norm(
                 input=hidden1,
@@ -63,7 +61,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             if use_cuda:
-                sgd = paddle.static.amp.decorate(
+                sgd = fluid.contrib.mixed_precision.decorate(
                     sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
                 )
             sgd.minimize(loss)
@@ -83,8 +81,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         # close fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_act_ops = False
-        binary = fluid.CompiledProgram(
-            main_program, build_strategy=build_strategy
+        binary = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy
         )
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
@@ -103,8 +101,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         # open fused_bn_act_ops
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_act_ops = True
-        binary_fused = fluid.CompiledProgram(
-            main_program, build_strategy=build_strategy_fused
+        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy_fused
         )
         train_reader_fused = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size

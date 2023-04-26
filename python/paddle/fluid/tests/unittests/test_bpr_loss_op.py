@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, randomize_probability
+from op_test import OpTest, randomize_probability
 
 import paddle
 
@@ -43,13 +43,11 @@ class TestBprLossOp1(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_dygraph=False)
+        self.check_output()
         paddle.disable_static()
 
     def test_check_grad(self):
-        self.check_grad(
-            ["X"], "Y", numeric_grad_delta=0.001, check_dygraph=False
-        )
+        self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
 
 
 if __name__ == "__main__":

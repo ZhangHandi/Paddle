@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 fluid.core._set_fuse_parameter_group_size(3)
 fluid.core._set_fuse_parameter_memory_size(131072)

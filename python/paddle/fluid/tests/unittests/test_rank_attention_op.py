@@ -16,15 +16,15 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 def gen_input_help(input, rank_offset, max_rank, max_size):
     input_row, input_col = input.shape
     max_ins = np.max((max_size, input_row))
-    input_help = np.zeros(max_ins * max_rank * input_col)
+    input_help = np.zeros((max_ins * max_rank * input_col))
     ins_rank = np.zeros((max_ins, 1))
     ins_rank.fill(-1)
 

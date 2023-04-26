@@ -24,6 +24,7 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
+                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad);
 
@@ -32,6 +33,7 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
+                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad);
 
@@ -40,6 +42,7 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
+                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy);
 
@@ -48,22 +51,25 @@ void MinimumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
+                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy);
 
 template <typename T, typename Context>
-void HeavisideGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& y,
-                         const DenseTensor& dout,
-                         DenseTensor* dx,
-                         DenseTensor* dy);
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& dout,
+                                    int axis,
+                                    DenseTensor* dx,
+                                    DenseTensor* dy);
 
 template <typename T, typename Context>
 void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
+                              int axis,
                               DenseTensor* dx,
                               DenseTensor* dy);
 }  // namespace phi

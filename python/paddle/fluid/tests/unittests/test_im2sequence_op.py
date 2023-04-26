@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 
 def get_output_shape(attrs, in_shape, img_real_size):
@@ -207,11 +207,10 @@ class TestBlockExpandOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestBlockExpandOpCase2(TestBlockExpandOp):
@@ -288,8 +287,7 @@ class TestBlockExpandOpCase5(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBlockExpandOpCase6(TestBlockExpandOpCase5):

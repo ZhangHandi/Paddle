@@ -26,7 +26,7 @@ import tempfile
 import numpy as np
 
 import paddle.dataset.common
-from paddle.utils import deprecated
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 

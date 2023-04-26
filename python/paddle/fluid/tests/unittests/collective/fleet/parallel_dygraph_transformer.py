@@ -16,10 +16,9 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
+import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.nn import Layer
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.optimizer.lr import NoamDecay
 
 """
@@ -243,10 +242,10 @@ class PrePostProcessLayer(Layer):
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
                     weight_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.Constant(1.0)
+                        initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.Constant(0.0)
+                        initializer=fluid.initializer.Constant(0.0)
                     ),
                 )
 
@@ -457,7 +456,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = []
+        self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._preprocess_layer = PrePostProcessLayer(
@@ -514,9 +513,7 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=paddle.nn.initializer.Normal(
-                    0.0, src_emb_dim**-0.5
-                ),
+                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
             ),
         )
 
@@ -530,7 +527,7 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=paddle.nn.initializer.Assign(pos_inp),
+                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False,
             ),
         )
@@ -734,7 +731,7 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
-        self._decoder_sub_layers = []
+        self._decoder_sub_layers = list()
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout

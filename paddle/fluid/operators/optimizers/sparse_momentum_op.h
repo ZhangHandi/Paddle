@@ -176,11 +176,11 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -295,7 +295,7 @@ class IndexMomentumFunctor {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SparseMomentumOpKernel : public framework::OpKernel<T> {
   using MPDType = MultiPrecisionType<T>;
 

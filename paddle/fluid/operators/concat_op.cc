@@ -21,9 +21,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -35,13 +32,13 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
-      if (input->IsInitialized()) {
+      if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
@@ -51,20 +48,18 @@ class ConcatOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "All Inputs of Concat OP are Empty!"));
     }
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -115,24 +110,22 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -153,37 +146,6 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());
-  }
-};
-
-class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    std::vector<paddle::Tensor> input = this->GetMultiForwardInput("X");
-    paddle::optional<paddle::Tensor> tensor_axis =
-        this->GetOptionalSingleForwardInput("AxisTensor");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    std::vector<paddle::Tensor> input_grad = this->GetMultiInputGrad("X");
-
-    std::vector<paddle::Tensor *> input_grad_ptr;
-    for (auto i = 0; i < static_cast<int>(input_grad.size()); ++i) {
-      input_grad_ptr.push_back(&input_grad[i]);
-    }
-    int axis = static_cast<int>(this->Attr<int>("axis"));
-    std::vector<paddle::Tensor *> dx_ptr = this->GetOutputPtr(input_grad_ptr);
-    std::vector<std::string> dx_name = this->GetOutputName(input_grad);
-
-    VLOG(6) << "Runing concat_grad composite func";
-    if (tensor_axis.is_initialized()) {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "We don't support dynamic index from tensor for concat composite "
-          "grad for now. "));
-    } else {
-      prim::concat_grad<prim::DescTensor>(input, out_grad, axis, dx_ptr);
-    }
-    this->RecoverOutputName(input_grad, dx_name);
   }
 };
 
@@ -215,7 +177,6 @@ REGISTER_OPERATOR(concat,
                   ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ConcatCompositeGradOpMaker,
                   ConcatInferShapeFunctor);
 REGISTER_OPERATOR(concat_grad,
                   ops::ConcatOpGrad,

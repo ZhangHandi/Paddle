@@ -109,7 +109,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
@@ -118,7 +118,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           ctx.Input<phi::DenseTensor>("Input2")->dtype()),
                       platform::errors::InvalidArgument(
                           "X and Y shoule have the same datatype"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -158,14 +158,14 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1"), ctx.GetPlace());
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CorrelationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -186,6 +186,6 @@ REGISTER_OPERATOR(correlation,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(
-    correlation, CPU, ALL_LAYOUT, ops::CorrelationKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(correlation,
+                       ops::CorrelationKernel<float>,
+                       ops::CorrelationKernel<double>);

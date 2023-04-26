@@ -28,7 +28,6 @@ PD_REGISTER_KERNEL(strided_slice_raw_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -41,6 +40,5 @@ PD_REGISTER_KERNEL(strided_slice_array_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

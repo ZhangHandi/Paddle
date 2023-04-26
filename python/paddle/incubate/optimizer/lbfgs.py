@@ -89,7 +89,7 @@ class LBFGS(Optimizer):
 
             class Net(paddle.nn.Layer):
                 def __init__(self):
-                    super().__init__()
+                    super(Net, self).__init__()
                     w = paddle.to_tensor(np_w)
                     self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
 
@@ -236,7 +236,7 @@ class LBFGS(Optimizer):
         with paddle.no_grad():
 
             # Make sure the closure is always called with grad enabled
-            closure = paddle.enable_grad()(closure)
+            closure = paddle.set_grad_enabled(True)(closure)
 
             lr = self.lr
             max_iter = self.max_iter
@@ -376,7 +376,7 @@ class LBFGS(Optimizer):
                     # no line search, simply move with fixed-step
                     self._add_grad(alpha, d)
                     if n_iter != max_iter:
-                        with paddle.enable_grad():
+                        with paddle.set_grad_enabled(True):
                             loss = float(closure())
                         flat_grad = self._gather_flat_grad()
                         opt_cond = flat_grad.abs().max() <= tolerance_grad

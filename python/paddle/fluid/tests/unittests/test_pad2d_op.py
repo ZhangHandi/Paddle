@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestPad2dOp(OpTest):
@@ -64,10 +64,10 @@ class TestPad2dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)

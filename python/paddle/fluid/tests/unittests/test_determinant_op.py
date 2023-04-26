@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -30,10 +30,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'])
+        self.check_grad(['Input'], ['Out'], check_eager=True)
 
     def init_data(self):
         np.random.seed(0)
@@ -69,7 +69,7 @@ class TestDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
+            x = paddle.fluid.data('X', self.shape)
             out = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -95,11 +95,13 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
+        self.check_grad(
+            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
+        )
 
     def init_data(self):
         np.random.seed(0)
@@ -126,7 +128,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
+            x = paddle.fluid.data('X', self.shape)
             out = paddle.linalg.slogdet(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])

@@ -57,9 +57,10 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
    * specified a data type here.
    *
    */
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -118,9 +119,5 @@ REGISTER_OPERATOR(
     ops::CinnInstructionRunOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CinnInstructionRunOpKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(cinn_instruction_run,
+                       ops::CinnInstructionRunOpKernel<phi::CPUContext, float>);

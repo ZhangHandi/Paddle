@@ -23,12 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/backends/dynload/port.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
+
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -82,26 +79,10 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
   }
 };
-class HardSwishCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
- public:
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
- protected:
-  void Apply() override {
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::Tensor dx = this->GetSingleInputGrad("X");
-    auto* dx_ptr = this->GetOutputPtr(&dx);
-    std::string dx_name = this->GetOutputName(dx);
-    VLOG(6) << "Runing hardswish_grad composite func";
-    prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
-    this->RecoverOutputName(dx, dx_name);
-  }
-};
-
-phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
-                             const framework::OperatorWithKernel& oper,
-                             const std::string& name) {
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
   auto data_type = oper.IndicateVarDataType(ctx, name);
   // FIXME(liuwei1031) temporarily disable the code to unblock users
   // TODO(liuwei1031) figure out the reason behind
@@ -113,7 +94,7 @@ phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
   //     library = framework::LibraryType::kCUDNN;
   //   }
   // #endif
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -126,7 +107,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
@@ -153,9 +134,31 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, framework::GradVarName("Out"));
+  }
+};
+
+class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32, float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``X``.");
+    AddAttr<float>("t_min", "The min marginal value of BRelu")
+        .SetDefault(static_cast<float>(0));
+    AddAttr<float>("t_max", "The max marginal value of BRelu")
+        .SetDefault(static_cast<float>(24));
+    AddComment(R"DOC(
+BRelu Activation Operator.
+
+$$out = \min(\max(x, t_{min}), t_{max})$$
+
+)DOC");
   }
 };
 
@@ -191,6 +194,46 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
 Relu6 Activation Operator.
 
 $$out = \min(\max(0, x), threshold)$$
+
+)DOC");
+  }
+};
+
+class PowOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Pow operator");
+    AddInput("FactorTensor",
+             "(Tensor<float>, optional). If provided, pow will use this"
+             "The shape of FactorTensor MUST BE [1]."
+             "it has higher priority than attr(factor).")
+        .AsDispensable();
+    AddOutput("Out", "Output of Pow operator");
+    AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
+    AddComment(R"DOC(
+Pow Activation Operator.
+
+$$out = x^{factor}$$
+
+)DOC");
+  }
+};
+
+class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "Input of STanh operator."
+             " A Tensor with type float32, float64.");
+    AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
+    AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
+        .SetDefault(0.67f);
+    AddAttr<float>("scale_b", "The scale parameter of b for the input")
+        .SetDefault(1.7159f);
+    AddComment(R"DOC(
+STanh Activation Operator.
+
+$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 )DOC");
   }
@@ -298,7 +341,7 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -327,7 +370,7 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -368,7 +411,7 @@ class ActivationOpTripleGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -382,19 +425,135 @@ DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
 DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
                            {"DDX", "D_DOut"});
 
+template <typename T>
+class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework ::GradVarName("X"), this->InputGrad("X"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+template <typename T>
+class PowDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_double_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework ::GradVarName("X")));
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+template <typename T>
+class PowTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_triple_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input("DOut"));
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("D_DX", this->OutputGrad("DX"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    op->SetOutput("D_X", this->InputGrad("X"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX", this->InputGrad("DDX"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+class PowOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "FactorTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+};
+
+class PowOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    ctx->ShareDim(out_grad_name, framework::GradVarName("X"));
+    ctx->ShareLoD(out_grad_name, framework::GradVarName("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, framework::GradVarName("Out"));
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "FactorTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+};
+
+class PowOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
+
+class PowOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
-
-#define DEFINE_ACTIVATION_CPU_KERNEL(op_name, functor, grad_functor)           \
-  template <typename T, typename DeviceContext>                                \
-  class op_name##Kernel : public ActivationKernel<DeviceContext, functor<T>> { \
-  };                                                                           \
-                                                                               \
-  template <typename T, typename DeviceContext>                                \
-  class op_name##GradKernel                                                    \
-      : public ActivationGradKernel<DeviceContext, grad_functor<T>> {};
-
-DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -418,46 +577,63 @@ namespace plat = paddle::platform;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_OP_WITH_COMP(                              \
-    KERNEL_TYPE, OP_NAME, functor, grad_functor)                       \
-  REGISTER_OPERATOR(                                                   \
-      KERNEL_TYPE,                                                     \
-      ops::ActivationOp,                                               \
-      ops::OP_NAME##OpMaker,                                           \
-      ops::ActivationOpInferVarType,                                   \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
-                                 paddle::framework::OpDesc>,           \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
-                                 paddle::imperative::OpBase>,          \
-      ops::OP_NAME##CompositeGradOpMaker,                              \
-      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
-                       ops::ActFwdInplaceInferer,                      \
-                       void>::type);                                   \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                \
-                    ops::ActivationOpGrad,                             \
-                    ops::ActivationGradOpInplaceInferer);
+#define REGISTER_ACTIVATION_CPU_KERNEL(                                     \
+    act_type, op_name, functor, grad_functor)                               \
+  REGISTER_OP_CPU_KERNEL(                                                   \
+      act_type,                                                             \
+      ops::ActivationKernel<phi::CPUContext, ops::functor<float>>,          \
+      ops::ActivationKernel<phi::CPUContext, ops::functor<double>>);        \
+  REGISTER_OP_CPU_KERNEL(                                                   \
+      act_type##_grad,                                                      \
+      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<float>>, \
+      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<double>>);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
+FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
-  PD_REGISTER_STRUCT_KERNEL(                                             \
-      act_type, CPU, ALL_LAYOUT, ops::op_name##Kernel, float, double) {} \
-  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                             \
-                            CPU,                                         \
-                            ALL_LAYOUT,                                  \
-                            ops::op_name##GradKernel,                    \
-                            float,                                       \
-                            double) {}
-
-REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
-
+REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
-REGISTER_ACTIVATION_OP_WITH_COMP(hard_swish,
-                                 HardSwish,
-                                 HardSwishFunctor,
-                                 HardSwishGradFunctor);
+REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
+REGISTER_ACTIVATION_OP(hard_swish,
+                       HardSwish,
+                       HardSwishFunctor,
+                       HardSwishGradFunctor);
 REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
+
+/* ==========================   pow register  ============================ */
+DECLARE_INFER_SHAPE_FUNCTOR(pow_double_grad,
+                            PowDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pow_triple_grad,
+                            PowTripleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralTernaryGradInferMeta));
+
+REGISTER_OPERATOR(
+    pow,
+    ops::PowOp,
+    ops::PowOpMaker,
+    ops::ActivationOpInferVarType,
+    ops::PowGradOpMaker<paddle::framework::OpDesc>,
+    ops::PowGradOpMaker<paddle::imperative::OpBase>,
+    std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
+                     ops::ActFwdInplaceInferer,
+                     void>::type);
+REGISTER_OPERATOR(pow_grad,
+                  ops::PowOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::PowDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowDoubleGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pow_double_grad,
+                  ops::PowOpDoubleGrad,
+                  ops::ActivationDoubleGradOpInplaceInferer,
+                  ops::PowTripleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowTripleGradOpMaker<paddle::imperative::OpBase>,
+                  PowDoubleGradInferShapeFunctor);
+REGISTER_OPERATOR(pow_triple_grad,
+                  ops::PowOpTripleGrad,
+                  PowTripleGradInferShapeFunctor);
+/* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)

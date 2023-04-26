@@ -19,12 +19,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ProdKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const IntArray& dims,
-                bool keep_dim,
-                bool reduce_all,
-                DenseTensor* out) {
+void ProdRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
@@ -33,8 +33,14 @@ void ProdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
+PD_REGISTER_KERNEL(prod_raw, KPS, ALL_LAYOUT, phi::ProdRawKernel, float) {}
 #else
-PD_REGISTER_KERNEL(
-    prod, KPS, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ProdRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 #endif

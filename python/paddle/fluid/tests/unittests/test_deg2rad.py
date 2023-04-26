@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -36,9 +36,7 @@ class TestDeg2radAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x = paddle.static.data(
-                name='input', dtype=self.x_dtype, shape=self.x_shape
-            )
+            x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.deg2rad(x)
 
             place = (
@@ -66,7 +64,7 @@ class TestDeg2radAPI(unittest.TestCase):
 class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
-        self.x_np = [180]
+        self.x_np = 180
         self.x_shape = [1]
         self.out_np = np.pi
         self.x_dtype = 'int64'

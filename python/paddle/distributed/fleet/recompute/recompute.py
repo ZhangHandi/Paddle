@@ -31,7 +31,7 @@ __all__ = []
 def detach_variable(inputs):
     out = []
     for inp in inputs:
-        if not isinstance(inp, core.eager.Tensor):
+        if not isinstance(inp, (core.eager.Tensor, core.VarBase)):
             out.append(inp)
             continue
 
@@ -109,14 +109,18 @@ class RecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+            raise ValueError(
+                "unsupported amp level: {}".format(tracer._amp_level)
+            )
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
+            raise ValueError(
+                "unsupported amp dtype: {}".format(tracer._amp_dtype)
+            )
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -168,7 +172,7 @@ class RecomputeFunction(PyLayer):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, core.eager.Tensor):
+            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -181,7 +185,7 @@ class RecomputeFunction(PyLayer):
             backward_inputs_with_grad = []
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], core.eager.Tensor)
+                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -202,14 +206,14 @@ class RecomputeFunction(PyLayer):
                 grads = tuple(
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, core.eager.Tensor)
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
                 )
             else:
-                grads = [
+                grads = list(
                     inp._grad_ivar()
                     for inp in detached_inputs
-                    if isinstance(inp, core.eager.Tensor)
-                ]
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                )
             return grads
 
 
@@ -222,19 +226,13 @@ def _recompute_without_reentrant(
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
-        if 'gpu:' in cur_device:
-            fw_cuda_rng_state = paddle.get_cuda_rng_state()
-        elif (
-            cur_device.split(':')[0]
-            in paddle.device.get_all_custom_device_type()
-        ):
-            fw_cuda_rng_state = paddle.get_rng_state(cur_device)
-        else:
+        if 'gpu:' not in cur_device:
             raise RuntimeError(
                 "Recompute with RNG perserve is not support current device: {}.".format(
                     cur_device
                 )
             )
+        fw_cuda_rng_state = paddle.get_cuda_rng_state()
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )
@@ -381,7 +379,7 @@ def recompute(function, *args, **kwargs):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super().__init__()
+                    super(Naive_fc_net, self).__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -455,12 +453,13 @@ def recompute(function, *args, **kwargs):
 
 def recompute_sequential(ctx, functions, *args, **kwargs):
     """
-    recompute intermediate activations to save the memory for 'Sequential' models. use 'ctx' to transmit some context params, it is similar to 'recompute_hybrid' API.
+    recompute intermediate activations to save then memory for 'Sequential' models.
 
     Parameters:
         ctx(dict): include 'segments' and  'preserve_rng_state' keys, the key 'segments' (int, default 1), represents the number of chunks to create in the model,
                    the key 'preserve_rng_state' (bool, optional, default=True) indicate whether to save the forward rng. If it is True, then the last forward rng value will be
-                   restored when the forward recalculation of backpropagation is performed.
+                   restored when the forward recalculation of backpropagation is performed. and some keys such as 'mp_group', 'offload' and 'partition' are invalid here,
+                   they are useful in 'recompute_hybrid' API.
         functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
@@ -472,11 +471,9 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
 
     Examples:
         .. code-block:: python
-            import paddle
-            from paddle.incubate.distributed.fleet import recompute_sequential
-            input = paddle.ones(shape=[8, 10])
-            model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
-            output = recompute_sequential({'segments' : 1}, model, input)
+
+            model = paddle.nn.Sequential(...)
+            input = recompute_sequential({'segments' : 1}, model, input)
     """
     segments = ctx.get('segments', 1)
     preserve_rng_state = ctx.get('preserve_rng_state', True)
@@ -501,6 +498,6 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
             _run_func(begin, end, functions),
             *args,
             preserve_rng_state=preserve_rng_state,
-            **kwargs,
+            **kwargs
         )
     return _run_func(end + 1, len(functions) - 1, functions)(args)

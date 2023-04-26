@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -194,9 +195,9 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
             self.array = array = paddle.tensor.create_array(dtype='float32')
-            idx = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0)
+            idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
-                x = paddle.assign(x)
+                x = fluid.layers.assign(x)
                 paddle.tensor.array_write(x, idx + i, array)
             output, output_index = tensor_array_to_tensor(
                 input=array, **self.attrs
@@ -233,11 +234,11 @@ class TestLoDTensorArrayStack(unittest.TestCase):
 
 class TestTensorArrayToTensorAPI(unittest.TestCase):
     def _test_case(self, inp1, inp2):
-        x0 = paddle.assign(inp1)
+        x0 = fluid.layers.assign(inp1)
         x0.stop_gradient = False
-        x1 = paddle.assign(inp2)
+        x1 = fluid.layers.assign(inp2)
         x1.stop_gradient = False
-        i = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0)
+        i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         array = paddle.tensor.create_array(dtype='float32')
         paddle.tensor.array_write(x0, i, array)
         paddle.tensor.array_write(x1, i + 1, array)
@@ -272,16 +273,12 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
 
     def test_while_loop_case(self):
         with fluid.dygraph.guard():
-            zero = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=0
-            )
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
-            ten = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=10
-            )
+            zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             array = paddle.tensor.create_array(dtype='float32')
             inp0 = np.random.rand(2, 3, 4).astype("float32")
-            x0 = paddle.assign(inp0)
+            x0 = fluid.layers.assign(inp0)
             paddle.tensor.array_write(x0, zero, array)
 
             def cond(i, end, array):
@@ -297,9 +294,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             )
 
             self.assertTrue(paddle.tensor.array_length(array), 10)
-            last = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=9
-            )
+            last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
             np.testing.assert_array_equal(
                 paddle.tensor.array_read(array, last).numpy(), inp0
             )

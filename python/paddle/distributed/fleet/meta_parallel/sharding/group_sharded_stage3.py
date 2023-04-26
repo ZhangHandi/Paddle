@@ -20,11 +20,12 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework, nn
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.framework import EagerParamBase
-from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
 from .group_sharded_storage import GradStorage
@@ -45,15 +46,16 @@ def _all_gather(tensor, buffer_size, group):
 
 
 # CUDA alignment 256 bytes
-alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
+alignment = {
+    "gpu": 256,
+}
 align = {
-    Type.bf16.value: 2,
     Type.fp16.value: 2,
     Type.fp32.value: 4,
 }
 
 global CHECK_LAYER
-CHECK_LAYER = {}  # Help to check layer's id -> layer's name
+CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class GroupShardedStage3(nn.Layer):
@@ -84,7 +86,6 @@ class GroupShardedStage3(nn.Layer):
         offload=False,
         sync_comm=False,
         dp_group=None,
-        exclude_layer=None,
     ):
         super().__init__()
 
@@ -95,14 +96,6 @@ class GroupShardedStage3(nn.Layer):
         self.__sync_buffers = sync_buffers
         self._offload = offload
         self._sync_comm = sync_comm
-
-        # stage3 support some layer set by users to be unslice
-        # _exclude_layer=[layer_name or id(layer)]
-        self._exclude_layer = [] if exclude_layer is None else exclude_layer
-        assert isinstance(
-            self._exclude_layer, (list, tuple)
-        ), "the exclude_layers must be a list with layers' name or layers' id"
-
         # segmentation size
         assert segment_size >= 0, "segment_size must be GE than 0."
         self._segment_size = segment_size
@@ -120,7 +113,7 @@ class GroupShardedStage3(nn.Layer):
             else int(paddle.get_device().split(":")[1])
         )
         global param2dtype
-        param2dtype = {}
+        param2dtype = dict()
 
         # Communication group establishment
         self._group = (
@@ -140,14 +133,14 @@ class GroupShardedStage3(nn.Layer):
 
         # Parameter segmentation for global ranks
         # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
-        self._param2buffer_size = {}  # {param.name: size}
+        self._param2buffer_size = dict()  # {param.name: size}
         self._param2buffer = (
-            {}
+            dict()
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
-        self._trainable_params = {}  # {id(layer): [trainable_params]}
+        self._trainable_params = dict()  # {id(layer): [trainable_params]}
         self._unslice_params = set()  # param's numel <= segment_size
-        self._unslice_params2align = {}  # {param.name: param's align}
-        self._grad_storages = {}  # {param.dtype: GradStorage}
+        self._unslice_params2align = dict()  # {param.name: param's align}
+        self._grad_storages = dict()  # {param.dtype: GradStorage}
 
         assert not isinstance(
             optimizer, list
@@ -185,7 +178,7 @@ class GroupShardedStage3(nn.Layer):
         # In the first step, record the execution order of the layer
         self._order_tracer = OrderedDict()
         self._order_tracer["order"] = 0
-        self._order_tracer["layer"] = []
+        self._order_tracer["layer"] = list()
 
         # Register task flow
         self._task_flow = TaskFlow()
@@ -231,7 +224,7 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), f"Find {param.name} don't have fw_storage attribute."
+            ), "Find {} don't have fw_storage attribute.".format(param.name)
 
             param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
@@ -250,11 +243,6 @@ class GroupShardedStage3(nn.Layer):
                     and param2dtype[param.name] == Type.fp16.value
                 ):
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
-                elif (
-                    tmp_var.dtype == Type.fp32.value
-                    and param2dtype[param.name] == Type.bf16.value
-                ):
-                    tmp_var = paddle.cast(tmp_var, Type.bf16.value)
                 tmp_var._share_buffer_to(param)
                 del tmp_var
             for grad_storage in self._grad_storages.values():
@@ -315,15 +303,12 @@ class GroupShardedStage3(nn.Layer):
         )
 
     def _handle_unslice_params(self):
-        buffer_size = {}
-        buffer_size[Type.bf16.value] = 0
+        buffer_size = dict()
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
             # Updata optimizer master weights
-            if (
-                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
-            ) and not self._offload:
+            if param.dtype == Type.fp16.value and not self._offload:
                 master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
@@ -335,7 +320,7 @@ class GroupShardedStage3(nn.Layer):
             buffer_size[param.dtype] += param._numel() + p_align
 
         # Create unslice_params'grad
-        for param in sorted(self._unslice_params, key=lambda p: p.name):
+        for param in sorted(list(self._unslice_params), key=lambda p: p.name):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
@@ -365,29 +350,17 @@ class GroupShardedStage3(nn.Layer):
         Parameter segmentation and memory integration.
         """
 
-        if id(layer) in self._trainable_params.keys():
-            return
-
-        # the layer in self._exclude_layer will be unsliced.
-        if (
-            id(layer) in self._exclude_layer
-            or layer.__class__.__name__ in self._exclude_layer
-        ):
-            for p in current_layer_params:
-                if p.trainable:
-                    self._unslice_params.add(_UnsliceParam(p))
-            return
-
         def _add_manage_info(trainable_param):
             return _PartitionParam(trainable_param)
 
-        current_params = []
+        current_params = list()
         for p in current_layer_params:
             if p._numel() > self._segment_size:
                 current_params.append(_add_manage_info(p))
             elif p.trainable:
                 self._unslice_params.add(_UnsliceParam(p))
 
+        assert id(layer) not in self._trainable_params.keys()
         self._trainable_params[id(layer)] = current_params
 
         for param in self._trainable_params[id(layer)]:
@@ -426,14 +399,10 @@ class GroupShardedStage3(nn.Layer):
         assert isinstance(buffer_size, int)
         value = (
             np.zeros(buffer_size, dtype=np.float16)
-            if (
-                Type.fp16.value == param.dtype or Type.bf16.value == param.dtype
-            )
+            if Type.fp16.value == param.dtype
             else np.zeros(buffer_size, dtype=np.float32)
         )
         buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
-        if Type.bf16.value == param.dtype:
-            buffer = buffer.cast(Type.bf16.value)
 
         param_shape = param.shape
         origin_state = param.stop_gradient
@@ -459,11 +428,10 @@ class GroupShardedStage3(nn.Layer):
                 place=core.CPUPlace(),
                 name="slice@" + param.name,
             )
-            if param.trainable:
-                with device_guard():
-                    param.master_weight = paddle.cast(
-                        param.fw_storage, Type.fp32.value
-                    )
+            with device_guard():
+                param.master_weight = paddle.cast(
+                    param.fw_storage, Type.fp32.value
+                )
         else:
             param.fw_storage = core.eager.Tensor(
                 value=buffer._slice(start, end), name="slice@" + param.name
@@ -473,9 +441,7 @@ class GroupShardedStage3(nn.Layer):
         # Updata optimizer master weights
         if (
             param.trainable
-            and (
-                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
-            )
+            and param.dtype == Type.fp16.value
             and not self._offload
         ):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
@@ -496,12 +462,7 @@ class GroupShardedStage3(nn.Layer):
         """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
-            # the layer in self._exclude_layer will be added hooks.
-            if not (
-                id(layer) in self._exclude_layer
-                or layer.__class__.__name__ in self._exclude_layer
-            ):
-                self._register_forward_all_hooks(layer, self._task_flow)
+            self._register_forward_all_hooks(layer, self._task_flow)
 
         for _, sub_layer in layer.named_children():
             self._register_forward_hooks(sub_layer)
@@ -582,7 +543,7 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), f"Find {param.name} don't have fw_storage attribute"
+            ), "Find {} don't have fw_storage attribute".format(param.name)
 
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
@@ -911,9 +872,9 @@ class TaskFlow:
 
     def __init__(
         self,
-        full_param={},
-        full_grad={},
-        use_calc={},
+        full_param=dict(),
+        full_grad=dict(),
+        use_calc=dict(),
         callback=None,
     ):
         self.full_param = full_param
@@ -1047,18 +1008,18 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
 
 def _PartitionParam(param):
     if not hasattr(param, "fw_storage"):
-        param.fw_storage = None
-        param.bw_storage = None
-        param.master_weight = None
-        param.status = "all"
-        param.use_count = 0
+        setattr(param, "fw_storage", None)
+        setattr(param, "bw_storage", None)
+        setattr(param, "master_weight", None)
+        setattr(param, "status", "all")
+        setattr(param, "use_count", 0)
     return param
 
 
 def _UnsliceParam(param):
     if not hasattr(param, "unslice"):
-        param.unslice = True
-        param.master_weight = None
+        setattr(param, "unslice", True)
+        setattr(param, "master_weight", None)
     return param
 
 
@@ -1078,11 +1039,11 @@ def _VarBaseWrapper(param):
 
 def _OptimizerWrapper(optimizer, offload, group, update_params_slice):
     if not hasattr(optimizer, "_optim"):
-        optimizer._optim = optimizer
-        optimizer.offload = offload
-        optimizer._group = group
-        optimizer.update_scaler = None
-        optimizer.update_slice = update_params_slice
+        setattr(optimizer, "_optim", optimizer)
+        setattr(optimizer, "offload", offload)
+        setattr(optimizer, "_group", group)
+        setattr(optimizer, "update_scaler", None)
+        setattr(optimizer, "update_slice", update_params_slice)
     return optimizer
 
 
@@ -1101,11 +1062,6 @@ def _cpu2device(param):
         and param2dtype[param.name] == Type.fp16.value
     ):
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)
-    elif (
-        tmp_p.dtype == Type.fp32.value
-        and param2dtype[param.name] == Type.bf16.value
-    ):
-        tmp_p = paddle.cast(tmp_p, Type.bf16.value)
     return tmp_p
 
 

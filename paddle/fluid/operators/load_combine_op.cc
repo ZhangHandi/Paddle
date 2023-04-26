@@ -27,9 +27,11 @@ class LoadCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::proto::VarType::FP32, ctx.GetPlace());
+    return kt;
   }
 };
 
@@ -77,19 +79,16 @@ that were saved using the SaveCombine operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
 
-PD_REGISTER_STRUCT_KERNEL(load_combine,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LoadCombineOpKernel,
-                          float,
-                          double,
-                          plat::bfloat16,
-                          int,
-                          int8_t,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(
+    load_combine,
+    ops::LoadCombineOpKernel<phi::CPUContext, float>,
+    ops::LoadCombineOpKernel<phi::CPUContext, double>,
+    ops::LoadCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int64_t>);

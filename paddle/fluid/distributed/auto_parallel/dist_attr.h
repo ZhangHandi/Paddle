@@ -60,6 +60,8 @@ class TensorDistAttr {
 
   void copy_from(const TensorDistAttr& dist_attr);
 
+  const VarDesc* tensor() const { return tensor_; }
+
   const ProcessMesh& process_mesh() const { return process_mesh_; }
 
   void set_process_mesh(const ProcessMesh& process_mesh);
@@ -67,8 +69,6 @@ class TensorDistAttr {
   const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
-
-  void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
 
   int64_t batch_dim() const { return batch_dim_; }
 
@@ -78,34 +78,29 @@ class TensorDistAttr {
 
   void set_dynamic_dims(const std::vector<bool>& dynamic_dims);
 
-  void set_default_dynamic_dims(const std::vector<int64_t>& tensor_shape);
-
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
   void set_annotated(const std::map<std::string, bool>& annotated);
 
+  void set_default_dims_mapping();
+
   bool is_annotated(const std::string& name) const {
-    return annotated_.count(name) == 1 && annotated_.at(name) == true;
+    return annotated_.count(name) == 1;
   }
 
-  void mark_annotated(const std::string& name);
-
-  void clear_annotated() { annotated_.clear(); }
+  void annotate(const std::string& name);
 
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
-  bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping,
-                           const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping) const;
 
-  bool verify_batch_dim(int64_t dim,
-                        const std::vector<int64_t>& tensor_shape) const;
+  bool verify_batch_dim(int64_t dim) const;
 
-  bool verify_dynamic_dims(const std::vector<bool>& dynamic_dims,
-                           const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dynamic_dims(const std::vector<bool>& dynamic_dims) const;
 
   bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
-  bool verify(const VarDesc* tensor = nullptr) const;
+  bool verify() const;
 
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
@@ -120,6 +115,8 @@ class TensorDistAttr {
 
  private:
   static std::vector<std::string> fields_;
+  const VarDesc* tensor_{nullptr};
+  std::vector<int64_t> tensor_shape_;
   ProcessMesh process_mesh_;
   std::vector<int64_t> dims_mapping_;
   int64_t batch_dim_{0};
@@ -148,15 +145,21 @@ class OperatorDistAttr {
 
   OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
 
-  void initialize(const OpDesc* op = nullptr);
+  void initialize();
 
   void copy_from(const OperatorDistAttr& dist_attr);
 
-  const std::map<std::string, TensorDistAttr>& input_dist_attrs() const {
-    return input_dist_attrs_;
+  const OpDesc* op() const { return op_; }
+
+  const VarDesc& input(const std::string& name) const {
+    return *inputs_.at(name);
   }
 
-  std::map<std::string, TensorDistAttr>& input_dist_attrs() {
+  const VarDesc& output(const std::string& name) const {
+    return *outputs_.at(name);
+  }
+
+  const std::map<std::string, TensorDistAttr>& input_dist_attrs() const {
     return input_dist_attrs_;
   }
 
@@ -164,10 +167,6 @@ class OperatorDistAttr {
       const std::map<std::string, TensorDistAttr>& dist_attrs);
 
   const std::map<std::string, TensorDistAttr>& output_dist_attrs() const {
-    return output_dist_attrs_;
-  }
-
-  std::map<std::string, TensorDistAttr>& output_dist_attrs() {
     return output_dist_attrs_;
   }
 
@@ -200,10 +199,6 @@ class OperatorDistAttr {
 
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const std::string& op_type() const { return op_type_; }
-
-  void set_op_type(const std::string& op_type) { op_type_ = op_type; }
-
   const std::string& impl_type() const { return impl_type_; }
 
   void set_impl_type(const std::string& impl_type) { impl_type_ = impl_type; }
@@ -212,20 +207,10 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
-  bool is_recompute() const { return is_recompute_; }
-
-  void set_is_recompute(bool is_recompute) { is_recompute_ = is_recompute; }
-
   const std::string& execution_stream() const { return execution_stream_; }
 
   void set_execution_stream(const std::string& execution_stream) {
     execution_stream_ = execution_stream;
-  }
-
-  int stream_priority() const { return stream_priority_; }
-
-  void set_stream_priority(int stream_priority) {
-    stream_priority_ = stream_priority;
   }
 
   int64_t scheduling_priority() const { return scheduling_priority_; }
@@ -239,12 +224,10 @@ class OperatorDistAttr {
   void set_annotated(const std::map<std::string, bool>& annotated);
 
   bool is_annotated(const std::string& name) const {
-    return annotated_.count(name) == 1 && annotated_.at(name) == true;
+    return annotated_.count(name) == 1;
   }
 
-  void mark_annotated(const std::string& name);
-
-  void clear_annotated();
+  void annotate(const std::string& name);
 
   const std::vector<int64_t>& input_dims_mapping(const std::string& name) const;
 
@@ -257,18 +240,16 @@ class OperatorDistAttr {
                                const std::vector<int64_t>& dims_mapping);
 
   bool verify_input_dist_attr(const std::string& name,
-                              const TensorDistAttr& dist_attr,
-                              const VarDesc* tensor) const;
+                              const TensorDistAttr& dist_attr) const;
 
   bool verify_output_dist_attr(const std::string& name,
-                               const TensorDistAttr& dist_attr,
-                               const VarDesc* tensor) const;
+                               const TensorDistAttr& dist_attr) const;
 
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
   bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
-  bool verify(const OpDesc* op = nullptr) const;
+  bool verify() const;
 
   void rename_input(const std::string& old_name, const std::string& new_name);
 
@@ -287,16 +268,16 @@ class OperatorDistAttr {
 
  private:
   static std::vector<std::string> fields_;
+  const OpDesc* op_{nullptr};
+  std::map<std::string, VarDesc*> inputs_;
+  std::map<std::string, VarDesc*> outputs_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;
   std::map<std::string, TensorDistAttr> output_dist_attrs_;
   ProcessMesh process_mesh_;
-  std::string op_type_;
-  std::string impl_type_ = kDefault;
-  int64_t impl_idx_ = 0;
-  bool is_recompute_ = false;
-  std::string execution_stream_ = kDefault;
-  int stream_priority_ = 0;          // lower value, higher priority
-  int64_t scheduling_priority_ = 0;  // lower value, higher priority
+  std::string impl_type_;
+  int64_t impl_idx_ = -1;
+  std::string execution_stream_;
+  int64_t scheduling_priority_;  // lower value, higher priority, default to 0
   std::map<std::string, bool> annotated_;
 };
 

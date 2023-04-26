@@ -15,7 +15,7 @@
 import copy
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 from . import utils
 

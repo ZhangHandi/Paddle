@@ -31,7 +31,7 @@ np.random.seed(123)
 
 class Net(paddle.nn.Layer):
     def __init__(self, np_w, func):
-        super().__init__()
+        super(Net, self).__init__()
         self.func = func
         w = paddle.to_tensor(np_w)
         self.w = paddle.create_parameter(

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation

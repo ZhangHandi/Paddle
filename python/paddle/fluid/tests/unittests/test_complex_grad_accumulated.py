@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 class Optimization_ex1(paddle.nn.Layer):

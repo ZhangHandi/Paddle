@@ -95,10 +95,11 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -248,11 +249,11 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     SetOutGradDim("InitH");
     SetOutGradDim("InitC");
   }
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -292,7 +293,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -312,8 +313,8 @@ REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(
-    cudnn_lstm, CPU, ALL_LAYOUT, ops::NotImpleKernel, float) {}
+REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
+REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
 
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)

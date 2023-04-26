@@ -16,11 +16,11 @@ import os
 
 import numpy as np
 
-os.environ["FLAGS_check_nan_inf"] = "1"
-os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
+os.environ[str("FLAGS_check_nan_inf")] = str("1")
+os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 np.random.seed(0)
 
@@ -96,7 +96,7 @@ def run_check():
     if paddle.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            raise AssertionError()
+            assert False
         except Exception as e:
             print(e)
             print(type(e))
@@ -105,7 +105,7 @@ def run_check():
             assert type(e) == OSError or type(e) == RuntimeError
     try:
         check(use_cuda=False)
-        raise AssertionError()
+        assert False
     except Exception as e:
         print(e)
         print(type(e))

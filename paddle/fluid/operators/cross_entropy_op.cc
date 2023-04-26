@@ -126,10 +126,11 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
@@ -191,11 +192,11 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Y")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 
   virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
@@ -420,6 +421,7 @@ class CrossEntropyGradOpMaker2 : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+using CPUCtx = phi::CPUContext;
 
 REGISTER_OPERATOR(cross_entropy,
                   ops::CrossEntropyOpBase,
@@ -428,14 +430,12 @@ REGISTER_OPERATOR(cross_entropy,
                   ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>,
                   ops::CrossEntropyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
-PD_REGISTER_STRUCT_KERNEL(
-    cross_entropy, CPU, ALL_LAYOUT, ops::CrossEntropyOpKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CrossEntropyGradientOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(cross_entropy,
+                       ops::CrossEntropyOpKernel<CPUCtx, float>,
+                       ops::CrossEntropyOpKernel<CPUCtx, double>);
+REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
+                       ops::CrossEntropyGradientOpKernel<CPUCtx, float>,
+                       ops::CrossEntropyGradientOpKernel<CPUCtx, double>);
 
 REGISTER_OPERATOR(cross_entropy2,
                   ops::CrossEntropyOp2,
@@ -444,15 +444,9 @@ REGISTER_OPERATOR(cross_entropy2,
                   ops::CrossEntropyGradOpMaker2<paddle::framework::OpDesc>,
                   ops::CrossEntropyGradOpMaker2<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
-PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CrossEntropyOpKernel2,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CrossEntropyGradientOpKernel2,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(cross_entropy2,
+                       ops::CrossEntropyOpKernel2<CPUCtx, float>,
+                       ops::CrossEntropyOpKernel2<CPUCtx, double>);
+REGISTER_OP_CPU_KERNEL(cross_entropy_grad2,
+                       ops::CrossEntropyGradientOpKernel2<CPUCtx, float>,
+                       ops::CrossEntropyGradientOpKernel2<CPUCtx, double>);

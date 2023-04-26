@@ -20,12 +20,15 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
+#if defined(PADDLE_WITH_CNCL)
+#include <cncl.h>
+#endif
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -55,19 +58,23 @@ class CCommInitOp : public framework::OperatorBase {
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
     using CommContext = platform::BKCLCommContext;
+#elif defined(PADDLE_WITH_CNCL)
+    using UniqueId = cnclCliqueId;
+    using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with GPU or XPU or MLU."));
 #endif
 
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place) || platform::is_xpu_place(place),
+        platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
+            platform::is_mlu_place(place),
         true,
         platform::errors::PreconditionNotMet(
             "CCommInitOp can run on gpu or xpu or mlu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
@@ -76,6 +83,15 @@ class CCommInitOp : public framework::OperatorBase {
 
     int nranks = Attr<int>("nranks");
     int rid = Attr<int>("ring_id");
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+    PADDLE_ENFORCE_EQ(
+        rid,
+        0,
+        platform::errors::OutOfRange(
+            "Ring id must equal 0 in multi Kunlun cards training, but got %d",
+            rid));
+#endif
 
     int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {

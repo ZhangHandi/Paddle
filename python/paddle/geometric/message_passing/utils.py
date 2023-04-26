@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 from paddle.fluid.data_feeder import check_dtype, convert_dtype
 from paddle.fluid.framework import Variable
+from paddle.fluid.layers.tensor import cast
 
 
 def convert_out_size_to_list(out_size):
@@ -29,7 +30,7 @@ def convert_out_size_to_list(out_size):
     elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
     else:
-        out_size = [int(out_size)]
+        out_size = [out_size.numpy().astype(int)[0]]
     return out_size
 
 
@@ -52,7 +53,7 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
             '(When type of out_size in' + op_type + ' is Variable.)',
         )
         if convert_dtype(out_size.dtype) == 'int64':
-            out_size = paddle.cast(out_size, 'int32')
+            out_size = cast(out_size, 'int32')
         inputs["Out_size"] = out_size
     else:
         raise TypeError("Out_size only supports Variable or int.")

@@ -58,6 +58,5 @@ PD_REGISTER_KERNEL(index_select,
                    phi::IndexSelectKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

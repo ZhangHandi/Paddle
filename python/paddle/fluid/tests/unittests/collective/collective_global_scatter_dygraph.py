@@ -18,8 +18,8 @@ import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.distributed.utils import moe_utils
+import paddle.distributed.utils.moe_utils as moe_utils
+import paddle.fluid as fluid
 
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):

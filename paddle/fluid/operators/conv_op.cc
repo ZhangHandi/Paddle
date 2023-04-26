@@ -186,7 +186,7 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
   return output_shape;
 }
 
-phi::KernelKey ConvOp::GetExpectedKernelType(
+framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   // todo enable data layout when it's ready
@@ -208,18 +208,18 @@ phi::KernelKey ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(filter_data_type)));
   }
 
-  return phi::KernelKey(input_data_type, ctx.GetPlace());
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
-phi::KernelKey ConvOp::GetKernelTypeForVar(
+framework::OpKernelType ConvOp::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type) const {
+    const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
@@ -228,12 +228,13 @@ phi::KernelKey ConvOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for conv
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return phi::KernelKey(
-      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Conv2DOpMaker::Make() {
@@ -250,6 +251,18 @@ void Conv2DOpMaker::Make() {
            "H is the height of the filter, and W is the width of the filter. "
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable()
+      .AsExtra();
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
+           "Used with fuse_residual_connection fusion.")
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "It has same data fromat and data type as the Input.");
@@ -434,22 +447,23 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-phi::KernelKey ConvOpGrad::GetExpectedKernelType(
+framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
-phi::KernelKey ConvOpGrad::GetKernelTypeForVar(
+framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type) const {
+    const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "Input") ||
        (var_name == framework::GradVarName("Output"))) &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
@@ -458,12 +472,13 @@ phi::KernelKey ConvOpGrad::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return phi::KernelKey(
-      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 template <typename T>
@@ -604,10 +619,10 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-phi::KernelKey ConvOpDoubleGrad::GetExpectedKernelType(
+framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 }  // namespace operators

@@ -113,16 +113,16 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   binary_prim->execute(astream, args);
   astream.wait();
 
-  auto out_md = dst_memory->get_desc();
-
-  if (handler.use_broadcasting_hack) {
-    auto dims = out_md.dims();
+  if (handler.use_broadcasting_hack == false) {
+    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
+        dev_ctx, out, dst_memory->get_desc());
+  } else {
+    auto dims = dst_memory->get_desc().dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
-    out_md = out_md.reshape(dims);
+    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
+        dev_ctx, out, dst_memory->get_desc().reshape(dims));
   }
-
-  out->set_mem_desc(out_md);
 }
 
 #define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)      \

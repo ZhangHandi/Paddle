@@ -31,6 +31,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
+            "GraphExecutionOptimizer",
             "AdaptiveLocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
@@ -45,14 +46,11 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return isinstance(
-            self.inner_opt,
-            (
-                paddle.optimizer.momentum.Momentum,
-                paddle.fluid.optimizer.Momentum,
-                paddle.optimizer.sgd.SGD,
-                paddle.fluid.optimizer.SGD,
-            ),
+        return (
+            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
+            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
         )
 
     def _disable_strategy(self, dist_strategy):
@@ -217,6 +215,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
+            "GraphExecutionOptimizer",
             "LocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
@@ -231,14 +230,11 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return isinstance(
-            self.inner_opt,
-            (
-                paddle.optimizer.Momentum,
-                paddle.fluid.optimizer.Momentum,
-                paddle.optimizer.sgd.SGD,
-                paddle.fluid.optimizer.SGD,
-            ),
+        return (
+            isinstance(self.inner_opt, paddle.optimizer.Momentum)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
+            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
         )
 
     def _disable_strategy(self, dist_strategy):

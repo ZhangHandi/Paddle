@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):

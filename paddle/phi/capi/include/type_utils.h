@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__APPLE__)
 
 #include "paddle/phi/capi/include/c_data_type.h"
 #include "paddle/phi/common/data_type.h"
@@ -23,9 +23,9 @@
 namespace phi {
 namespace capi {
 
-inline PD_DataType ToPDDataType(::phi::DataType dtype) {
-#define return_result(in, ret) \
-  case ::phi::DataType::in:    \
+inline PD_DataType ToPDDataType(::paddle::experimental::DataType dtype) {
+#define return_result(in, ret)               \
+  case ::paddle::experimental::DataType::in: \
     return PD_DataType::ret
   switch (dtype) {
     return_result(UNDEFINED, UNDEFINED);
@@ -42,8 +42,6 @@ inline PD_DataType ToPDDataType(::phi::DataType dtype) {
     return_result(UINT16, UINT16);
     return_result(UINT8, UINT8);
     return_result(BOOL, BOOL);
-    return_result(COMPLEX64, COMPLEX64);
-    return_result(COMPLEX128, COMPLEX128);
     default: {
       PADDLE_THROW(
           ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
@@ -52,10 +50,10 @@ inline PD_DataType ToPDDataType(::phi::DataType dtype) {
 #undef return_result
 }
 
-inline ::phi::DataType ToPhiDataType(PD_DataType dtype) {
+inline ::paddle::experimental::DataType ToPhiDataType(PD_DataType dtype) {
 #define return_result(in, ret) \
   case PD_DataType::in:        \
-    return ::phi::DataType::ret
+    return ::paddle::experimental::DataType::ret
   switch (dtype) {
     return_result(UNDEFINED, UNDEFINED);
     return_result(FLOAT64, FLOAT64);
@@ -71,12 +69,10 @@ inline ::phi::DataType ToPhiDataType(PD_DataType dtype) {
     return_result(UINT16, UINT16);
     return_result(UINT8, UINT8);
     return_result(BOOL, BOOL);
-    return_result(COMPLEX64, COMPLEX64);
-    return_result(COMPLEX128, COMPLEX128);
     default: {
       PADDLE_THROW(
           ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
-      return ::phi::DataType::UNDEFINED;
+      return ::paddle::experimental::DataType::UNDEFINED;
     }
   }
 #undef return_result

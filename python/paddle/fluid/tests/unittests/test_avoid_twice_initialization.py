@@ -14,8 +14,7 @@
 
 import unittest
 
-import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestAvoidTwiceInitialization(unittest.TestCase):
@@ -23,7 +22,7 @@ class TestAvoidTwiceInitialization(unittest.TestCase):
         cur_program = fluid.Program()
         cur_block = cur_program.current_block()
         var = cur_block.create_parameter(
-            initializer=paddle.nn.initializer.Constant(value=0.01),
+            initializer=fluid.initializer.Constant(value=0.01),
             shape=[2, 2],
             dtype='float32',
             name='var_a',
@@ -41,7 +40,7 @@ class TestAvoidTwiceInitialization(unittest.TestCase):
             attrs={'ring_id': 0},
         )
         var2 = cur_block.create_parameter(
-            initializer=paddle.nn.initializer.Constant(value=0.01),
+            initializer=fluid.initializer.Constant(value=0.01),
             shape=[2, 2],
             dtype='float32',
             name='var_a',

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -63,10 +63,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out')
+        self.check_grad(['x', 'y'], 'out', check_eager=True)
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")

@@ -36,15 +36,14 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     phi::DataLayout layout_ = DataLayout::kAnyLayout;
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-    return phi::KernelKey(
-        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -121,15 +120,14 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
     phi::DataLayout layout_ = DataLayout::kAnyLayout;
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-    return phi::KernelKey(
-        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -149,15 +147,9 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_softmax_grad,
                   ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_softmax,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSoftmaxKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_softmax_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSoftmaxGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(sequence_softmax,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_softmax_grad,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, double>);

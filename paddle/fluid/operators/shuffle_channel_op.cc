@@ -35,11 +35,11 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -89,11 +89,11 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -123,15 +123,11 @@ REGISTER_OPERATOR(shuffle_channel,
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelOpKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelGradOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(shuffle_channel,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, float>,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    shuffle_channel_grad,
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, float>,
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, double>);

@@ -15,7 +15,6 @@
 #pragma once
 #include <unsupported/Eigen/SpecialFunctions>
 
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 namespace phi {
 template <typename T>
@@ -24,10 +23,7 @@ struct LgammaGradFunctor {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MT mp_dout = static_cast<MT>(dout_[idx]);
-    const MT mp_x = static_cast<MT>(x_[idx]);
-    output_[idx] = static_cast<T>(mp_dout * Eigen::numext::digamma(mp_x));
+    output_[idx] = dout_[idx] * Eigen::numext::digamma(x_[idx]);
   }
 
  private:

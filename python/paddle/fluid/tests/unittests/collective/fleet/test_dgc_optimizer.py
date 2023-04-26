@@ -15,8 +15,10 @@
 import unittest
 
 import paddle
-from paddle.fluid import framework, optimizer, regularizer
-from paddle.nn import clip
+import paddle.fluid.framework as framework
+import paddle.fluid.optimizer as optimizer
+import paddle.fluid.regularizer as regularizer
+import paddle.nn.clip as clip
 
 paddle.enable_static()
 

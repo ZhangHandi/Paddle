@@ -30,7 +30,7 @@ class TestDistSeResnetNCCL2DGC(TestDistBase):
 
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

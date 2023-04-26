@@ -27,23 +27,26 @@ class ElementwiseMulOp : public ElementwiseOp {
  public:
   using ElementwiseOp::ElementwiseOp;
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };

@@ -18,8 +18,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
@@ -132,7 +132,8 @@ class TestVariable(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 0)
+        self.assertEqual(len(nw.shape), 1)
+        self.assertEqual(nw.shape[0], 1)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), nw.shape)
@@ -149,7 +150,7 @@ class TestVariable(unittest.TestCase):
                     [[19, 20, 21], [22, 23, 24], [25, 26, 27]],
                 ]
             ).astype('float32')
-            var = paddle.assign(tensor_array)
+            var = fluid.layers.assign(tensor_array)
             var1 = var[0, 1, 1]
             var2 = var[1:]
             var3 = var[0:1]
@@ -167,12 +168,12 @@ class TestVariable(unittest.TestCase):
             var14 = var[1:-1, 0:2, ::-1]
             var15 = var[::-1, ::-1, ::-1]
 
-            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = paddle.static.nn.fc(x, size=1, activation=None)
             y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []
-            data.append(np.random.randint(10, size=[13]).astype('float32'))
+            data.append((np.random.randint(10, size=[13]).astype('float32')))
             exe.run(fluid.default_startup_program())
 
             local_out = exe.run(
@@ -595,24 +596,11 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
-    # note(chenjianye):
-    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.23.
-    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.23,
-    # which is used to wrap index elements for multiple axes.
-    # And from 1.23, this will be treat as a whole and only works on one axis.
-    #
-    # e.g. x[[[0],[1]]] == x[([0],[1])] == x[[0],[1]] (in version < 1.23)
-    #      x[[[0],[1]]] == x[array([[0],[1]])] (in version >= 1.23)
-    #
-    # Here, we just modify the code to remove the impact of numpy version changes,
-    # changing x[[[0],[1]]] to x[tuple([[0],[1]])] == x[([0],[1])] == x[[0],[1]].
-    # Whether the paddle behavior in this case will change is still up for debate.
-
     def setUp(self):
         np.random.seed(2022)
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape, 1)
+        return reduce(lambda x, y: x * y, shape)
 
     def test_static_graph_list_index(self):
         paddle.enable_static()
@@ -649,7 +637,7 @@ class TestListIndex(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 fetch_list = [y.name]
 
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[index_mod]
                 getitem_pp = exe.run(
                     prog, feed={x.name: array}, fetch_list=fetch_list
                 )
@@ -671,7 +659,7 @@ class TestListIndex(unittest.TestCase):
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[index_mod]
 
             except:
                 with self.assertRaises(ValueError):
@@ -752,7 +740,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y2,
                 getitem_pp[0],
-                err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
+                err_msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]),
             )
 
     def test_dygraph_list_index_muti_dim(self):
@@ -856,12 +844,8 @@ class TestListIndex(unittest.TestCase):
         exe.run(paddle.static.default_startup_program())
         fetch_list = [y.name]
         array2 = array.copy()
+
         try:
-            index = (
-                tuple(index)
-                if isinstance(index, list) and isinstance(index[0], list)
-                else index
-            )
             array2[index] = value_np
         except:
             with self.assertRaises(ValueError):
@@ -1215,7 +1199,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t1.numpy(),
                 y_np1,
-                err_msg=f'\n numpy:{y_np1},\n paddle:{y_t1.numpy()}',
+                err_msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()),
             )
             # 1 dim getitem
             array2 = array.copy()
@@ -1226,7 +1210,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t2.numpy(),
                 y_np2,
-                err_msg=f'\n numpy:{y_np2},\n paddle:{y_t2.numpy()}',
+                err_msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()),
             )
 
             # 2 dim setitem

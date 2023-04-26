@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
 
@@ -88,10 +88,7 @@ class ParamAttr:
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
         check_type(need_clip, "need_clip", (bool), "ParamAttr")
         check_type(
-            initializer,
-            "initializer",
-            (paddle.nn.initializer.Initializer, type(None)),
-            "ParamAttr",
+            initializer, "initializer", (Initializer, type(None)), "ParamAttr"
         )
         check_type(
             regularizer,
@@ -142,7 +139,7 @@ class ParamAttr:
         Returns:
             None.
         """
-        self._set_default_initializer(paddle.nn.initializer.XavierUniform())
+        self._set_default_initializer(Xavier())
 
     def _set_default_bias_initializer(self):
         """
@@ -154,7 +151,7 @@ class ParamAttr:
         Returns:
             None.
         """
-        self._set_default_initializer(paddle.nn.initializer.Constant(0.0))
+        self._set_default_initializer(Constant(0.0))
 
     @staticmethod
     def _to_attr(arg):
@@ -180,7 +177,7 @@ class ParamAttr:
             return arg
         elif isinstance(arg, str):
             return ParamAttr(name=arg)
-        elif isinstance(arg, paddle.nn.initializer.Initializer):
+        elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
         elif isinstance(arg, WeightDecayRegularizer):
             return ParamAttr(regularizer=arg)

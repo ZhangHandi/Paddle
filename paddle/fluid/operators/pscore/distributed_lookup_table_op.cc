@@ -78,9 +78,9 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -151,8 +151,6 @@ REGISTER_OPERATOR(distributed_lookup_table,
                   ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DistributedLookupTableKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(
+    distributed_lookup_table,
+    ops::DistributedLookupTableKernel<phi::CPUContext, float>);

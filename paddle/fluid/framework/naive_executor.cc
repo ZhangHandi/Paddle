@@ -62,8 +62,7 @@ void NaiveExecutor::Run() {
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
 #ifdef PADDLE_WITH_INFERENCE_NVTX
-    platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
-                                platform::NvtxRangeColor::Green);
+    platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
 #endif
 
     // According to reuse table, we share the out tensor's holder.

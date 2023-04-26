@@ -16,10 +16,10 @@ from collections import defaultdict
 
 import numpy as np
 
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+import paddle.fluid.core as core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import Block, Program
 
@@ -50,9 +50,9 @@ class HybridParallelInferenceHelper:
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
             # init global cond
-            max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
-            step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
-            cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
+            max_len = layers.fill_constant(shape=[1], dtype="int64", value=10, force_cpu=False)
+            step_idx = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False)
+            cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
             cond = layers.cast(step_idx < max_len, dtype="bool")
             while_op = layers.While(cond, is_test=True)
 
@@ -124,14 +124,14 @@ class HybridParallelInferenceHelper:
                 X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
 
             with paddle.fluid.device_guard(f'{device}:all'):
-                max_len = paddle.full(
-                    shape=[1], dtype="int64", fill_value=5, name="n")
-                step_idx = paddle.full(
-                    shape=[1], dtype="int64", fill_value=0, name="i")
+                max_len = layers.fill_constant(
+                    shape=[1], dtype="int64", value=5, force_cpu=False, name="n")
+                step_idx = layers.fill_constant(
+                    shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
 
                 data = paddle.tensor.array_write(X, step_idx)
 
-                cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
+                cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
                 cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 
@@ -201,9 +201,11 @@ class HybridParallelInferenceHelper:
         assert isinstance(main_program, Program)
 
         self._device = None
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_npu():
+            self._device = "npu"
+        elif core.is_compiled_with_cuda():
             self._device = "gpu"
-        assert self._device, "Only gpu are supported."
+        assert self._device, "Only gpu and npu are supported."
 
         assert not in_dygraph_mode(), "Only static graph mode is supported."
 
@@ -212,11 +214,11 @@ class HybridParallelInferenceHelper:
         self._op_role_key = op_maker.kOpRoleAttrName()
         self._op_device_key = op_maker.kOpDeviceAttrName()
 
-        self._param_device_map = {}
+        self._param_device_map = dict()
 
         self._pipeline_pair = []
         self._pipeline_pair_in_while = []
-        self._pp_ring_map = {}
+        self._pp_ring_map = dict()
         self.ring_id = 20  # Just a magic number
 
         self.micro_batch_size = micro_batch_size
@@ -554,7 +556,7 @@ class HybridParallelInferenceHelper:
         """
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
-        input_var_to_device = {}
+        input_var_to_device = dict()
 
         extra_index_info = {
             'index': 0,

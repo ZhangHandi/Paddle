@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -80,14 +80,14 @@ def start_local_trainers(
 
         current_env.update(proc_env)
 
-        print(f"trainer proc env:{current_env}")
+        print("trainer proc env:{}".format(current_env))
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print(f"start trainer proc:{cmd} env:{proc_env}")
+        print("start trainer proc:{} env:{}".format(cmd, proc_env))
 
         fn = None
 
@@ -130,7 +130,7 @@ class TestMultipleGpus(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print(f"Local procs complete, POD info:{pod}")
+                print("Local procs complete, POD info:{}".format(pod))
                 break
             time.sleep(3)
 

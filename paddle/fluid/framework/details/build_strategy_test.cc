@@ -50,10 +50,10 @@ class SumOpWithKernel : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext &ctx) const override {
-    return phi::KernelKey(proto::VarType::FP32,
-                          ctx.Input<phi::DenseTensor>("X")->place());
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.Input<phi::DenseTensor>("X")->place());
   }
 };
 

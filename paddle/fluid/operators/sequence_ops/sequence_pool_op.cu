@@ -14,5 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(
-    sequence_pool_grad, GPU, ALL_LAYOUT, ops::SequencePoolGradKernel, float) {}
+REGISTER_OP_CUDA_KERNEL(sequence_pool,
+                        ops::SequencePoolKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(sequence_pool_grad,
+                        ops::SequencePoolGradKernel<phi::GPUContext, float>);

@@ -40,9 +40,8 @@
 #ifdef _WIN32
 #define cpuid(reg, x) __cpuidex(reg, x, 0)
 #else
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
-    !defined(PADDLE_WITH_LOONGARCH)
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
 #include <cpuid.h>
 inline void cpuid(int reg[4], int x) {
   __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);

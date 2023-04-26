@@ -16,13 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::BeamSearchDecodeOpKernel,
-                          float,
-                          double,
-                          paddle::platform::float16,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CUDA_KERNEL(
+    beam_search_decode,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, float>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, double>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, int>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, int64_t>);

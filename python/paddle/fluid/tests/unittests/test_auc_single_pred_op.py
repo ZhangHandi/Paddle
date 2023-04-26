@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 from paddle.fluid import metrics
 
@@ -66,7 +66,7 @@ class TestAucSinglePredOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestAucGlobalSinglePredOp(OpTest):
@@ -109,7 +109,7 @@ class TestAucGlobalSinglePredOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 if __name__ == "__main__":

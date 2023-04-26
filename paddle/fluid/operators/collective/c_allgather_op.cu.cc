@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -93,19 +93,15 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(c_allgather,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CAllGatherOpCUDAKernel,
-                          float,
-                          double,
+REGISTER_OP_CUDA_KERNEL(c_allgather,
+                        ops::CAllGatherOpCUDAKernel<float>,
+                        ops::CAllGatherOpCUDAKernel<double>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+                        ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
 #endif
-                          int,
-                          uint8_t,
-                          int8_t,
-                          int64_t,
-                          bool,
-                          plat::float16) {
-}
+                        ops::CAllGatherOpCUDAKernel<int>,
+                        ops::CAllGatherOpCUDAKernel<uint8_t>,
+                        ops::CAllGatherOpCUDAKernel<int8_t>,
+                        ops::CAllGatherOpCUDAKernel<int64_t>,
+                        ops::CAllGatherOpCUDAKernel<bool>,
+                        ops::CAllGatherOpCUDAKernel<plat::float16>);

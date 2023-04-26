@@ -65,10 +65,10 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -149,11 +149,11 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -184,17 +184,12 @@ REGISTER_OPERATOR(c_embedding_grad,
                   ops::CEmbeddingGradOpNoBufferVarsInferer,
                   ops::CEmbeddingOpGradVarTypeInference);
 
-PD_REGISTER_STRUCT_KERNEL(c_embedding,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CEmbeddingOpCPUKernel,
-                          float,
-                          double,
-                          plat::float16) {}
-PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CEmbeddingGradOpCPUKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_embedding,
+                       ops::CEmbeddingOpCPUKernel<float>,
+                       ops::CEmbeddingOpCPUKernel<double>,
+                       ops::CEmbeddingOpCPUKernel<plat::float16>);
+
+REGISTER_OP_CPU_KERNEL(c_embedding_grad,
+                       ops::CEmbeddingGradOpCPUKernel<float>,
+                       ops::CEmbeddingGradOpCPUKernel<double>,
+                       ops::CEmbeddingGradOpCPUKernel<plat::float16>);

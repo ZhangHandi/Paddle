@@ -39,8 +39,9 @@ class GradTensorHolder {
 
   GradTensorHolder(const GradTensorHolder& other) = default;
 
-  explicit GradTensorHolder(paddle::small_vector<std::vector<paddle::Tensor>,
-                                                 kSlotSmallVectorSize>&& inputs)
+  explicit GradTensorHolder(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>&& inputs)
       : buffer_(std::move(inputs)) {}
 
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
@@ -48,18 +49,20 @@ class GradTensorHolder {
   // Create new tensor and copy tensor->impl
   void add(size_t slot_id,
            size_t rank,
-           const paddle::Tensor& t,
+           const paddle::experimental::Tensor& t,
            bool create_graph = false);
   void CopyValueFromTensor(size_t slot_id,
                            size_t rank,
-                           const paddle::Tensor& t,
+                           const paddle::experimental::Tensor& t,
                            bool fill_one = false);
 
-  const std::vector<paddle::Tensor>& operator[](const size_t& pos) {
+  const std::vector<paddle::experimental::Tensor>& operator[](
+      const size_t& pos) {
     return buffer_[pos];
   }
 
-  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>&
   Buffers() {
     return buffer_;
   }
@@ -67,7 +70,8 @@ class GradTensorHolder {
   void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
 
  private:
-  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       buffer_;
 };
 

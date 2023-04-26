@@ -23,9 +23,10 @@ class CSyncCommStreamOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -48,11 +49,13 @@ Call communication stream synchronization.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
                              ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
-REGISTER_OP_NPU_KERNEL(c_sync_comm_stream,
-                       ops::CSyncCommStreamKernel<float, plat::NPUPlace>);
+REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

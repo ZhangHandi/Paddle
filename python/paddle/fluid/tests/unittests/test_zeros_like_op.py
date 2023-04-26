@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _C_ops, fluid, zeros_like
+import paddle.fluid as fluid
+from paddle import _C_ops, zeros_like
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
@@ -25,7 +26,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 class TestZerosLikeAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = paddle.static.data('x', [3, 4])
+            x = paddle.fluid.data('x', [3, 4])
             self.assertRaises(TypeError, zeros_like, x, 'int8')
 
 
@@ -35,7 +36,7 @@ class TestZerosLikeAPI(unittest.TestCase):
         startup_program = Program()
         train_program = Program()
         with program_guard(train_program, startup_program):
-            x = paddle.static.data('X', shape)
+            x = paddle.fluid.data('X', shape)
             out1 = zeros_like(x)
             out2 = zeros_like(x, np.bool_)
             out3 = zeros_like(x, 'float64')

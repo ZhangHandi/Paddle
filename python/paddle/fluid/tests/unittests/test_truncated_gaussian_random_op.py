@@ -17,8 +17,8 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 
 

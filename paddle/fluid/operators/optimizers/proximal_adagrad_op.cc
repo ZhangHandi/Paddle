@@ -72,10 +72,10 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
   }
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 
@@ -133,5 +133,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(proximal_adagrad,
                              ops::ProximalAdagradOp,
                              ops::ProximalAdagradOpMaker);
-PD_REGISTER_STRUCT_KERNEL(
-    proximal_adagrad, CPU, ALL_LAYOUT, ops::ProximalAdagradOpKernel, float) {}
+REGISTER_OP_CPU_KERNEL(proximal_adagrad,
+                       ops::ProximalAdagradOpKernel<phi::CPUContext, float>);

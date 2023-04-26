@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -81,16 +81,12 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CReduceScatterOpCUDAKernel,
-                          float,
-                          double,
+REGISTER_OP_CUDA_KERNEL(c_reducescatter,
+                        ops::CReduceScatterOpCUDAKernel<float>,
+                        ops::CReduceScatterOpCUDAKernel<double>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+                        ops::CReduceScatterOpCUDAKernel<plat::bfloat16>,
 #endif
-                          int,
-                          int64_t,
-                          plat::float16) {
-}
+                        ops::CReduceScatterOpCUDAKernel<int>,
+                        ops::CReduceScatterOpCUDAKernel<int64_t>,
+                        ops::CReduceScatterOpCUDAKernel<plat::float16>);

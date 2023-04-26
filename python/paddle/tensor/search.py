@@ -39,7 +39,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -101,15 +101,7 @@ def argsort(x, axis=-1, descending=False, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
+            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
             'argsort',
         )
 
@@ -135,7 +127,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -193,16 +185,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
+            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
             'paddle.argmax',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -225,7 +208,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -283,16 +266,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
+            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
             'paddle.argmin',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -318,7 +292,7 @@ def index_select(x, index, axis=0, name=None):
     size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
     Args:
-        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64.
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -352,7 +326,7 @@ def index_select(x, index, axis=0, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_select',
         )
         check_variable_and_dtype(
@@ -432,22 +406,6 @@ def nonzero(x, as_tuple=False):
     if in_dygraph_mode():
         outs = _C_ops.nonzero(x)
     else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int16',
-                'int32',
-                'int64',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'bool',
-            ],
-            'where_index',
-        )
-
         helper = LayerHelper("where_index", **locals())
 
         outs = helper.create_variable_for_type_inference(
@@ -461,7 +419,7 @@ def nonzero(x, as_tuple=False):
     if not as_tuple:
         return outs
     elif rank == 1:
-        return (outs,)
+        return tuple([outs])
     else:
         for i in range(rank):
             list_out.append(
@@ -573,8 +531,8 @@ def mode(x, axis=-1, keepdim=False, name=None):
            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
            #   [[2., 3.],
            #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-           #   [[2, 2],
-           #    [2, 1]]))
+           #   [[1, 1],
+           #    [1, 0]]))
 
     """
     if in_dygraph_mode():
@@ -612,12 +570,12 @@ def where(condition, x=None, y=None, name=None):
         \end{cases}.
 
     Notes:
-        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_paddle_nonzero`.
+        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
 
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
-        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
-        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -654,6 +612,15 @@ def where(condition, x=None, y=None, name=None):
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
 
+    if not paddle.in_dynamic_mode():
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
+        )
+        check_variable_and_dtype(
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
+        )
+
     condition_shape = list(condition.shape)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
@@ -679,19 +646,6 @@ def where(condition, x=None, y=None, name=None):
     if in_dygraph_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
-        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'where',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'where',
-        )
         helper = LayerHelper("where", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -733,7 +687,7 @@ def index_sample(x, index):
 
     Args:
         x (Tensor): The source input tensor with 2-D shape. Supported data type is
-            int32, int64, bfloat16, float16, float32, float64.
+            int32, int64, float16, float32, float64.
         index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
             Data type is int32 or int64.
 
@@ -788,7 +742,7 @@ def index_sample(x, index):
         check_variable_and_dtype(
             x,
             'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_sample',
         )
         check_variable_and_dtype(
@@ -813,7 +767,7 @@ def masked_select(x, mask, name=None):
     which is a tensor with data type of bool.
 
     Args:
-        x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
+        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -844,7 +798,7 @@ def masked_select(x, mask, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            ['float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.mask_select',
         )
         check_variable_and_dtype(

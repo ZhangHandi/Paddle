@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 def ref_frac(x):
@@ -43,7 +44,7 @@ class TestFracAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with program_guard(Program()):
-            input = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            input = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = paddle.frac(input)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -104,7 +105,7 @@ class TestFracError(unittest.TestCase):
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [5, 5], 'bool')
+            x = paddle.fluid.data('X', [5, 5], 'bool')
             self.assertRaises(TypeError, paddle.frac, x)
 
     def test_dygraph_error(self):

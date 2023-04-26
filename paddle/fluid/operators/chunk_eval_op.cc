@@ -88,10 +88,10 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32,
-                          platform::CPUPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   platform::CPUPlace());
   }
 };
 
@@ -197,6 +197,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(chunk_eval,
                              ops::ChunkEvalOp,
                              ops::ChunkEvalOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    chunk_eval, CPU, ALL_LAYOUT, ops::ChunkEvalKernel, float) {}
+REGISTER_OP_CPU_KERNEL(chunk_eval,
+                       ops::ChunkEvalKernel<paddle::platform::CPUPlace, float>);

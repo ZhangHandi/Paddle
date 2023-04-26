@@ -66,10 +66,10 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -124,6 +124,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
     // for parameter prefetch
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
@@ -212,10 +213,10 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 

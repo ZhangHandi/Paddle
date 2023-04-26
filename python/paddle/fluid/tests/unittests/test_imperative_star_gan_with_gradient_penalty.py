@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, fluid
+import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
@@ -105,7 +106,7 @@ def create_mnist_dataset(cfg):
     return __impl__
 
 
-class InstanceNorm(paddle.nn.Layer):
+class InstanceNorm(fluid.dygraph.Layer):
     def __init__(self, num_channels, epsilon=1e-5):
         super().__init__()
         self.epsilon = epsilon
@@ -128,7 +129,7 @@ class InstanceNorm(paddle.nn.Layer):
             )
 
 
-class Conv2DLayer(paddle.nn.Layer):
+class Conv2DLayer(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -169,7 +170,7 @@ class Conv2DLayer(paddle.nn.Layer):
         return conv
 
 
-class Deconv2DLayer(paddle.nn.Layer):
+class Deconv2DLayer(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -211,7 +212,7 @@ class Deconv2DLayer(paddle.nn.Layer):
         return deconv
 
 
-class ResidualBlock(paddle.nn.Layer):
+class ResidualBlock(fluid.dygraph.Layer):
     def __init__(self, num_channels, num_filters):
         super().__init__()
         self._conv0 = Conv2DLayer(
@@ -240,7 +241,7 @@ class ResidualBlock(paddle.nn.Layer):
         return input + conv1
 
 
-class Generator(paddle.nn.Layer):
+class Generator(fluid.dygraph.Layer):
     def __init__(self, cfg, num_channels=3):
         super().__init__()
         conv_base = Conv2DLayer(
@@ -313,7 +314,7 @@ class Generator(paddle.nn.Layer):
         label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
         label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
-        input1 = paddle.concat([input, label_trg_e], 1)
+        input1 = fluid.layers.concat([input, label_trg_e], 1)
 
         conv0 = self._conv0(input1)
         res_block = self._res_block(conv0)
@@ -323,7 +324,7 @@ class Generator(paddle.nn.Layer):
         return out
 
 
-class Discriminator(paddle.nn.Layer):
+class Discriminator(fluid.dygraph.Layer):
     def __init__(self, cfg, num_channels=3):
         super().__init__()
 
@@ -552,7 +553,7 @@ class DyGraphTrainModel:
 
         self.clear_gradients()
 
-        return float(g_loss), float(d_loss)
+        return g_loss.numpy()[0], d_loss.numpy()[0]
 
 
 class StaticGraphTrainModel:
@@ -560,15 +561,15 @@ class StaticGraphTrainModel:
         self.cfg = cfg
 
         def create_data_layer():
-            image_real = paddle.static.data(
+            image_real = fluid.data(
                 shape=[None, 3, cfg.image_size, cfg.image_size],
                 dtype='float32',
                 name='image_real',
             )
-            label_org = paddle.static.data(
+            label_org = fluid.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_org'
             )
-            label_trg = paddle.static.data(
+            label_trg = fluid.data(
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg'
             )
             return image_real, label_org, label_trg

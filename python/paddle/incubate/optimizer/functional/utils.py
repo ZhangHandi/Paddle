@@ -21,7 +21,7 @@ def check_input_type(input, name, op_name):
     r"""Check whether the input is tensor or variable."""
     if paddle.in_dynamic_mode():
         if not isinstance(input, paddle.Tensor):
-            raise ValueError(f"The input: {input} must be tensor.")
+            raise ValueError("The input: {} must be tensor.".format(input))
     else:
         check_type(input, name, Variable, op_name)
 

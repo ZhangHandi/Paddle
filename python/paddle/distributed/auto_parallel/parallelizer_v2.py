@@ -16,14 +16,14 @@ import copy
 import logging
 import time
 
-from paddle.distributed.passes import PassManager, new_pass
-from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
+from paddle.distributed.passes import new_pass
+from paddle.fluid import program_guard
+from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import unique_name
 
 from ..utils.log_utils import get_logger
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
-from .random import init_auto_parallel_rng
 from .reshard import Resharder
 from .utils import set_grad_var_shape
 
@@ -84,9 +84,6 @@ class Parallelizer:
             ) = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads
             )
-
-            init_auto_parallel_rng()
-
             self._logger.debug(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode
@@ -107,11 +104,6 @@ class Parallelizer:
             )
             # Do reshard process
             time0 = time.time()
-            micro_bsz = (
-                1
-                if not self._strategy.pipeline.enable
-                else self._strategy.pipeline.micro_batch_size
-            )
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
@@ -119,7 +111,6 @@ class Parallelizer:
                 rank,
                 self._dist_context,
                 dist_params_grads,
-                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -183,22 +174,10 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            # Apply post optimization passes
-            time0 = time.time()
-            self._apply_post_optimization(
-                dist_main_prog, dist_startup_prog, rank, dist_params_grads
-            )
-            self._logger.debug(
-                "within parallel apply_post_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
-            )
         # Clone program for test
         if self._mode != 'train':
-            pipeline_opt = dist_main_prog._pipeline_opt
             dist_main_prog = dist_main_prog.clone(for_test=True)
             dist_startup_prog = dist_startup_prog.clone(for_test=True)
-            dist_main_prog._pipeline_opt = pipeline_opt
 
         # Store the distributed programs for further usages
         self._dist_context.dist_main_programs[rank] = dist_main_prog
@@ -242,30 +221,31 @@ class Parallelizer:
                 self._dist_context.serial_feed_vars["inputs"]
                 + self._dist_context.serial_feed_vars["labels"]
             )
-            self._logger.info(
-                "Applying AMP-{}-{} ...".format(
-                    config["dtype"], config['level']
-                ),
-            )
-            if config['level'] == "o1":
-                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-                auto_parallel_amp_pass.apply(
+            if config["enable_bf16"]:
+                auto_parallel_bf16_pass = new_pass("auto_parallel_bf16", config)
+                auto_parallel_bf16_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
-                loss = auto_parallel_amp_pass.get_loss()
-            elif config['level'] in ['o2', 'o3']:
+                loss = auto_parallel_bf16_pass.get_loss()
+
+            elif config["use_pure_fp16"]:
                 config["base_opt"] = optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
                 loss = auto_parallel_fp16_pass.get_loss()
+
             else:
-                raise ValueError("AMP level should be one of o1, o2, o3")
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
-        if self._mode == 'train' and self._strategy.qat.enable:
+        if self._strategy.qat.enable:
             config = copy.deepcopy(self._strategy.qat.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -325,8 +305,8 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
+        # GradClip is train-only optimization
         if self._mode == "train":
-            # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -337,23 +317,6 @@ class Parallelizer:
             auto_parallel_clip_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
-
-            # deps for newexe
-            config = {}
-            config["dist_context"] = self._dist_context
-            APSED_pass = new_pass(
-                "auto_parallel_supplement_explicit_dependencies", config
-            )
-            APSED_pass.apply(
-                [main_program], [startup_program], self._pass_context
-            )
-
-        if self._strategy.pipeline.enable:
-            self._strategy.gradient_merge.enable = True
-            self._strategy.gradient_merge.k_steps = (
-                self._strategy.pipeline.accumulate_steps
-            )
-            self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge.enable:
@@ -366,21 +329,3 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
-
-        if self._strategy.pipeline.enable:
-            config = copy.deepcopy(self._strategy.pipeline.to_dict())
-            config["dist_context"] = self._dist_context
-            auto_parallel_pipeline_pass = new_pass(
-                "auto_parallel_pipeline", config
-            )
-            auto_parallel_pipeline_pass.apply(
-                [main_program], [startup_program], self._pass_context
-            )
-
-        if self._mode == "train" and self._strategy.fused_passes.enable:
-            if len(self._strategy.fused_passes.fused_passes_list) > 0:
-                new_pass_list = []
-                for op in self._strategy.fused_passes.fused_passes_list:
-                    new_pass_list.append(new_pass(op))
-                pass_manager = PassManager(new_pass_list)
-                pass_manager.apply([main_program], [startup_program])

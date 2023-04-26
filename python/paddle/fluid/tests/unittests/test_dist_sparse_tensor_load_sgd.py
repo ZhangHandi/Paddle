@@ -16,9 +16,9 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
-from paddle.distributed.fleet.base import role_maker
 
 
 class TestSparseLoadProgram(unittest.TestCase):
@@ -46,9 +46,7 @@ class TestSparseLoadProgram(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 with fluid.unique_name.guard():
-                    inputs = paddle.static.data(
-                        'input', shape=[None, 1], dtype="int64"
-                    )
+                    inputs = fluid.data('input', shape=[None, 1], dtype="int64")
                     emb = fluid.layers.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )

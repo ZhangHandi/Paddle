@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import numpy as np
-from op import Operator
 
-from paddle.fluid import core
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
-    kwargs = {}
+    kwargs = dict()
 
     op_maker = core.op_proto_and_checker_maker
     op_role_attr_name = op_maker.kOpRoleAttrName()
@@ -71,7 +71,7 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
 
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
-        if isinstance(var, (tuple, np.ndarray)):
+        if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
             if isinstance(var, tuple):
                 tensor.set_recursive_sequence_lengths(var[1])
@@ -94,18 +94,16 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-def append_input_output(
-    block, op_proto, np_list, is_input, dtype, is_calc_ref=False
-):
+def append_input_output(block, op_proto, np_list, is_input, dtype):
     '''Insert VarDesc and generate Python variable instance'''
     proto_list = op_proto.inputs if is_input else op_proto.outputs
 
-    def create_var(block, name, np_list, var_proto, is_calc_ref=False):
+    def create_var(block, name, np_list, var_proto):
         dtype = None
         shape = None
         lod_level = None
         if name not in np_list:
-            assert var_proto.intermediate, f"{name} not found"
+            assert var_proto.intermediate, "{} not found".format(name)
         else:
             # inferece the dtype from numpy value.
             np_value = np_list[name]
@@ -120,8 +118,6 @@ def append_input_output(
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-            if is_calc_ref and dtype == np.float16:
-                dtype = np.float32
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name
         )
@@ -134,23 +130,19 @@ def append_input_output(
         if is_input:
             assert (var_name in np_list) or (
                 var_proto.dispensable
-            ), f"Missing {var_name} as input"
+            ), "Missing {} as input".format(var_name)
         if var_proto.duplicable:
             assert isinstance(
                 np_list[var_name], list
-            ), f"Duplicable {var_name} should be set as list"
+            ), "Duplicable {} should be set as list".format(var_name)
             var_list = []
             for (name, np_value) in np_list[var_name]:
                 var_list.append(
-                    create_var(
-                        block, name, {name: np_value}, var_proto, is_calc_ref
-                    )
+                    create_var(block, name, {name: np_value}, var_proto)
                 )
             var_dict[var_name] = var_list
         else:
-            var_dict[var_name] = create_var(
-                block, var_name, np_list, var_proto, is_calc_ref
-            )
+            var_dict[var_name] = create_var(block, var_name, np_list, var_proto)
 
     return var_dict
 

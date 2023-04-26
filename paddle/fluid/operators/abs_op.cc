@@ -19,9 +19,6 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -32,11 +29,11 @@ class AbsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -73,11 +70,11 @@ class AbsGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -92,24 +89,6 @@ class AbsGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("X", this->Input("X"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-  }
-};
-
-class AbsCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    paddle::Tensor input = this->GetSingleForwardInput("X");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
-
-    auto dx_ptr = this->GetOutputPtr(&input_grad);
-    std::string dx_name = this->GetOutputName(input_grad);
-
-    VLOG(6) << "Running abs_grad composite func";
-    prim::abs_grad<prim::DescTensor>(input, out_grad, dx_ptr);
-    this->RecoverOutputName(input_grad, dx_name);
   }
 };
 
@@ -145,17 +124,20 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
-    return phi::KernelKey(dtype, ctx.GetPlace());
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor.dtype()),
+        tensor.place(),
+        tensor.layout());
   }
 };
 
@@ -171,7 +153,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(abs,
                   ops::AbsOp,
                   ops::AbsOpMaker,
-                  ops::AbsCompositeGradOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
                   ops::AbsGradMaker<paddle::imperative::OpBase>,
                   AbsInferShapeFunctor);

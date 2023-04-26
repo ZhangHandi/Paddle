@@ -43,7 +43,7 @@ __global__ void ShuffleChannel(const int nthreads,
     p_o[k] = input[index];
   }
 }
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -82,7 +82,7 @@ class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -126,15 +126,11 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelOpCUDAKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelGradOpCUDAKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(
+    shuffle_channel,
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    shuffle_channel_grad,
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, double>);

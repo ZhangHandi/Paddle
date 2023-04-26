@@ -65,10 +65,15 @@ class FSPOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -126,11 +131,11 @@ class FSPOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -164,8 +169,9 @@ REGISTER_OPERATOR(fsp,
                   ops::FSPGradOpMaker<paddle::framework::OpDesc>,
                   ops::FSPGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(
-    fsp, CPU, ALL_LAYOUT, ops::FSPOpKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    fsp_grad, CPU, ALL_LAYOUT, ops::FSPGradOpKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(fsp,
+                       ops::FSPOpKernel<phi::CPUContext, float>,
+                       ops::FSPOpKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(fsp_grad,
+                       ops::FSPGradOpKernel<phi::CPUContext, float>,
+                       ops::FSPGradOpKernel<phi::CPUContext, double>);

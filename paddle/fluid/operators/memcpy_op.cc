@@ -54,19 +54,20 @@ class MemcpyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          tensor.layout(),
-                          expected_kernel_type.dtype());
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -145,3 +146,19 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyInferShapeFunctor);
+
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy,
+                               float,
+                               ops::MemcpyKernel,
+                               double,
+                               ops::MemcpyKernel,
+                               int,
+                               ops::MemcpyKernel,
+                               int64_t,
+                               ops::MemcpyKernel,
+                               bool,
+                               ops::MemcpyKernel,
+                               plat::float16,
+                               ops::MemcpyKernel);
+#endif

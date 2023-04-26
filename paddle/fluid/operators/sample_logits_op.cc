@@ -177,10 +177,12 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    framework::OpKernelType kt =
+        framework::OpKernelType(data_type, ctx.device_context());
+    return kt;
   }
 };
 
@@ -232,11 +234,13 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("SampledLogits"));
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    framework::OpKernelType kt =
+        framework::OpKernelType(data_type, ctx.device_context());
+    return kt;
   }
 };
 
@@ -272,11 +276,9 @@ REGISTER_OPERATOR(sample_logits,
                   ops::SampleLogitsGradMaker<paddle::framework::OpDesc>,
                   ops::SampleLogitsGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sample_logits_grad, ops::SampleLogitsOpGrad);
-PD_REGISTER_STRUCT_KERNEL(
-    sample_logits, CPU, ALL_LAYOUT, ops::SampleLogitsKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(sample_logits_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SampleLogitsGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(sample_logits,
+                       ops::SampleLogitsKernel<float>,
+                       ops::SampleLogitsKernel<double>);
+REGISTER_OP_CPU_KERNEL(sample_logits_grad,
+                       ops::SampleLogitsGradKernel<float>,
+                       ops::SampleLogitsGradKernel<double>);

@@ -80,10 +80,10 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);
   }
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 
@@ -130,6 +130,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad,
                              ops::DecayedAdagradOp,
                              ops::DecayedAdagradOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    decayed_adagrad, CPU, ALL_LAYOUT, ops::DecayedAdagradOpKernel, float) {}
+REGISTER_OP_CPU_KERNEL(decayed_adagrad,
+                       ops::DecayedAdagradOpKernel<phi::CPUContext, float>);

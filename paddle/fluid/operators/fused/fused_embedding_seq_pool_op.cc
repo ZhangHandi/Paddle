@@ -72,10 +72,10 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -141,10 +141,10 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -201,15 +201,9 @@ REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);
 
-PD_REGISTER_STRUCT_KERNEL(fused_embedding_seq_pool,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedEmbeddingSeqPoolKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(fused_embedding_seq_pool_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedEmbeddingSeqPoolGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool,
+                       ops::FusedEmbeddingSeqPoolKernel<float>,
+                       ops::FusedEmbeddingSeqPoolKernel<double>);
+REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool_grad,
+                       ops::FusedEmbeddingSeqPoolGradKernel<float>,
+                       ops::FusedEmbeddingSeqPoolGradKernel<double>);

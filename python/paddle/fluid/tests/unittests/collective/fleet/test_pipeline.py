@@ -18,7 +18,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]

@@ -52,10 +52,10 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -115,12 +115,9 @@ REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalScatterOpGradMaker<paddle::imperative::OpBase>)
 
-PD_REGISTER_STRUCT_KERNEL(global_scatter,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GlobalScatterOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(global_scatter,
+                       ops::GlobalScatterOpCPUKernel<float>,
+                       ops::GlobalScatterOpCPUKernel<double>,
+                       ops::GlobalScatterOpCPUKernel<int>,
+                       ops::GlobalScatterOpCPUKernel<int64_t>,
+                       ops::GlobalScatterOpCPUKernel<plat::float16>);

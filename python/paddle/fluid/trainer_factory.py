@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definition of TrainerFactory."""
+"""Defination of TrainerFactory."""
 
 import threading
 import time
@@ -160,7 +160,7 @@ class TrainerFactory:
 
 class FetchHandlerMonitor:
     """
-    Definition of FetchHandlerMonitor class,
+    Defination of FetchHandlerMonitor class,
     it's for fetch handler.
     """
 

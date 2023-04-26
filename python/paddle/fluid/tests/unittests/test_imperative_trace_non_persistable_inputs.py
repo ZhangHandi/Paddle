@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
-class SimpleFCLayer(paddle.nn.Layer):
+class SimpleFCLayer(fluid.dygraph.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(feature_size, fc_size)
@@ -48,11 +48,13 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                 learning_rate=1e-3, parameter_list=layer.parameters()
             )
 
-            expected_persistable_vars = {
-                layer._linear.weight.name,
-                layer._linear.bias.name,
-                layer._offset.name,
-            }
+            expected_persistable_vars = set(
+                [
+                    layer._linear.weight.name,
+                    layer._linear.bias.name,
+                    layer._offset.name,
+                ]
+            )
 
             for _ in range(10):
                 in_x = fluid.dygraph.to_variable(

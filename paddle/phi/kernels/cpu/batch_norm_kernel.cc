@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -105,7 +106,7 @@ void BatchNormKernel(const Context& ctx,
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      phi::Copy(ctx, x, ctx.GetPlace(), false, y);
+      paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
       return;
     }
 

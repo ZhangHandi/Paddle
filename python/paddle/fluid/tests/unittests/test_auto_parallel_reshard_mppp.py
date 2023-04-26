@@ -15,8 +15,10 @@
 import unittest
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import nn, static, utils
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.completion import Completer

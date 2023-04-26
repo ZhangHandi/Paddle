@@ -21,10 +21,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static constexpr int64_t kNumCUDAThreads = 512;
-static constexpr int64_t kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumMaxinumNumBlocks = 4096;
 
-static inline int64_t NumBlocks(const int64_t N) {
+static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
 }
@@ -32,27 +32,27 @@ static inline int64_t NumBlocks(const int64_t N) {
 template <typename T>
 __global__ void SplitFromRank(const T* input,
                               T* output,
-                              const int64_t rows,
-                              const int64_t columns,
+                              const int rows,
+                              const int columns,
                               const int rank,
                               const int nranks,
-                              const int64_t limit) {
-  CUDA_KERNEL_LOOP_TYPE(i, limit, int64_t) {
-    int64_t row = i / columns;
-    int64_t col = i % columns;
+                              const int limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
+    int row = i / columns;
+    int col = i % columns;
 
-    int64_t block = columns / nranks;
-    int64_t start = block * rank;
-    int64_t end = start + block;
+    int block = columns / nranks;
+    int start = block * rank;
+    int end = start + block;
 
     if (col >= start && col < end) {
-      int64_t idx = block * row + col % block;
+      int idx = block * row + col % block;
       output[idx] = input[i];
     }
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CSplitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -93,9 +93,9 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
     auto remain_ddim = phi::slice_ddim(dims, 0, dims_size - 1);
     int64_t remain_numel = phi::product(remain_ddim);
 
-    int64_t limit = x->numel();
-    int64_t blocks = NumBlocks(limit);
-    int64_t threads = kNumCUDAThreads;
+    int limit = x->numel();
+    int blocks = NumBlocks(limit);
+    int threads = kNumCUDAThreads;
 
     dims[dims_size - 1] /= nranks;
     out->mutable_data<T>(dims, place);
@@ -115,16 +115,9 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(c_split,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CSplitOpCUDAKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-#if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
-#endif
-                          plat::float16) {
-}
+REGISTER_OP_CUDA_KERNEL(c_split,
+                        ops::CSplitOpCUDAKernel<float>,
+                        ops::CSplitOpCUDAKernel<double>,
+                        ops::CSplitOpCUDAKernel<int>,
+                        ops::CSplitOpCUDAKernel<int64_t>,
+                        ops::CSplitOpCUDAKernel<plat::float16>);

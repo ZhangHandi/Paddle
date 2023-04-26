@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.device.cuda.graphs import is_cuda_graph_supported, wrap_cuda_graph
 
 paddle.enable_static()

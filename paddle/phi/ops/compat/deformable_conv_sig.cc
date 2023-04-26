@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature DeformableConvOpV1ArgumentMapping(
+KernelSignature DeformableConvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("deformable_conv",
                          {"Input", "Offset", "Filter", "Mask"},
@@ -29,7 +29,7 @@ KernelSignature DeformableConvOpV1ArgumentMapping(
                          {"Output"});
 }
 
-KernelSignature DeformableConvGradOpV1ArgumentMapping(
+KernelSignature DeformableConvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "deformable_conv_grad",
@@ -48,7 +48,12 @@ KernelSignature DeformableConvGradOpV1ArgumentMapping(
 PD_REGISTER_BASE_KERNEL_NAME(deformable_conv_v1, deformable_conv);
 PD_REGISTER_BASE_KERNEL_NAME(deformable_conv_v1_grad, deformable_conv_grad);
 
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv,
+                           phi::DeformableConvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv_grad,
+                           phi::DeformableConvGradOpArgumentMapping);
+
 PD_REGISTER_ARG_MAPPING_FN(deformable_conv_v1,
-                           phi::DeformableConvOpV1ArgumentMapping);
+                           phi::DeformableConvOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(deformable_conv_v1_grad,
-                           phi::DeformableConvGradOpV1ArgumentMapping);
+                           phi::DeformableConvGradOpArgumentMapping);

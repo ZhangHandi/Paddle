@@ -90,10 +90,11 @@ class GraphKhopSamplerOP : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
+        ctx.device_context());
   }
 };
 
@@ -136,10 +137,6 @@ using CPU = phi::CPUContext;
 REGISTER_OPERATOR(graph_khop_sampler,
                   ops::GraphKhopSamplerOP,
                   ops::GraphKhopSamplerOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(graph_khop_sampler,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GraphKhopSamplerOpKernel,
-                          int32_t,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(graph_khop_sampler,
+                       ops::GraphKhopSamplerOpKernel<CPU, int32_t>,
+                       ops::GraphKhopSamplerOpKernel<CPU, int64_t>);

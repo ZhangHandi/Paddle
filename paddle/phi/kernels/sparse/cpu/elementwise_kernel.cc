@@ -32,13 +32,18 @@ template <typename T, typename Functor>
 struct BinaryOPWithZeroCompareFunctor {
   explicit BinaryOPWithZeroCompareFunctor(Functor functor)
       : functor_(functor) {}
-  inline HOSTDEVICE void operator()(const T* a,
+  inline HOSTDEVICE bool operator()(const T* a,
                                     const T* b,
                                     T* result,
                                     const int64_t len) const {
+    bool is_zero = true;
     for (int64_t i = 0; i < len; ++i) {
       result[i] = functor_(a[i], b[i]);
+      if (result[i] != 0) {
+        is_zero = false;
+      }
     }
+    return is_zero;
   }
   Functor functor_;
 };
@@ -83,41 +88,55 @@ void Merge(const IntT el_len,
   // merge
   while (a < len_a && b < (is_divide ? len_b_max : len_b)) {
     if (a_index[a] == b_index[b]) {
-      functor(a_values + a * el_len,
-              b_values[b_index[b]],
-              c_values + nnz * el_len,
-              el_len);
-      c_index[nnz] = a_index[a];
-      ++nnz;
+      if (!functor(a_values + a * el_len,
+                   b_values[b_index[b]],
+                   c_values + nnz * el_len,
+                   el_len)) {
+        c_index[nnz] = a_index[a];
+        ++nnz;
+      }
       ++a;
       ++b;
     } else if (a_index[a] < b_index[b]) {  // coordinate x[a] < coordinate y[b]
-      functor(
-          a_values + a * el_len, zero.data(), c_values + nnz * el_len, el_len);
-      c_index[nnz] = a_index[a];
-      ++nnz;
+      if (!functor(a_values + a * el_len,
+                   zero.data(),
+                   c_values + nnz * el_len,
+                   el_len)) {
+        c_index[nnz] = a_index[a];
+        ++nnz;
+      }
       ++a;
     } else if (a_index[a] > b_index[b]) {  // coordinate x[a] > coordinate y[b]
-      functor(
-          zero.data(), b_values[b_index[b]], c_values + nnz * el_len, el_len);
-      c_index[nnz] = b_index[b];
-      ++nnz;
+      if (!functor(zero.data(),
+                   b_values[b_index[b]],
+                   c_values + nnz * el_len,
+                   el_len)) {
+        c_index[nnz] = b_index[b];
+        ++nnz;
+      }
       ++b;
     }
   }
   // a tail
   while (a < len_a) {
-    functor(
-        a_values + a * el_len, zero.data(), c_values + nnz * el_len, el_len);
-    c_index[nnz] = a_index[a];
-    ++nnz;
+    if (!functor(a_values + a * el_len,
+                 zero.data(),
+                 c_values + nnz * el_len,
+                 el_len)) {
+      c_index[nnz] = a_index[a];
+      ++nnz;
+    }
     ++a;
   }
   //  b tail
   while (b < (is_divide ? len_b_max : len_b)) {
-    functor(zero.data(), b_values[b_index[b]], c_values + nnz * el_len, el_len);
-    c_index[nnz] = b_index[b];
-    ++nnz;
+    if (!functor(zero.data(),
+                 b_values[b_index[b]],
+                 c_values + nnz * el_len,
+                 el_len)) {
+      c_index[nnz] = b_index[b];
+      ++nnz;
+    }
     ++b;
   }
 }
@@ -236,7 +255,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     out->SetMember(out_indices, out_values, x.dims());
   } else {
     DenseTensorMeta indices_meta(
-        phi::CppTypeToDataType<IntT>::Type(),
+        paddle::experimental::CppTypeToDataType<IntT>::Type(),
         phi::make_ddim(
             {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
         DataLayout::NCHW);

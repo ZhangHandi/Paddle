@@ -26,7 +26,7 @@ import string
 import tarfile
 
 import paddle.dataset.common
-from paddle.utils import deprecated
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
@@ -93,7 +93,8 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     load(neg_pattern, INS, 1)
 
     def reader():
-        yield from INS
+        for doc, label in INS:
+            yield doc, label
 
     return reader
 

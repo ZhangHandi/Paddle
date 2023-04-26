@@ -42,7 +42,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // kernel's device type is decided by input tensor place
     auto *in = ctx.InputVar("X");
@@ -57,18 +57,16 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     }
     auto place =
         in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
-    phi::DataType dtype = in_tensor->IsInitialized() ? in_tensor->dtype()
-                                                     : phi::DataType::FLOAT32;
-    return phi::KernelKey(phi::TransToProtoVarType(dtype), place);
+
+    // dtype is not important
+    return framework::OpKernelType(framework::proto::VarType::FP32, place);
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          expected_kernel_type.layout(),
-                          expected_kernel_type.dtype());
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return expected_kernel_type;
   }
 };
 

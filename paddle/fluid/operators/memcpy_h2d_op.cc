@@ -38,19 +38,20 @@ class MemcpyH2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          tensor.layout(),
-                          expected_kernel_type.dtype());
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -122,6 +123,34 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyH2DInferShapeFunctor);
+
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy_h2d,
+                               float,
+                               ops::MemcpyH2DKernel,
+                               double,
+                               ops::MemcpyH2DKernel,
+                               int8_t,
+                               ops::MemcpyH2DKernel,
+                               uint8_t,
+                               ops::MemcpyH2DKernel,
+                               int,
+                               ops::MemcpyH2DKernel,
+                               int64_t,
+                               ops::MemcpyH2DKernel,
+                               bool,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyH2DKernel,
+                               plat::float16,
+                               ops::MemcpyH2DKernel,
+                               int16_t,
+                               ops::MemcpyH2DKernel);
+#endif
 
 #ifdef PADDLE_WITH_IPU
 REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_h2d,

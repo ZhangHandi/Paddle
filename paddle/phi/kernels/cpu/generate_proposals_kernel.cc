@@ -389,6 +389,4 @@ PD_REGISTER_KERNEL(generate_proposals,
                    ALL_LAYOUT,
                    phi::GenerateProposalsKernel,
                    float,
-                   double) {
-  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
-}
+                   double) {}

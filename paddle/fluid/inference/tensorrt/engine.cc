@@ -148,22 +148,13 @@ void TensorRTEngine::FreezeNetwork() {
                           platform::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
-  if (!with_dynamic_shape_) {
-    infer_builder_->setMaxBatchSize(max_batch_);
-  }
+  infer_builder_->setMaxBatchSize(max_batch_);
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
-
-#if IS_TRT_VERSION_GE(8500)
-  infer_builder_config_->setPreviewFeature(
-      nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
-#else
-#endif
-
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
@@ -216,6 +207,18 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  // If model is mixed precision, then we should cast all float output to
+  // float32 precision. Otherwise, we can not confirm the output precision of
+  // the trt engine.
+  if (model_precision_ != phi::DataType::FLOAT32) {
+    for (int i = 0; i < network()->getNbOutputs(); ++i) {
+      network()->getOutput(i)->setAllowedFormats(
+          static_cast<nvinfer1::TensorFormats>(
+              1 << static_cast<int>(nvinfer1::TensorFormat::kLINEAR)));
+      network()->getOutput(i)->setType(nvinfer1::DataType::kFLOAT);
+    }
+  }
+
   if (use_dla_) {
     if (!enable_int8 && !enable_fp16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
@@ -243,8 +246,8 @@ void TensorRTEngine::FreezeNetwork() {
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape_) {
-#if IS_TRT_VERSION_LT(7100)
-        // trt6/trt7011 will check all_of input > 0
+#if IS_TRT_VERSION_LT(7000)
+        // trt6 will check all_of input > 0
         if (!(std::all_of(input.second.begin(),
                           input.second.end(),
                           [](int x) { return x > 0; }) &&
@@ -351,9 +354,8 @@ void TensorRTEngine::FreezeNetwork() {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
-    GetEngineInfo();
-  }
+
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -420,14 +422,6 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         name));
   network()->markOutput(*output);
 }
-
-void TensorRTEngine::DeclareOutput(const std::string &name,
-                                   nvinfer1::DataType dtype) {
-  auto *output = TensorRTEngine::GetITensor(name);
-  DeclareOutput(name);
-  output->setType(dtype);
-}
-
 void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -560,9 +554,8 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-  if (use_inspector_) {
-    GetEngineInfo();
-  }
+
+  GetEngineInfo();
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
@@ -595,7 +588,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::FLOAT16);
     auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
         platform::CPUPlace());
     auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
@@ -609,7 +603,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp32_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::FLOAT16);
     auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
         platform::CPUPlace());
     auto *fp32_data = fp32_tensor.mutable_data<float>(platform::CPUPlace());
@@ -623,7 +618,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::INT32);
     auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
         platform::CPUPlace());
     auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
@@ -668,7 +664,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::FLOAT32);
     auto *fp32_data =
         weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
     auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
@@ -682,7 +679,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp16_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::FLOAT32);
     auto *fp32_data =
         weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
     auto *fp16_data = fp16_tensor.mutable_data<float16>(platform::CPUPlace());
@@ -696,7 +694,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::INT32);
     auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
         platform::CPUPlace());
     auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
@@ -744,7 +743,8 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::FLOAT32);
     auto *fp32_data =
         weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
     auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
@@ -758,7 +758,8 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
-    weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::INT32);
     auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
         platform::CPUPlace());
     auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
@@ -829,7 +830,7 @@ void TensorRTEngine::GetEngineInfo() {
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kJSON);
+      nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";

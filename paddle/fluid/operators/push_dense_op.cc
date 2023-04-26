@@ -30,9 +30,10 @@ class PushDenseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 
@@ -70,5 +71,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PushDenseNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(
-    push_dense, CPU, ALL_LAYOUT, ops::PushDenseCPUKernel, float) {}
+REGISTER_OP_CPU_KERNEL(push_dense, ops::PushDenseCPUKernel<float>)

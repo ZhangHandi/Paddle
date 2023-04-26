@@ -200,9 +200,9 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "sub_result"),
         ctx.GetPlace());
   }
@@ -221,12 +221,8 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(squared_l2_distance_grad,
                   ops::SquaredL2DistanceGradOp,
                   ops::SquaredL2DistanceGradOpNoBufferVarsInferer);
-
-PD_REGISTER_STRUCT_KERNEL(
-    squared_l2_distance, CPU, ALL_LAYOUT, ops::SquaredL2DistanceKernel, float) {
-}
-PD_REGISTER_STRUCT_KERNEL(squared_l2_distance_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SquaredL2DistanceGradKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(squared_l2_distance,
+                       ops::SquaredL2DistanceKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    squared_l2_distance_grad,
+    ops::SquaredL2DistanceGradKernel<phi::CPUContext, float>);

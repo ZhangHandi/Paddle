@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.framework import core
-from paddle.utils import unique_name
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 
 from ..cost import (
     EmbeddingGradOpCost,
@@ -30,7 +29,7 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistAttr
+from ..dist_attribute import OperatorDistributedAttribute
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -78,7 +77,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     )
     if not Ids_var.stop_gradient:
         raise NotImplementedError(
-            'Requiring the gradient of Ids of lookup_table(v1) dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
+            'Requiring the gradient of Ids of lookup_table(v1）dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
         )
 
     target_shape = list(Ids_var.shape[:-1])
@@ -136,7 +135,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         intermediate_var_0.name, intermediate_var_0_dist_attr
     )
 
-    new_op_dist_attr = OperatorDistAttr()
+    new_op_dist_attr = OperatorDistributedAttribute()
     new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
     new_op_dist_attr.impl_type = "default"
     new_op_dist_attr.impl_idx = 0
@@ -278,12 +277,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         for mapping in ids_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
-
-        if is_dim_shard(ids_dims_mapping[0]) and is_dim_shard(
-            w_dims_mapping[-2]
-        ):
-            if ids_dims_mapping[0] == w_dims_mapping[-2]:
-                return False
         return True
 
     def is_output_compatible(self, dist_op):
@@ -341,11 +334,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         if dim_changed:
             changed = True
 
-        if changed:
-            op_dist_attr.set_input_dims_mapping(ids_name, ids_dims_mapping)
-            op_dist_attr.set_input_dims_mapping(w_name, w_dims_mapping)
-            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
-
         return changed
 
     @staticmethod
@@ -362,7 +350,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"forward op [{str(src_op)}] don't have dist attribute !"
+        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # check validation of inputs / outputs
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
@@ -411,7 +399,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to caculate embedding offset using cartisian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -422,7 +410,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         per_part_size = Weight_var.shape[0]
         relative_idx = relative_idx * per_part_size
 
-        # TODO calculate ring id
+        # TODO caculate ring id
         parallel_axis = embedding_row_dim_mapping
         group_ranks = _get_comm_group(
             process_mesh_group, process_mesh_shape, parallel_axis, rank_id
@@ -461,7 +449,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(
             Out_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'c_allreduce_sum',
         )
 
@@ -494,7 +482,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmulv2
-        embedding_op_dist_attr = OperatorDistAttr()
+        embedding_op_dist_attr = OperatorDistributedAttribute()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         embedding_op_dist_attr.impl_type = op_dist_attr.impl_type
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -517,7 +505,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(c_embedding_op, embedding_op_dist_attr)
 
         # allreduce
-        allreduce_op_dist_attr = OperatorDistAttr()
+        allreduce_op_dist_attr = OperatorDistributedAttribute()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -550,7 +538,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             process_mesh = param_dist_attr.process_mesh
             dim_mapping = param_dist_attr.dims_mapping
 
-            # NOTE all not splitted axis should be presented in mesh
+            # NOTE all not splited axis should be presented in mesh
             for axis, size in enumerate(process_mesh.shape):
                 if size <= 1 or axis in dim_mapping:
                     pass
@@ -638,7 +626,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         process_mesh_shape = dist_attr.process_mesh.shape
         process_mesh_group = dist_attr.process_mesh.process_ids
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to caculate embedding offset using cartisian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -651,7 +639,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(
             Out_grad,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             '_c_identity',
         )
 
@@ -693,15 +681,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             },
         )
         check_variable_and_dtype(
-            intermediate_var_0,
-            'x',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'linear',
+            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64', 'uint16'],
+            ['float16', 'float32', 'float64'],
             'linear',
         )
 

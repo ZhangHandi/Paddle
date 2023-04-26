@@ -35,7 +35,7 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the expert_count and capacity should be same as int64
     auto expert_count_dtype =
@@ -54,7 +54,7 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
         framework::proto::VarType::INT64,
         platform::errors::InvalidArgument("The dtype of the expert_count and "
                                           "capacity should be same as int64"));
-    return phi::KernelKey(expert_count_dtype, ctx.GetPlace());
+    return framework::OpKernelType(expert_count_dtype, ctx.GetPlace());
   }
 };
 
@@ -77,13 +77,10 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+REGISTER_OP_CPU_KERNEL(limit_by_capacity,
+                       ops::LimitByCapacityOpCPUKernel<int>,
+                       ops::LimitByCapacityOpCPUKernel<int64_t>);
+
 REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity,
                              ops::LimitByCapacityOp,
                              ops::LimitByCapacityOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(limit_by_capacity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LimitByCapacityOpCPUKernel,
-                          int,
-                          int64_t) {}

@@ -23,8 +23,9 @@ import numpy as np
 from feed_data_reader import FeedDataReader
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler, core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import compiler
 
 __all__ = ['TestParallelExecutorBase']
 DeviceType = core.DeviceType
@@ -103,9 +104,10 @@ class TestParallelExecutorBase(unittest.TestCase):
         )
 
         if use_parallel_executor:
-            binary = compiler.CompiledProgram(
-                main,
+            binary = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=loss.name,
                 build_strategy=build_strategy,
+                exec_strategy=exec_strategy,
             )
         else:
             binary = main
@@ -202,9 +204,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             use_device,
         )
 
-        binary = compiler.CompiledProgram(
-            main,
+        binary = compiler.CompiledProgram(main).with_data_parallel(
+            loss_name=loss.name,
             build_strategy=build_strategy,
+            exec_strategy=exec_strategy,
         )
 
         exe.run(binary, feed=feed_dict, fetch_list=[loss.name])

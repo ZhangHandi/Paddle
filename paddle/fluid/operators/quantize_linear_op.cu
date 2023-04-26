@@ -122,19 +122,13 @@ template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+using CUDA = phi::GPUContext;
+REGISTER_OP_CUDA_KERNEL(dequantize_linear,
+                        ops::DeQuantizeLinearKernel<CUDA, float>,
+                        ops::DeQuantizeLinearKernel<CUDA, float16>,
+                        ops::DeQuantizeLinearKernel<CUDA, int8_t>,
+                        ops::DeQuantizeLinearKernel<CUDA, double>);
 
-PD_REGISTER_STRUCT_KERNEL(dequantize_linear,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::DeQuantizeLinearKernel,
-                          float,
-                          float16,
-                          int8_t,
-                          double) {}
-
-PD_REGISTER_STRUCT_KERNEL(quantize_linear,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::QuantizeLinearKernel,
-                          float,
-                          float16) {}
+REGISTER_OP_CUDA_KERNEL(quantize_linear,
+                        ops::QuantizeLinearKernel<CUDA, float>,
+                        ops::QuantizeLinearKernel<CUDA, float16>);

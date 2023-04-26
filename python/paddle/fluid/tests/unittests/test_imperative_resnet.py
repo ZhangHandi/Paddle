@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.layer_helper import LayerHelper
@@ -75,7 +75,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(paddle.nn.Layer):
+class ConvBNLayer(fluid.Layer):
     def __init__(
         self,
         num_channels,
@@ -107,7 +107,7 @@ class ConvBNLayer(paddle.nn.Layer):
         return y
 
 
-class BottleneckBlock(paddle.nn.Layer):
+class BottleneckBlock(fluid.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
     ):
@@ -163,7 +163,7 @@ class BottleneckBlock(paddle.nn.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(paddle.nn.Layer):
+class ResNet(fluid.Layer):
     def __init__(self, layers=50, class_dim=102, use_cudnn=True):
         super().__init__()
 
@@ -226,7 +226,7 @@ class ResNet(paddle.nn.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
+                initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -361,12 +361,10 @@ class TestDygraphResnet(unittest.TestCase):
                 batch_size=batch_size,
             )
 
-            img = paddle.static.data(
-                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
+            img = fluid.layers.data(
+                name='pixel', shape=[3, 224, 224], dtype='float32'
             )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False

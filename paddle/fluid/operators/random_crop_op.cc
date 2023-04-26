@@ -54,10 +54,11 @@ class RandomCropOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", phi::make_ddim(out_dim));
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -96,12 +97,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(random_crop,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RandomCropKernel,
-                          float,
-                          int,
-                          double,
-                          uint8_t,
-                          int16_t) {}
+template <typename T>
+using Kernel = ops::RandomCropKernel<phi::CPUContext, T>;
+REGISTER_OP_CPU_KERNEL(random_crop,
+                       Kernel<float>,
+                       Kernel<int>,
+                       Kernel<double>,
+                       Kernel<uint8_t>,
+                       Kernel<int16_t>);

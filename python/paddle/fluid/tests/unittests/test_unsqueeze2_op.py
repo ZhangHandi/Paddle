@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -28,7 +29,6 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze2"
         self.python_api = paddle.unsqueeze
-        self.public_python_api = paddle.unsqueeze
         self.python_out_sig = ["Out"]
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
@@ -36,13 +36,12 @@ class TestUnsqueezeOp(OpTest):
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.ori_shape).astype("float64"),
         }
-        self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_prim=True)
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -90,7 +89,6 @@ class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1,)
         self.new_shape = 1
-        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
@@ -98,7 +96,6 @@ class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1, 1)
         self.new_shape = (1, 1)
-        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
@@ -106,7 +103,6 @@ class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (0, 1, 2)
         self.new_shape = (1, 1, 1)
-        self.enable_cinn = False
 
 
 # axes is a list(with tensor)
@@ -120,7 +116,7 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         axes_tensor_list = []
         for index, ele in enumerate(self.axes):
             axes_tensor_list.append(
-                ("axes" + str(index), np.ones(1).astype('int32') * ele)
+                ("axes" + str(index), np.ones((1)).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -134,10 +130,10 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -195,10 +191,10 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -248,8 +244,8 @@ class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([3, 2, 5]).astype("float64")
         x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
-        positive_3_int32 = paddle.tensor.fill_constant([1], "int32", 3)
-        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+        positive_3_int32 = fluid.layers.fill_constant([1], "int32", 3)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
         axes_tensor_int32 = paddle.static.data(
             name='axes_tensor_int32', shape=[3], dtype="int32"
         )
@@ -296,26 +292,24 @@ class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):
 class TestUnsqueezeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.unsqueeze(x, [-1])
-        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.unsqueeze(x, [-1, 1])
-        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1, 1])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [1, 1])
 
         out = paddle.unsqueeze(x, [0, 1, 2])
-        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1, 1, 1])
         self.assertEqual(x.grad.shape, [])

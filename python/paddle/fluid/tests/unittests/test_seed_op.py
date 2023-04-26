@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import static
+import paddle.static as static
 
 paddle.enable_static()
 
@@ -28,7 +28,7 @@ class TestSeedOpFixSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 123}
-        self.outputs = {"Out": np.asarray(123).astype('int')}
+        self.outputs = {"Out": np.asarray((123)).astype('int')}
 
     def test_check_output(self):
         self.check_output()
@@ -39,7 +39,7 @@ class TestSeedOpDiffSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 0}
-        self.outputs = {"Out": np.asarray(123).astype('int')}
+        self.outputs = {"Out": np.asarray((123)).astype('int')}
 
     def test_check_output(self):
         self.check_output(no_check_set=["Out"])
@@ -56,9 +56,7 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers import (
-            random,
-        )
+        import paddle.distributed.fleet.meta_parallel.parallel_layers.random as random
 
         with static.program_guard(static.Program(), static.Program()):
             res1 = random.determinate_seed('seed0')

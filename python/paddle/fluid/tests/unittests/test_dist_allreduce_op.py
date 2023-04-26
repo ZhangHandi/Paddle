@@ -30,12 +30,10 @@ class TestDistMnistNCCL2(TestDistBase):
         self._nccl2_reduce_layer = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "dist_allreduce_op.py", delta=1e-5, check_error_log=True
-            )
+            self.check_with_place("dist_allreduce_op.py", delta=1e-5)
 
 
 if __name__ == '__main__':

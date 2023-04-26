@@ -21,8 +21,8 @@ from feed_data_reader import FeedDataReader
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
-from paddle.dataset import wmt16
-from paddle.fluid import core
+import paddle.dataset.wmt16 as wmt16
+import paddle.fluid.core as core
 
 os.environ['CPU_NUM'] = str(4)
 
@@ -212,7 +212,8 @@ def get_feed_data_reader():
         all_batch_tensors.append(tensors)
 
     def __reader__():
-        yield from all_batch_tensors
+        for t in all_batch_tensors:
+            yield t
 
     feed_data_reader = FeedDataReader(
         feed_list=transformer_model.build_inputs(

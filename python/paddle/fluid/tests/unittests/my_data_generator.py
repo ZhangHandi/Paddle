@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 class MyDataset(fleet.MultiSlotDataGenerator):

@@ -14,7 +14,7 @@
 
 __all__ = ['L1Decay', 'L2Decay']
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class L1Decay(fluid.regularizer.L1Decay):

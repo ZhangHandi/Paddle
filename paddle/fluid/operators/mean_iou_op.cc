@@ -40,9 +40,9 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Predictions"),
         ctx.GetPlace());
   }
@@ -107,6 +107,7 @@ REGISTER_OPERATOR(
     ops::MeanIoUOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(
-    mean_iou, CPU, ALL_LAYOUT, ops::MeanIoUKernel, int, int64_t) {}
+REGISTER_OP_CPU_KERNEL(mean_iou,
+                       ops::MeanIoUKernel<int>,
+                       ops::MeanIoUKernel<int32_t>,
+                       ops::MeanIoUKernel<int64_t>);

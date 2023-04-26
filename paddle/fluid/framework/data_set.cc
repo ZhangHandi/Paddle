@@ -457,7 +457,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   timeline.Start();
   std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
-    VLOG(1) << "in gpu_graph_mode";
+    VLOG(0) << "in gpu_graph_mode";
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
@@ -470,6 +470,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
         readers_[i]->ResetPathNum();
         readers_[i]->ResetEpochFinish();
       }
+      return;
     }
 
     for (int64_t i = 0; i < thread_num_; ++i) {
@@ -655,26 +656,6 @@ void DatasetImpl<T>::LocalShuffle() {
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
-}
-
-template <typename T>
-void DatasetImpl<T>::DumpWalkPath(std::string dump_path, size_t dump_rate) {
-  VLOG(3) << "DatasetImpl<T>::DumpWalkPath() begin";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::vector<std::thread> dump_threads;
-  if (gpu_graph_mode_) {
-    for (int64_t i = 0; i < thread_num_; ++i) {
-      dump_threads.push_back(
-          std::thread(&paddle::framework::DataFeed::DumpWalkPath,
-                      readers_[i].get(),
-                      dump_path,
-                      dump_rate));
-    }
-    for (std::thread& t : dump_threads) {
-      t.join();
-    }
-  }
-#endif
 }
 
 // do tdm sample

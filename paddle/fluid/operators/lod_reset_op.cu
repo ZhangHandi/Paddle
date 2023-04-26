@@ -16,19 +16,13 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-PD_REGISTER_STRUCT_KERNEL(lod_reset,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::LoDResetKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::LoDResetGradKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CUDA_KERNEL(lod_reset,
+                        ops::LoDResetKernel<phi::GPUContext, float>,
+                        ops::LoDResetKernel<phi::GPUContext, double>,
+                        ops::LoDResetKernel<phi::GPUContext, int>,
+                        ops::LoDResetKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(lod_reset_grad,
+                        ops::LoDResetGradKernel<phi::GPUContext, float>,
+                        ops::LoDResetGradKernel<phi::GPUContext, double>,
+                        ops::LoDResetGradKernel<phi::GPUContext, int>,
+                        ops::LoDResetGradKernel<phi::GPUContext, int64_t>);

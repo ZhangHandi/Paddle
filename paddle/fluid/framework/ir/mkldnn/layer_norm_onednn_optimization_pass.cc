@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/layer_norm_onednn_optimization_pass.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"

@@ -33,6 +33,7 @@ class PingPongInterceptor : public Interceptor {
 
   void PingPong(const InterceptorMessage& msg) {
     if (msg.message_type() == STOP) {
+      stop_ = true;
       return;
     }
     std::cout << GetInterceptorId() << " recv msg, count=" << count_

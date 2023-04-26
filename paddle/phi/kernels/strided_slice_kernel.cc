@@ -43,7 +43,6 @@ PD_REGISTER_KERNEL(strided_slice,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -57,7 +56,6 @@ PD_REGISTER_KERNEL(strided_slice,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif

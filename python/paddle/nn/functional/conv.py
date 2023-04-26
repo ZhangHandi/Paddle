@@ -16,25 +16,24 @@ from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
-    is_compiled_with_custom_device,
+    is_compiled_with_npu,
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
-from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
-from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...framework import no_grad
-from ...tensor.manipulation import squeeze, unsqueeze
-from ...utils import (
+from ...fluid.layers.utils import (
     _contain_var,
     _convert_to_tensor_list,
     _is_symmetric_padding,
     convert_to_list,
 )
+from ...framework import no_grad
+from ...static import Variable
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -98,7 +97,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError(f"In valid padding: {padding}")
+            raise ValueError("In valid padding: {}".format(padding))
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
@@ -237,7 +236,7 @@ def _conv_nd(
             "data_format": data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], op_type
+            x, 'x', ['float16', 'float32', 'float64'], op_type
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -248,30 +247,12 @@ def _conv_nd(
         )
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            x_shape = list(pre_bias.shape)
-            y_shape = list(bias.shape)
-            if channel_dim == -1 or len(x_shape) == len(y_shape):
-                helper.append_op(
-                    type='elementwise_add',
-                    inputs={'X': [pre_bias], 'Y': [bias]},
-                    outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
-                )
-            else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
-                padding = len(x_shape) - len(y_shape) - channel_dim
-                bias = reshape(
-                    bias, [1] * channel_dim + y_shape + [1] * padding
-                )
-
-                helper.append_op(
-                    type='elementwise_add',
-                    inputs={'X': [pre_bias], 'Y': [bias]},
-                    outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
-                )
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias], 'Y': [bias]},
+                outputs={'Out': [out]},
+                attrs={'axis': channel_dim, 'use_mkldnn': use_mkldnn},
+            )
         else:
             out = pre_bias
     return out
@@ -466,7 +447,7 @@ def conv1d(
         use_cudnn = False
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_custom_device('npu'):
+    if is_compiled_with_npu():
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:
@@ -756,7 +737,7 @@ def conv2d(
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_custom_device('npu'):
+    if is_compiled_with_npu():
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:
@@ -1223,12 +1204,6 @@ def conv2d_transpose(
                 x.shape
             )
         )
-    if len(weight.shape) != 4:
-        raise ValueError(
-            "Input weight should be 4D tensor, but received weight with the shape of {}".format(
-                weight.shape
-            )
-        )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
@@ -1344,10 +1319,7 @@ def conv2d_transpose(
             'data_format': data_format,
         }
         check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'uint16', 'float32', 'float64'],
-            'conv2d_transpose',
+            x, 'x', ['float16', 'float32', 'float64'], 'conv2d_transpose'
         )
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
@@ -1357,30 +1329,7 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = helper.create_variable_for_type_inference(x.dtype)
-            x_shape = list(pre_bias.shape)
-            y_shape = list(bias.shape)
-            if channel_dim == -1 or len(x_shape) == len(y_shape):
-                helper.append_op(
-                    type='elementwise_add',
-                    inputs={'X': [pre_bias], 'Y': [bias]},
-                    outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
-                )
-            else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
-                padding = len(x_shape) - len(y_shape) - channel_dim
-                bias = reshape(
-                    bias, [1] * channel_dim + y_shape + [1] * padding
-                )
-                helper.append_op(
-                    type='elementwise_add',
-                    inputs={'X': [pre_bias], 'Y': [bias]},
-                    outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
-                )
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
 
@@ -1727,12 +1676,6 @@ def conv3d_transpose(
         raise ValueError(
             "Input x should be 5D tensor, but received x with the shape of {}".format(
                 x.shape
-            )
-        )
-    if len(weight.shape) != 5:
-        raise ValueError(
-            "Input weight should be 5D tensor, but received weight with the shape of {}".format(
-                weight.shape
             )
         )
     num_channels = x.shape[channel_dim]

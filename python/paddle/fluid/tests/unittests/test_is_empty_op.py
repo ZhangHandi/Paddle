@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -23,7 +23,6 @@ import paddle
 class TestEmpty(OpTest):
     def setUp(self):
         self.op_type = "is_empty"
-        self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([1, 2, 3])}
         self.outputs = {'Out': np.array([False])}
 
@@ -34,7 +33,6 @@ class TestEmpty(OpTest):
 class TestNotEmpty(TestEmpty):
     def setUp(self):
         self.op_type = "is_empty"
-        self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([])}
         self.outputs = {'Out': np.array([True])}
 

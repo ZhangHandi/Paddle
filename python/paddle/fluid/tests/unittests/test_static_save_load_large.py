@@ -20,8 +20,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 LARGE_PARAM = 2**26
 
@@ -58,7 +58,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
             )
             path = os.path.join(path, "static_save")
             protocol = 4
-            paddle.static.save(prog, path, pickle_protocol=protocol)
+            paddle.fluid.save(prog, path, pickle_protocol=protocol)
             # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -70,7 +70,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            paddle.static.load(prog, path)
+            paddle.fluid.load(prog, path)
 
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -91,8 +91,8 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            program_state = paddle.static.load_program_state(path)
-            paddle.static.set_program_state(prog, program_state)
+            program_state = fluid.load_program_state(path)
+            fluid.set_program_state(prog, program_state)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(

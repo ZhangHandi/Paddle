@@ -33,7 +33,7 @@ class FusedBatchNormActOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 
@@ -43,7 +43,7 @@ class FusedBatchNormActGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 
@@ -88,13 +88,13 @@ class FusedBatchNormActOpInferVarType
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FusedBatchNormActKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FusedBatchNormActGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;

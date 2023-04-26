@@ -15,7 +15,7 @@
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

@@ -166,7 +166,7 @@ class Conll05st(Dataset):
         self._load_anno()
 
     def _load_label_dict(self, filename):
-        d = {}
+        d = dict()
         tag_dict = set()
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
@@ -185,7 +185,7 @@ class Conll05st(Dataset):
         return d
 
     def _load_dict(self, filename):
-        d = {}
+        d = dict()
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
                 d[line.strip()] = i

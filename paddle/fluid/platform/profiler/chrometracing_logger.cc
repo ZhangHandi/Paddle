@@ -257,6 +257,7 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     case TracerEventType::UserDefined:
     case TracerEventType::OperatorInner:
     case TracerEventType::Communication:
+    case TracerEventType::MluRuntime:
     case TracerEventType::NumTypes:
     default:
       output_file_stream_ << string_format(
@@ -789,7 +790,11 @@ void ChromeTracingLogger::RefineDisplayName(
         (*it).second * 2 + 1);
   }
 
+#ifdef PADDLE_WITH_MLU
+  static std::string device_type("MLU");
+#else
   static std::string device_type("GPU");
+#endif
 
   for (auto it = deviceid_streamid_set_.begin();
        it != deviceid_streamid_set_.end();

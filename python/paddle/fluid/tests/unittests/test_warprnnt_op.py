@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle import _C_ops
-from paddle.fluid import Program, core, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -227,7 +229,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -236,19 +238,21 @@ class TestWarpRNNTOp(OpTest):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_eager=True,
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -258,12 +262,14 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_eager=True,
             )
 
 
@@ -271,21 +277,17 @@ class TestWarpRNNTOpError(unittest.TestCase):
     def test_errors(self):
         print("test_errors")
         with program_guard(Program(), Program()):
-            logits = paddle.static.data(
-                name='input', shape=[5, 16, 6], dtype='float32'
-            )
-            logits_length = paddle.static.data(
+            logits = fluid.data(name='input', shape=[5, 16, 6], dtype='float32')
+            logits_length = fluid.data(
                 name='logit_lengths', shape=[None], dtype='int32'
             )
-            label = paddle.static.data(
-                name='labels', shape=[16, 3], dtype='int32'
-            )
-            label_length = paddle.static.data(
+            label = fluid.data(name='labels', shape=[16, 3], dtype='int32')
+            label_length = fluid.data(
                 name='label_lengths', shape=[None], dtype='int32'
             )
 
             def test_logits_Variable():
-                logits_data = paddle.static.data(
+                logits_data = fluid.data(
                     name='logits_data', shape=[5, 16, 6], dtype='int32'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -298,7 +300,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_logits_Variable)
 
             def test_label_Variable():
-                label_data = paddle.static.data(
+                label_data = fluid.data(
                     name='label_data', shape=[16, 3], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -311,7 +313,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_label_Variable)
 
             def test_logits_len_Variable():
-                logits_length_data = paddle.static.data(
+                logits_length_data = fluid.data(
                     name='logits_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -324,7 +326,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_logits_len_Variable)
 
             def test_label_len_Variable():
-                label_length_data = paddle.static.data(
+                label_length_data = fluid.data(
                     name='label_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(

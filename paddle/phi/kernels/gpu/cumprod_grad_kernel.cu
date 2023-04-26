@@ -77,7 +77,7 @@ struct CumprodGradFunctorExceptFirstZero {
       first_zero_idx_[outer_idx * inner_dim_ + inner_idx] = 0;
     }
 
-    x_filled_one_[idx] = should_fill_one ? static_cast<T>(1) : x_[idx];
+    x_filled_one_[idx] = should_fill_one ? 1 : x_[idx];
   }
 
  private:
@@ -136,10 +136,6 @@ void CumprodGradKernel(const Context &dev_ctx,
 
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
-  if (x.dims().size() == 0) {
-    phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-    return;
-  }
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   size_t numel = outer_dim * mid_dim * inner_dim;
@@ -230,7 +226,7 @@ void CumprodGradKernel(const Context &dev_ctx,
                                          outer_dim,
                                          mid_dim,
                                          inner_dim,
-                                         static_cast<T>(0.0f),
+                                         static_cast<T>(0),
                                          cub::Sum(),
                                          /*reverse=*/true,
                                          dev_ctx);
@@ -270,7 +266,7 @@ void CumprodGradKernel(const Context &dev_ctx,
       outer_dim,
       mid_dim,
       inner_dim,
-      static_cast<T>(1.0f),
+      static_cast<T>(1),
       funcs::MultiplyFunctor<T>(),
       /*reverse=*/false,
       dev_ctx);
@@ -292,7 +288,7 @@ void CumprodGradKernel(const Context &dev_ctx,
       outer_dim,
       mid_dim,
       inner_dim,
-      static_cast<T>(0.0f),
+      static_cast<T>(0),
       cub::Sum(),
       /*reverse=*/true,
       dev_ctx);
@@ -319,7 +315,5 @@ PD_REGISTER_KERNEL(cumprod_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

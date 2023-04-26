@@ -48,10 +48,11 @@ class CVMOp : public framework::OperatorWithKernel {
   // Explicitly set that the data type of computation kernel of
   // cvm
   // is determined by its input "X".
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -113,11 +114,11 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   // Explicitly set that the data type of computation kernel of
   // cvm
   // is determined by its input "X".
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Y")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 
@@ -180,7 +181,8 @@ REGISTER_OPERATOR(cvm_grad,
                   ops::CVMGradientOp,
                   ops::CVMGradNoNeedBufferVarInferer);
 
-PD_REGISTER_STRUCT_KERNEL(
-    cvm, CPU, ALL_LAYOUT, ops::CVMOpKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    cvm_grad, CPU, ALL_LAYOUT, ops::CVMGradOpKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(cvm_grad,
+                       ops::CVMGradOpKernel<float>,
+                       ops::CVMGradOpKernel<double>);

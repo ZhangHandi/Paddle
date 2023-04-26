@@ -93,13 +93,11 @@ class Conv1DTestCase(unittest.TestCase):
                     if not self.channel_last
                     else (-1, -1, self.num_channels)
                 )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                w_var = paddle.static.data(
+                x_var = fluid.data("input", input_shape, dtype=self.dtype)
+                w_var = fluid.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
+                b_var = fluid.data(
                     "bias", (self.num_filters,), dtype=self.dtype
                 )
                 y_var = F.conv1d(

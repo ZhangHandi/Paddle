@@ -305,18 +305,19 @@ class GRUGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(weight_grad_name, weight_dims);
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Hidden")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Hidden")),
+                                   ctx.device_context());
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
+    using DeviceContext = phi::CPUContext;
     using LodTensorPtr = phi::DenseTensor*;
     bool is_test = context.Attr<bool>("is_test");
 
@@ -371,7 +372,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     phi::DenseTensor ordered_h0;
 
-    phi::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
@@ -584,8 +585,9 @@ REGISTER_OPERATOR(gru,
 REGISTER_OPERATOR(gru_grad,
                   ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInferer);
-
-PD_REGISTER_STRUCT_KERNEL(
-    gru, CPU, ALL_LAYOUT, ops::GRUCPUKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    gru_grad, CPU, ALL_LAYOUT, ops::GRUGradKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(gru,
+                       ops::GRUCPUKernel<float>,
+                       ops::GRUCPUKernel<double>);
+REGISTER_OP_CPU_KERNEL(gru_grad,
+                       ops::GRUGradKernel<phi::CPUContext, float>,
+                       ops::GRUGradKernel<phi::CPUContext, double>);

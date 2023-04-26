@@ -17,7 +17,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.jit.dy2static.program_translator import unwrap_decorators
 
 from .static_flops import Table, static_flops
@@ -229,11 +229,13 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         if m_type in custom_ops:
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
-                print(f"Customize Function has been applied to {m_type}")
+                print(
+                    "Customize Function has been applied to {}".format(m_type)
+                )
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
-                print(f"{m_type}'s flops has been counted")
+                print("{}'s flops has been counted".format(m_type))
         else:
             if m_type not in types_collection:
                 print(
@@ -269,7 +271,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             'total_params',
             'input_shape',
             'output_shape',
-        }.issubset(set(m._buffers.keys())):
+        }.issubset(set(list(m._buffers.keys()))):
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -290,7 +292,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             'total_params',
             'input_shape',
             'output_shape',
-        }.issubset(set(m._buffers.keys())):
+        }.issubset(set(list(m._buffers.keys()))):
             table.add_row(
                 [
                     m.full_name(),

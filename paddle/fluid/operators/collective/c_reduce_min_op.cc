@@ -33,7 +33,6 @@ class CReduceMinOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Min"; }
 };
 
-DEFINE_C_REDUCE_CPU_KERNEL(CReduceMin, kRedMin)
 }  // namespace operators
 }  // namespace paddle
 
@@ -44,12 +43,9 @@ REGISTER_OP_WITHOUT_GRADIENT(c_reduce_min,
                              ops::CReduceOp,
                              ops::CReduceMinOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(c_reduce_min,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CReduceMinCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_reduce_min,
+                       ops::CReduceOpCPUKernel<ops::kRedMin, float>,
+                       ops::CReduceOpCPUKernel<ops::kRedMin, double>,
+                       ops::CReduceOpCPUKernel<ops::kRedMin, int>,
+                       ops::CReduceOpCPUKernel<ops::kRedMin, int64_t>,
+                       ops::CReduceOpCPUKernel<ops::kRedMin, plat::float16>);

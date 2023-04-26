@@ -105,7 +105,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
 
     if use_cache:
         if verbose:
-            sys.stderr.write(f'Using cache found in {repo_dir}\n')
+            sys.stderr.write('Using cache found in {}\n'.format(repo_dir))
     else:
         cached_file = os.path.join(hub_dir, normalized_br + '.zip')
         _remove_if_exists(cached_file)
@@ -146,7 +146,7 @@ def _load_entry_from_hubconf(m, name):
     func = getattr(m, name, None)
 
     if func is None or not callable(func):
-        raise RuntimeError(f'Cannot find callable {name} in hubconf')
+        raise RuntimeError('Cannot find callable {} in hubconf'.format(name))
 
     return func
 

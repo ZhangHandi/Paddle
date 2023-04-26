@@ -20,6 +20,7 @@ import warnings
 import numpy as np
 
 import paddle
+from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.utils import try_import
 
 from .progressbar import ProgressBar
@@ -71,7 +72,7 @@ def config_callbacks(
 class CallbackList:
     def __init__(self, callbacks=None):
         # copy
-        self.callbacks = list(callbacks)
+        self.callbacks = [c for c in callbacks]
         self.params = {}
         self.model = None
 
@@ -103,12 +104,12 @@ class CallbackList:
 
     def on_begin(self, mode, logs=None):
         self._check_mode(mode)
-        name = f'on_{mode}_begin'
+        name = 'on_{}_begin'.format(mode)
         self._call(name, logs)
 
     def on_end(self, mode, logs=None):
         self._check_mode(mode)
-        name = f'on_{mode}_end'
+        name = 'on_{}_end'.format(mode)
         self._call(name, logs)
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -119,12 +120,12 @@ class CallbackList:
 
     def on_batch_begin(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = f'on_{mode}_batch_begin'
+        name = 'on_{}_batch_begin'.format(mode)
         self._call(name, step, logs)
 
     def on_batch_end(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = f'on_{mode}_batch_end'
+        name = 'on_{}_batch_end'.format(mode)
         self._call(name, step, logs)
 
 
@@ -349,7 +350,7 @@ class ProgBarLogger(Callback):
         self.log_freq = log_freq
 
     def _is_print(self):
-        return self.verbose and paddle.distributed.ParallelEnv().local_rank == 0
+        return self.verbose and ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -597,22 +598,18 @@ class ModelCheckpoint(Callback):
         self.epoch = epoch
 
     def _is_save(self):
-        return (
-            self.model
-            and self.save_dir
-            and paddle.distributed.ParallelEnv().local_rank == 0
-        )
+        return self.model and self.save_dir and ParallelEnv().local_rank == 0
 
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and self.epoch % self.save_freq == 0:
-            path = f'{self.save_dir}/{epoch}'
-            print(f'save checkpoint at {os.path.abspath(path)}')
+            path = '{}/{}'.format(self.save_dir, epoch)
+            print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)
 
     def on_train_end(self, logs=None):
         if self._is_save():
-            path = f'{self.save_dir}/final'
-            print(f'save checkpoint at {os.path.abspath(path)}')
+            path = '{}/final'.format(self.save_dir)
+            print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)
 
 
@@ -925,7 +922,7 @@ class VisualDL(Callback):
         self.epoch = 0
 
     def _is_write(self):
-        return paddle.distributed.ParallelEnv().local_rank == 0
+        return ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -1055,21 +1052,21 @@ class WandbCallback(Callback):
         dir=None,
         mode=None,
         job_type=None,
-        **kwargs,
+        **kwargs
     ):
         self.wandb = try_import(
             "wandb",
             "You want to use `wandb` which is not installed yet install it with `pip install wandb`",
         )
 
-        self.wandb_args = {
-            'project': project,
-            'name': name,
-            'entity': entity,
-            'dir': dir,
-            'mode': mode,
-            'job_type': job_type,
-        }
+        self.wandb_args = dict(
+            project=project,
+            name=name,
+            entity=entity,
+            dir=dir,
+            mode=mode,
+            job_type=job_type,
+        )
 
         self._run = None
         self.wandb_args.update(**kwargs)
@@ -1077,7 +1074,7 @@ class WandbCallback(Callback):
         _ = self.run
 
     def _is_write(self):
-        return paddle.distributed.ParallelEnv().local_rank == 0
+        return ParallelEnv().local_rank == 0
 
     @property
     def run(self):
@@ -1121,7 +1118,7 @@ class WandbCallback(Callback):
         metrics = getattr(self, '%s_metrics' % (mode))
         current_step = getattr(self, '%s_step' % (mode))
 
-        _metrics = {}
+        _metrics = dict()
 
         if mode == 'train':
             total_step = current_step
@@ -1336,10 +1333,7 @@ class ReduceLROnPlateau(Callback):
                     new_lr = old_lr * self.factor
                     new_lr = max(new_lr, self.min_lr)
                     self.model._optimizer._learning_rate = new_lr
-                    if (
-                        self.verbose > 0
-                        and paddle.distributed.ParallelEnv().local_rank == 0
-                    ):
+                    if self.verbose > 0 and ParallelEnv().local_rank == 0:
                         print(
                             '\nEpoch %d: ReduceLROnPlateau reducing learning '
                             'rate to %s.' % (self.epoch + 1, new_lr)

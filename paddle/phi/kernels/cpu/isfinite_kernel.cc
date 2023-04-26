@@ -25,11 +25,8 @@ PD_REGISTER_KERNEL(isinf,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(isnan,
                    CPU,
@@ -38,11 +35,8 @@ PD_REGISTER_KERNEL(isnan,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(isfinite,
                    CPU,
@@ -51,8 +45,5 @@ PD_REGISTER_KERNEL(isfinite,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   int64_t) {}

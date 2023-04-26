@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 np_minor_version = int((np.__version__).split('.')[1])
 
@@ -117,7 +117,7 @@ class Corr_Comeplex_Test(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-        x1 = paddle.static.data(name=self.dtype, shape=[2], dtype=self.dtype)
+        x1 = fluid.data(name=self.dtype, shape=[2], dtype=self.dtype)
         self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x1)
         paddle.disable_static()
 

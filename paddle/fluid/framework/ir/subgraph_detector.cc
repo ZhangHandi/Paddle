@@ -45,9 +45,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
     for (auto *out : node->outputs) {
-      // we forbid out is a persistable var, for case when weight is shared
-      // between within and outside this tensorrt_engine op.
-      if (!nodes.count(out) && out->IsVar() && !out->Var()->Persistable()) {
+      if (!nodes.count(out) && out->IsVar()) {
         outputs.insert(out);
       }
     }
@@ -418,7 +416,7 @@ void DetachDeletedNodes(framework::ir::Graph *graph) {
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
-    if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
+    if (subgraph.size() <= (size_t)min_subgraph_size_) continue;
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph

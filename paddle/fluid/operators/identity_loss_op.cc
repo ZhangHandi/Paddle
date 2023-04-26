@@ -27,10 +27,11 @@ class IdentityLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -58,11 +59,11 @@ class IdentityLossGradOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(input_data_type, platform::CPUPlace());
+    return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };
 

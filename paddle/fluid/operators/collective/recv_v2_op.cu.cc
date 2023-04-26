@@ -40,7 +40,8 @@ framework::DDim recv_shape_info(const platform::Place &place,
                           "to send the shape info."));
   }
 
-  phi::DataType shape_dytpe = phi::DataType::INT32;
+  paddle::experimental::DataType shape_dytpe =
+      paddle::experimental::DataType::INT32;
   ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
 
@@ -105,7 +106,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
 }
 #endif
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -232,17 +233,13 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(recv_v2,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::RecvOpV2CUDAKernel,
-                          float,
-                          double,
+REGISTER_OP_CUDA_KERNEL(recv_v2,
+                        ops::RecvOpV2CUDAKernel<float>,
+                        ops::RecvOpV2CUDAKernel<double>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+                        ops::RecvOpV2CUDAKernel<plat::bfloat16>,
 #endif
-                          int,
-                          int64_t,
-                          int8_t,
-                          plat::float16) {
-}
+                        ops::RecvOpV2CUDAKernel<int>,
+                        ops::RecvOpV2CUDAKernel<int64_t>,
+                        ops::RecvOpV2CUDAKernel<int8_t>,
+                        ops::RecvOpV2CUDAKernel<plat::float16>);

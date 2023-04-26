@@ -54,14 +54,15 @@ class AmpOperators {
 
   std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
-  std::shared_ptr<std::unordered_set<std::string>> GetMutableUnsupportedOps(
-      const phi::DataType& data_type);
-
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
 
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedBf16Ops();
+
+  void AddToAmpOpList(const std::string& op_name);
+
+  std::map<const std::string, int> GetAmpOpList();
 
  private:
   AmpOperators();  // forbid calling default constructor
@@ -79,6 +80,9 @@ class AmpOperators {
 
   // The set of ops that has no bf16 CUDA kennel.
   std::shared_ptr<std::unordered_set<std::string>> unsupported_bf16_ops_;
+
+  // The amp op list of current module.
+  std::map<const std::string, int> current_amp_ops_;
 };
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);

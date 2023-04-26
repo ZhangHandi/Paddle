@@ -32,7 +32,7 @@ class TestStaticModelParallel(TestDistBase):
         self._pipeline_mode = True
 
     def test_dist_static_model_parallel(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -43,7 +43,7 @@ class TestStaticModelParallel(TestDistBase):
             )
 
     def test_dist_static_model_parallel2(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -54,7 +54,7 @@ class TestStaticModelParallel(TestDistBase):
             )
 
     def test_dist_static_model_parallel3(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

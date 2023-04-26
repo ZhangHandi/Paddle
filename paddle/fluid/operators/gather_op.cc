@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
@@ -34,22 +32,21 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Axis") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -58,23 +55,21 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Axis") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -134,33 +129,6 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class GatherCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
- public:
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- protected:
-  void Apply() override {
-    paddle::Tensor index = this->GetSingleForwardInput("Index");
-    paddle::optional<paddle::Tensor> tensor_axis =
-        this->GetOptionalSingleForwardInput("Axis");
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor dout = this->GetSingleOutputGrad("Out");
-    paddle::Tensor dx = this->GetSingleInputGrad("X");
-    auto* dx_ptr = this->GetOutputPtr(&dx);
-    std::string dx_name = this->GetOutputName(*dx_ptr);
-    int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(3) << "Runing gather_grad composite func";
-    if (tensor_axis.is_initialized()) {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "We don't support dynamic index from tensor for gather composite "
-          "grad for now. "));
-    } else {
-      prim::gather_grad<prim::DescTensor>(x, index, dout, axis, dx_ptr);
-    }
-    this->RecoverOutputName(dx, dx_name);
-  }
-};
-
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
@@ -175,7 +143,6 @@ REGISTER_OPERATOR(gather,
                   ops::GatherOpMaker,
                   ops::GatherGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherGradOpMaker<paddle::imperative::OpBase>,
-                  ops::GatherCompositeGradOpMaker,
                   GatherInferShapeFunctor);
 DECLARE_INFER_SHAPE_FUNCTOR(gather_grad,
                             GatherGradInferShapeFunctor,

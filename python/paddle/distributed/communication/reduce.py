@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import paddle
-from paddle import framework
-from paddle.distributed.communication import stream
+import paddle.distributed.communication.stream as stream
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
 
 
 class ReduceOp:
@@ -58,26 +59,26 @@ class ReduceOp:
 def _get_reduce_op(reduce_op, func_name):
     if framework.in_dygraph_mode():
         if reduce_op == ReduceOp.SUM:
-            return framework.core.ReduceOp.SUM
+            return core.ReduceOp.SUM
         elif reduce_op == ReduceOp.MAX:
-            return framework.core.ReduceOp.MAX
+            return core.ReduceOp.MAX
         elif reduce_op == ReduceOp.MIN:
-            return framework.core.ReduceOp.MIN
+            return core.ReduceOp.MIN
         elif reduce_op == ReduceOp.PROD:
-            return framework.core.ReduceOp.PRODUCT
+            return core.ReduceOp.PRODUCT
     else:
         if reduce_op == ReduceOp.SUM:
-            return f'c_{func_name}_sum'
+            return 'c_{}_sum'.format(func_name)
         elif reduce_op == ReduceOp.MAX:
-            return f'c_{func_name}_max'
+            return 'c_{}_max'.format(func_name)
         elif reduce_op == ReduceOp.MIN:
-            return f'c_{func_name}_min'
+            return 'c_{}_min'.format(func_name)
         elif reduce_op == ReduceOp.PROD:
-            return f'c_{func_name}_prod'
+            return 'c_{}_prod'.format(func_name)
         else:
-            return f'c_{func_name}'
+            return 'c_{}'.format(func_name)
 
-    raise ValueError(f"Unknown reduce_op type for {func_name}.")
+    raise ValueError("Unknown reduce_op type for {}.".format(func_name))
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
@@ -182,4 +183,4 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             gdst,
         )
     else:
-        raise ValueError(f"Unknown parameter: {op}.")
+        raise ValueError("Unknown parameter: {}.".format(op))

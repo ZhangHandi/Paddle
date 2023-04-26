@@ -29,13 +29,14 @@ class TestDistMnistNCCL2(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
                 delta=1,
                 need_envs={
+                    "FLAGS_enable_parallel_graph": "1",
                     "FLAGS_sync_nccl_allreduce": "1",
                 },
             )

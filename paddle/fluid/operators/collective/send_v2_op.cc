@@ -38,7 +38,7 @@ class SendOpV2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const framework::Variable* var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -46,11 +46,12 @@ class SendOpV2 : public framework::OperatorWithKernel {
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
-        return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
       }
     }
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -61,7 +62,12 @@ class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for receiver.").SetDefault(0);
-
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
+        .SetDefault(0);
+#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -86,12 +92,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(send_v2, ops::SendOpV2, ops::SendOpV2Maker);
 
-PD_REGISTER_STRUCT_KERNEL(send_v2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SendOpV2CPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(send_v2,
+                       ops::SendOpV2CPUKernel<float>,
+                       ops::SendOpV2CPUKernel<double>,
+                       ops::SendOpV2CPUKernel<int>,
+                       ops::SendOpV2CPUKernel<int64_t>,
+                       ops::SendOpV2CPUKernel<plat::float16>);

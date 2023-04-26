@@ -17,7 +17,6 @@ from functools import reduce
 from itertools import product
 
 import paddle
-from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
 
@@ -62,7 +61,7 @@ class CommunicateTopology:
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
-        self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
+        self._world_size = reduce(lambda x, y: x * y, self._dims)
 
         ranges = [range(d) for d in self._dims]
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
@@ -189,7 +188,6 @@ class HybridCommunicateGroup:
 
         # create p2p_groups
         if self._pp_degree > 1:
-            check_nccl_version_for_p2p()
             self._set_p2p_group()
 
         debug_str = (
@@ -421,7 +419,7 @@ class _CommunicateGroup:
     def __init__(self):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
-        self.groups = {}
+        self.groups = dict()
 
     def set_comm_group(
         self, group_name, group_rank, group_size, ring_id, group_ranks

@@ -39,22 +39,21 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -102,12 +101,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(sequence_mask,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceMaskKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(
+    sequence_mask,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);

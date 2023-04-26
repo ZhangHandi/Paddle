@@ -62,19 +62,20 @@ class LoDResetOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          tensor.layout(),
-                          expected_kernel_type.dtype());
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
@@ -201,11 +202,11 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -235,7 +236,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,
@@ -248,32 +248,15 @@ REGISTER_OPERATOR(lod_reset_grad,
                   ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
-PD_REGISTER_STRUCT_KERNEL(lod_reset,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LoDResetKernel,
-                          plat::float16,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-
-#ifdef PADDLE_WITH_XPU
-using XPUCtx = paddle::platform::XPUDeviceContext;
-REGISTER_OP_XPU_KERNEL(lod_reset,
-                       ops::LoDResetKernel<paddle::platform::float16, XPUCtx>,
-                       ops::LoDResetKernel<float, XPUCtx>,
-                       ops::LoDResetKernel<double, XPUCtx>,
-                       ops::LoDResetKernel<int, XPUCtx>,
-                       ops::LoDResetKernel<int64_t, XPUCtx>);
-#endif
-
-PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LoDResetGradKernel,
-                          plat::float16,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(
+    lod_reset,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    lod_reset_grad,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int64_t>);

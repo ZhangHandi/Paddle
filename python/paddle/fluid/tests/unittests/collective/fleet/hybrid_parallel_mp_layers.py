@@ -19,7 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 
 def set_random_seed(seed):
@@ -30,7 +31,7 @@ def set_random_seed(seed):
     fleet.meta_parallel.model_parallel_random_seed(seed)
 
 
-class ColumnLinearNet(paddle.nn.Layer):
+class ColumnLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size, global_dtype):
         super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
@@ -47,7 +48,7 @@ class ColumnLinearNet(paddle.nn.Layer):
         return output
 
 
-class RowLinearNet(paddle.nn.Layer):
+class RowLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size):
         super().__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
@@ -63,7 +64,7 @@ class RowLinearNet(paddle.nn.Layer):
         return output
 
 
-class EmbeddingNet(paddle.nn.Layer):
+class EmbeddingNet(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size):
         super().__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
@@ -75,7 +76,7 @@ class EmbeddingNet(paddle.nn.Layer):
         return output
 
 
-class SimpleMatmul(paddle.nn.Layer):
+class SimpleMatmul(fluid.dygraph.Layer):
     def __init__(self, weight, output_size, global_dtype):
         super().__init__()
         self.weight = paddle.create_parameter(
@@ -98,7 +99,7 @@ class SimpleMatmul(paddle.nn.Layer):
         return output
 
 
-class SimpleEmbedding(paddle.nn.Layer):
+class SimpleEmbedding(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size, weight):
         super().__init__()
         self.embedding = paddle.nn.Embedding(

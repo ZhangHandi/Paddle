@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 def compute_segment_sum(x, segment_ids):
@@ -116,10 +116,10 @@ class TestSegmentOps(OpTest):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestSegmentSum2(TestSegmentOps):

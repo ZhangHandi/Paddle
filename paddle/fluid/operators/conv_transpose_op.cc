@@ -33,21 +33,21 @@ namespace operators {
 
 using DataLayout = phi::DataLayout;
 
-phi::KernelKey ConvTransposeOp::GetExpectedKernelType(
+framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
-phi::KernelKey ConvTransposeOp::GetKernelTypeForVar(
+framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type) const {
+    const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
@@ -56,12 +56,13 @@ phi::KernelKey ConvTransposeOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return phi::KernelKey(
-      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -252,10 +253,10 @@ Example:
 )DOC");
 }
 
-phi::KernelKey ConvTransposeOpGrad::GetExpectedKernelType(
+framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 template <typename T>
@@ -319,10 +320,10 @@ class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-phi::KernelKey ConvTransposeOpDoubleGrad::GetExpectedKernelType(
+framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-  return phi::KernelKey(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 }  // namespace operators

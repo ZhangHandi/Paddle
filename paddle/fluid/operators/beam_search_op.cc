@@ -108,7 +108,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *scores = ctx.Input<phi::DenseTensor>("scores");
     size_t level = ctx.Attr<int>("level");
@@ -116,11 +116,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     // The current CUDA kernel only support cases with batch_size < 4.
     // Compute on CPU for cases with batch_size > 4.
     if (batch_size <= 4) {
-      return phi::KernelKey(
+      return framework::OpKernelType(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           ctx.GetPlace());
     } else {
-      return phi::KernelKey(
+      return framework::OpKernelType(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           platform::CPUPlace());
     }
@@ -148,12 +148,8 @@ REGISTER_OPERATOR(beam_search,
                   ops::BeamSearchOp,
                   ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
-
-PD_REGISTER_STRUCT_KERNEL(beam_search,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::BeamSearchOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(beam_search,
+                       ops::BeamSearchOpKernel<phi::CPUContext, float>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, double>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);

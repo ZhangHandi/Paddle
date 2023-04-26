@@ -16,8 +16,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework
-from paddle.distributed.communication import stream
+import paddle.distributed.communication.stream as stream
+import paddle.fluid.framework as framework
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -135,11 +135,11 @@ def scatter_object_list(
         in_tensor = paddle.to_tensor(numpy_data)
         in_tensor_list.append(in_tensor)
     out_tensor = paddle.empty([max_obj_size], dtype="uint8")
-    scatter(out_tensor, in_tensor_list if rank == src else None, src, group)
+    scatter(out_tensor, in_tensor_list if rank == src else None, src)
 
     # NOTE: shape can be [] after 0D tensor support
     out_tensor_size = paddle.empty([1], dtype="int64")
-    scatter(out_tensor_size, in_obj_sizes if rank == src else None, src, group)
+    scatter(out_tensor_size, in_obj_sizes if rank == src else None, src)
 
     out_object_list.clear()
     out_object_list.append(

@@ -23,7 +23,8 @@ class FillConstantOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fill_constant op to tensorrt fill_constant layer";
+    VLOG(4)
+        << "convert a fluid fill_constant op to tensorrt fill_constant layer";
 
     framework::OpDesc op_desc(op, nullptr);
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));

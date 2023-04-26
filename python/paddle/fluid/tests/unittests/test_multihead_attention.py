@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestMultiheadAttention(unittest.TestCase):
@@ -31,16 +31,18 @@ class TestMultiheadAttention(unittest.TestCase):
 
     def set_program(self):
         """Build the test program."""
-        queries = paddle.static.data(
+        queries = fluid.layers.data(
             name="queries",
             shape=self.input_shape,
             dtype="float32",
+            append_batch_size=False,
         )
         queries.stop_gradient = False
-        keys = paddle.static.data(
+        keys = fluid.layers.data(
             name="keys",
             shape=self.input_shape,
             dtype="float32",
+            append_batch_size=False,
         )
         keys.stop_gradient = False
 

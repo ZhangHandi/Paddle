@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class PartialRecvOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

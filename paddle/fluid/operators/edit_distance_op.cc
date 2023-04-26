@@ -24,10 +24,10 @@ class EditDistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32,
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 

@@ -57,14 +57,6 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Reducer reducer,
                 DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-
-  if (x.numel() == 1) {
-    auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    out->Resize(raw_dims);
-    return;
-  }
   auto out_dims = out->dims();
 
   PADDLE_ENFORCE_EQ(
@@ -79,6 +71,8 @@ void ScanKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += out_dims.size();
   }
+
+  dev_ctx.template Alloc<T>(out);
 
   int pre = 1;
   int post = 1;

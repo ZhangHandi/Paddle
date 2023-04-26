@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::KernelKey;
+using framework::OpKernelType;
 
 class QuantOp : public framework::OperatorWithKernel {
  public:
@@ -34,7 +34,7 @@ class QuantOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

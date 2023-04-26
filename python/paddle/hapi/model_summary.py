@@ -19,7 +19,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
 
@@ -261,9 +261,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(
-            x, (paddle.fluid.Variable, paddle.fluid.core.eager.Tensor)
-        ):
+        if isinstance(x, (paddle.fluid.Variable, paddle.fluid.core.VarBase)):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]
@@ -314,8 +312,8 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 params += np.prod(v.shape)
 
                 try:
-                    if (getattr(layer, k).trainable) and (
-                        not getattr(layer, k).stop_gradient
+                    if (getattr(getattr(layer, k), 'trainable')) and (
+                        not getattr(getattr(layer, k), 'stop_gradient')
                     ):
                         summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
@@ -439,7 +437,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
             table_width['output_shape_width'],
-            "{:,}".format(summary[layer]["nb_params"]),
+            "{0:,}".format(summary[layer]["nb_params"]),
             table_width['params_width'],
         )
         total_params += summary[layer]["nb_params"]
@@ -473,10 +471,11 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
-    summary_str += f"Total params: {total_params:,}" + "\n"
-    summary_str += f"Trainable params: {trainable_params:,}" + "\n"
+    summary_str += "Total params: {0:,}".format(total_params) + "\n"
+    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
     summary_str += (
-        f"Non-trainable params: {total_params - trainable_params:,}" + "\n"
+        "Non-trainable params: {0:,}".format(total_params - trainable_params)
+        + "\n"
     )
     summary_str += "-" * table_width['table_width'] + "\n"
     summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"

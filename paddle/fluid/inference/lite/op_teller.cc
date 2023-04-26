@@ -21,12 +21,6 @@
 #include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
-namespace lite {
-std::vector<std::string> GetAllOps();
-}
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace lite {
 

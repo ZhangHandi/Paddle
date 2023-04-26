@@ -16,7 +16,7 @@ from collections import OrderedDict
 from typing import Dict
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 
 def _make_divisible(v, divisor=8, min_value=None):
@@ -87,7 +87,7 @@ class IntermediateLayerGetter(nn.LayerDict):
             if not return_layers:
                 break
 
-        super().__init__(layers)
+        super(IntermediateLayerGetter, self).__init__(layers)
         self.return_layers = orig_return_layers
 
     def forward(self, x):

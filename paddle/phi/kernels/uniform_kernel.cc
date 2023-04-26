@@ -56,8 +56,7 @@ PD_REGISTER_KERNEL(uniform,
                    phi::UniformKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU

@@ -219,7 +219,7 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
@@ -247,7 +247,10 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Bias input should be of float type"));
 
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -542,15 +545,21 @@ class ResNetBasicBlockGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
         platform::errors::NotFound(
             "Can not find Y@GRAD in the execution context."));
 
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace(),
+        layout,
+        library);
   }
 };
 

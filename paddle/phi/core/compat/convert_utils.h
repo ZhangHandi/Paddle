@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"  //NOLINT
+#include "dnnl.hpp"
 #endif
 
 namespace phi {
@@ -33,7 +33,8 @@ Backend TransToPhiBackend(const phi::Place& place);
 phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype);
+dnnl::memory::data_type TransToOneDNNDataType(
+    const paddle::experimental::DataType& dtype);
 #endif
 
 }  // namespace phi

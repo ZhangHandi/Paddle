@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -47,21 +48,21 @@ def get_lines(info_file):
 
     if total == 0:
         print('no data found')
-        sys.exit()
+        exit()
 
     return hits / total
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        sys.exit()
+        exit()
 
     info_file = sys.argv[1]
     expected = float(sys.argv[2])
 
     if not os.path.isfile(info_file):
-        print(f'info file {info_file} is not exists, ignored')
-        sys.exit()
+        print('info file {} is not exists, ignored'.format(info_file))
+        exit()
 
     actual = get_lines(info_file)
     actual = round(actual, 3)
@@ -73,7 +74,7 @@ if __name__ == '__main__':
             )
         )
 
-        sys.exit(1)
+        exit(1)
 
     print(
         'expected >= {} %, actual {} %, passed'.format(

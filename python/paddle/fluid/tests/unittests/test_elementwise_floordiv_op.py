@@ -16,10 +16,10 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):
@@ -44,7 +44,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -97,13 +97,12 @@ class TestElementwiseModOpInverse(TestElementwiseModOp):
 
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
-        with paddle_static_guard():
-            with fluid.program_guard(fluid.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
-                y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="int64")
+            y = fluid.data(name='y', shape=[2, 3], dtype='int64')
 
-                y_1 = paddle.floor_divide(x, y, name='div_res')
-                self.assertEqual(('div_res' in y_1.name), True)
+            y_1 = paddle.floor_divide(x, y, name='div_res')
+            self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():

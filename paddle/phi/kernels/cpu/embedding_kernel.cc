@@ -115,5 +115,4 @@ PD_REGISTER_KERNEL(embedding,
                    phi::EmbeddingKernel,
                    float,
                    double,
-                   int8_t,
                    phi::dtype::bfloat16) {}

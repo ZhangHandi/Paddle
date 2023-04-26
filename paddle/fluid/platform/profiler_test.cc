@@ -45,7 +45,7 @@ TEST(RecordEvent, RecordEvent) {
   using paddle::platform::RecordEvent;
 
   ProfilerState state = ProfilerState::kCPU;
-  paddle::platform::EnableProfiler(state);
+  EnableProfiler(state);
 
   /* Usage 1:
    *  PushEvent(evt_name);

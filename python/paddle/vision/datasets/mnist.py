@@ -113,7 +113,7 @@ class MNIST(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], f"mode should be 'train' or 'test', but got {mode}"
+        ], "mode should be 'train' or 'test', but got {}".format(mode)
 
         if backend is None:
             backend = paddle.vision.get_image_backend()

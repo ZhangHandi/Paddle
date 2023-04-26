@@ -85,7 +85,7 @@ void add_bias_grad(gpuStream_t stream,
       dout_data, slot_pairs_num, ins_num, out_dim, db_data);
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class BatchFCCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -149,7 +149,7 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -238,13 +238,10 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 using GPUCtx = phi::GPUContext;
+REGISTER_OP_CUDA_KERNEL(batch_fc,
+                        ops::BatchFCCUDAKernel<GPUCtx, float>,
+                        ops::BatchFCCUDAKernel<GPUCtx, double>);
 
-PD_REGISTER_STRUCT_KERNEL(
-    batch_fc, GPU, ALL_LAYOUT, ops::BatchFCCUDAKernel, float, double) {}
-
-PD_REGISTER_STRUCT_KERNEL(batch_fc_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::BatchFCGradOpCUDAKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(batch_fc_grad,
+                        ops::BatchFCGradOpCUDAKernel<GPUCtx, float>,
+                        ops::BatchFCGradOpCUDAKernel<GPUCtx, double>);

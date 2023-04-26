@@ -18,15 +18,15 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 paddle.enable_static()
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import OpTest
 from test_attribute_var import UnittestBase
 
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.testsuite import create_op
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -137,36 +137,6 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
-def conv2dtranspose_wrapper(
-    x,
-    weight,
-    stride=1,
-    padding=0,
-    output_padding=[],
-    output_size=[],
-    padding_algorithm="EXPLICIT",
-    groups=1,
-    dilation=1,
-    data_format="NCDHW",
-):
-    if data_format == "AnyLayout":
-        data_format = "NCDHW"
-    if padding_algorithm is None:
-        padding_algorithm = "EXPLICIT"
-    return paddle._C_ops.conv2d_transpose(
-        x,
-        weight,
-        stride,
-        padding,
-        output_padding,
-        output_size,
-        padding_algorithm,
-        groups,
-        dilation,
-        data_format,
-    )
-
-
 class TestConv2DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
@@ -183,13 +153,10 @@ class TestConv2DTransposeOp(OpTest):
         self.init_op_type()
         self.init_test_case()
 
-        if self.is_bfloat16_op():
-            input_ = np.random.random(self.input_size).astype(np.float32)
-            filter_ = np.random.random(self.filter_size).astype(np.float32)
-        else:
-            input_ = np.random.random(self.input_size).astype(self.dtype)
-            filter_ = np.random.random(self.filter_size).astype(self.dtype)
+        input_ = np.random.random(self.input_size).astype(self.dtype)
+        filter_ = np.random.random(self.filter_size).astype(self.dtype)
 
+        self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
@@ -207,18 +174,9 @@ class TestConv2DTransposeOp(OpTest):
         if len(self.output_padding) > 0:
             self.attrs['output_padding'] = self.output_padding
 
-        output = conv2dtranspose_forward_naive(input_, filter_, self.attrs)
-
-        if self.is_bfloat16_op():
-            output = output.astype(np.float32)
-            self.inputs = {
-                'Input': convert_float_to_uint16(input_),
-                'Filter': convert_float_to_uint16(filter_),
-            }
-            self.inputs_fp32 = {'Input': input_, 'Filter': filter_}
-        else:
-            output = output.astype(self.dtype)
-            self.inputs = {'Input': input_, 'Filter': filter_}
+        output = conv2dtranspose_forward_naive(
+            input_, filter_, self.attrs
+        ).astype(self.dtype)
 
         self.outputs = {'Output': output}
 
@@ -241,20 +199,24 @@ class TestConv2DTransposeOp(OpTest):
                     ['Filter'],
                     'Output',
                     max_relative_error=0.02,
-                    no_grad_set={'Input'},
+                    no_grad_set=set(['Input']),
                 )
             else:
-                self.check_grad(['Filter'], 'Output', no_grad_set={'Input'})
+                self.check_grad(
+                    ['Filter'], 'Output', no_grad_set=set(['Input'])
+                )
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
             if self.use_cudnn:
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set={'Filter'}
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
                 )
             else:
-                self.check_grad(['Input'], 'Output', no_grad_set={'Filter'})
+                self.check_grad(
+                    ['Input'], 'Output', no_grad_set=set(['Filter'])
+                )
 
     def test_check_grad(self):
         if self.need_check_grad:
@@ -262,13 +224,13 @@ class TestConv2DTransposeOp(OpTest):
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
                     place,
-                    {'Input', 'Filter'},
+                    set(['Input', 'Filter']),
                     'Output',
                     max_relative_error=0.02,
                 )
             else:
                 self.check_grad(
-                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
+                    set(['Input', 'Filter']), 'Output', max_relative_error=0.02
                 )
 
     def init_test_case(self):
@@ -282,7 +244,6 @@ class TestConv2DTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 class TestWithSymmetricPad(TestConv2DTransposeOp):
@@ -492,7 +453,6 @@ class TestCUDNN(TestConv2DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -511,7 +471,6 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -530,7 +489,6 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -549,7 +507,6 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -568,7 +525,6 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -587,7 +543,6 @@ class TestCUDNNWithStride(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -606,7 +561,6 @@ class TestCUDNNWithGroups(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 # ------------ test_cudnn ------------
@@ -617,7 +571,6 @@ class TestCUDNNWithEvenUpsample(TestWithEvenUpsample):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 # Please Don't remove the following code.
@@ -652,7 +605,6 @@ class TestCUDNN_NHWC(TestConv2DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -672,7 +624,6 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -692,7 +643,6 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithSymmetricPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -712,7 +662,6 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -732,7 +681,6 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -753,7 +701,6 @@ class TestCUDNNWithEvenUpsample_NHWC(TestWithEvenUpsample):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
 
 @unittest.skipIf(
@@ -771,66 +718,18 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.need_check_grad = True
+        self.need_check_grad = False
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
 
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place, atol=0.02, check_dygraph=(not self.use_mkldnn)
-                )
+            self.check_output_with_place(
+                place, atol=0.02, check_dygraph=(not self.use_mkldnn)
+            )
         else:
             self.check_output(check_dygraph=(not self.use_mkldnn))
-
-    def test_check_grad_no_input(self):
-        if self.need_check_grad:
-            if self.use_cudnn:
-                place = core.CUDAPlace(0)
-                if core.is_float16_supported(place):
-                    self.check_grad_with_place(
-                        place,
-                        ['Filter'],
-                        'Output',
-                        max_relative_error=0.02,
-                        no_grad_set={'Input'},
-                    )
-            else:
-                self.check_grad(['Filter'], 'Output', no_grad_set={'Input'})
-
-    def test_check_grad_no_filter(self):
-        if self.need_check_grad:
-            if self.use_cudnn:
-                place = core.CUDAPlace(0)
-                if core.is_float16_supported(place):
-                    self.check_grad_with_place(
-                        place,
-                        ['Input'],
-                        'Output',
-                        max_relative_error=0.02,
-                        no_grad_set={'Filter'},
-                    )
-            else:
-                self.check_grad(['Input'], 'Output', no_grad_set={'Filter'})
-
-    def test_check_grad(self):
-        if self.need_check_grad:
-            if self.use_cudnn:
-                place = core.CUDAPlace(0)
-                if core.is_float16_supported(place):
-                    self.check_grad_with_place(
-                        place,
-                        {'Input', 'Filter'},
-                        'Output',
-                        max_relative_error=0.02,
-                    )
-            else:
-                self.check_grad(
-                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
-                )
 
 
 @unittest.skipIf(
@@ -930,185 +829,13 @@ class TestCUDNNWithEvenUpsample_NHWC_FP16(TestCUDNN_FP16):
         self.data_format = 'NHWC'
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNN_BF16(TestConv2DTransposeOp):
-    def get_numeric_grad(self, place, check_name):
-        scope = core.Scope()
-        self._check_grad_helper()
-        op = create_op(
-            scope, self.op_type, self.inputs, self.outputs, self.attrs
-        )
-        return get_numeric_gradient(
-            place, scope, op, self.inputs_fp32, check_name, ['Output']
-        )
-
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
-    def init_op_type(self):
-        self.need_check_grad = False
-        self.use_cudnn = True
-        self.op_type = "conv2d_transpose"
-        self.python_api = conv2dtranspose_wrapper
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, atol=0.02, check_dygraph=(not self.use_mkldnn)
-        )
-
-    def test_check_grad_no_input(self):
-        place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'Filter')
-        self.check_grad_with_place(
-            place,
-            ['Filter'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set={'Input'},
-            user_defined_grads=[numeric_grads],
-        )
-
-    def test_check_grad_no_filter(self):
-        place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'Input')
-        self.check_grad_with_place(
-            place,
-            ['Input'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set={'Filter'},
-            user_defined_grads=[numeric_grads],
-        )
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNN_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNNWithSymmetricPad_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNNWithAsymmetricPad_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [1, 0, 2, 3]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNNWithStride_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNNWithGroups_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 2
-        self.input_size = [2, 5, 5, 4]  # NCHW
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 3, 3, 3]
-        self.data_format = 'NHWC'
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestCUDNNWithEvenUpsample_NHWC_BF16(TestCUDNN_BF16):
-    def init_test_case(self):
-        self.dtype = np.uint16
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_size = [14, 14]
-        self.input_size = [2, 7, 7, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 5, 5]
-        self.data_format = 'NHWC'
-
-
 class TestConv2DTransposeAPI(unittest.TestCase):
     def test_case1(self):
-        data1 = paddle.static.data(
-            name='data1', shape=[-1, 3, 5, 5], dtype='float32'
+        data1 = fluid.layers.data(
+            name='data1', shape=[3, 5, 5], dtype='float32'
         )
-        data2 = paddle.static.data(
-            name='data2', shape=[-1, 5, 5, 3], dtype='float32'
+        data2 = fluid.layers.data(
+            name='data2', shape=[5, 5, 3], dtype='float32'
         )
         out1 = paddle.static.nn.conv2d_transpose(
             input=data1,
@@ -1191,9 +918,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
 
 class TestConv2DTransposeOpException(unittest.TestCase):
     def test_exception(self):
-        data = paddle.static.data(
-            name='data', shape=[-1, 3, 5, 5], dtype="float32"
-        )
+        data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
 
         def attr_data_format():
             out = paddle.static.nn.conv2d_transpose(
@@ -1240,8 +965,8 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
 
-        error_input = paddle.static.data(
-            name='error_data', shape=[-1, 1], dtype="float32"
+        error_input = fluid.layers.data(
+            name='error_data', shape=[1], dtype="float32"
         )
 
         def error_input_size():
@@ -1262,17 +987,6 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, error_groups)
 
-        def error_0_filter_number():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=0,
-                filter_size=3,
-                data_format='NCHW',
-            )
-
-        self.assertRaises(ValueError, error_0_filter_number)
-
 
 class TestConv2DTransposeRepr(unittest.TestCase):
     def test_case(self):
@@ -1284,17 +998,6 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         y_np = y_var.numpy()
         self.assertIsNotNone(y_np)
         paddle.enable_static()
-
-
-class TestConv2dTranspose(unittest.TestCase):
-    def error_weight_input(self):
-        array = np.array([1], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(array, [1, 1, 1, 1]), dtype='float32')
-        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
-        paddle.nn.functional.conv2d_transpose(x, weight, bias=0)
-
-    def test_type_error(self):
-        self.assertRaises(ValueError, self.error_weight_input)
 
 
 class TestTensorOutputSize1(UnittestBase):

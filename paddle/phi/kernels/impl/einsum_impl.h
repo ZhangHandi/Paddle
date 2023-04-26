@@ -15,7 +15,6 @@
 
 #include <set>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -747,12 +746,12 @@ void EinsumKernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void EinsumKernel(const Context& dev_ctx,
-                  const std::vector<const DenseTensor*>& inputs,
-                  const std::string& equation,
-                  DenseTensor* out,
-                  std::vector<DenseTensor*> cache,
-                  std::vector<DenseTensor*> xshape) {
+void EinsumKernelRaw(const Context& dev_ctx,
+                     const std::vector<const DenseTensor*>& inputs,
+                     const std::string& equation,
+                     DenseTensor* out,
+                     std::vector<DenseTensor*> cache,
+                     std::vector<DenseTensor*> xshape) {
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer
@@ -766,10 +765,10 @@ void EinsumKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void EinsumInferKernel(const Context& dev_ctx,
-                       const std::vector<const DenseTensor*>& inputs,
-                       const std::string& equation,
-                       DenseTensor* out) {
+void EinsumKernel(const Context& dev_ctx,
+                  const std::vector<const DenseTensor*>& inputs,
+                  const std::string& equation,
+                  DenseTensor* out) {
   std::vector<char> place_holder;
   std::vector<DenseTensor*> cache_tensor(
       inputs.size());  // set empty; TA, TB, TdC

@@ -16,12 +16,12 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 @skip_check_grad_ci(
@@ -36,7 +36,6 @@ from paddle.fluid import core
 class TestCholeskyOp(OpTest):
     def setUp(self):
         self.op_type = "cholesky"
-        self.python_api = paddle.cholesky
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
@@ -116,9 +115,7 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
     def check_static_result(self, place, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = paddle.static.data(
-                name="input", shape=[4, 4], dtype="float64"
-            )
+            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
             result = paddle.cholesky(input)
 
             input_np = np.zeros([4, 4]).astype("float64")

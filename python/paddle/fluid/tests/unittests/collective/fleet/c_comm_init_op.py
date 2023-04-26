@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )

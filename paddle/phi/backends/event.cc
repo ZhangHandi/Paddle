@@ -14,8 +14,7 @@
 
 #include "paddle/phi/backends/event.h"
 
-#include "glog/logging.h"
-
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/stream.h"
 
@@ -60,7 +59,7 @@ void Event::Record(const stream::Stream* stream) { stream->RecordEvent(this); }
 
 bool Event::Query() const { return device_->QueryEvent(this); }
 
-void Event::Synchronize() const { device_->SynchronizeEvent(this); }
+void Event::Synchonrize() const { device_->SynchronizeEvent(this); }
 
 const Place& Event::GetPlace() const { return place_; }
 

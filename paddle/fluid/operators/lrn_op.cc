@@ -45,9 +45,9 @@ struct LRNFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
     phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
@@ -222,18 +222,18 @@ class LRNOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("MidOut", x_dim);
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
@@ -242,12 +242,13 @@ class LRNOp : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
-        return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -345,18 +346,18 @@ class LRNOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
@@ -365,12 +366,13 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
-        return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -400,7 +402,5 @@ REGISTER_OPERATOR(lrn,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(lrn, CPU, ALL_LAYOUT, ops::LRNKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    lrn_grad, CPU, ALL_LAYOUT, ops::LRNGradKernel, float) {}
+REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);

@@ -35,10 +35,11 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -128,6 +129,6 @@ REGISTER_OPERATOR(
     ops::CTCAlignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(
-    ctc_align, CPU, ALL_LAYOUT, ops::CTCAlignKernel, int, int64_t) {}
+REGISTER_OP_CPU_KERNEL(ctc_align,
+                       ops::CTCAlignKernel<phi::CPUContext, int>,
+                       ops::CTCAlignKernel<phi::CPUContext, int64_t>);

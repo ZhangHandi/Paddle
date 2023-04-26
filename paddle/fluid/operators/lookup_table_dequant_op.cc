@@ -85,10 +85,10 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -133,9 +133,5 @@ REGISTER_OPERATOR(
     ops::LookupTableDequantOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(lookup_table_dequant,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LookupTableDequantKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(lookup_table_dequant,
+                       ops::LookupTableDequantKernel<float>);

@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import core
-from paddle.nn import functional
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn as nn
+import paddle.nn.functional as functional
 
 
 class TestNNSigmoidAPI(unittest.TestCase):

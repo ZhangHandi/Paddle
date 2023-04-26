@@ -20,9 +20,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
-from paddle.distributed.fleet.base import role_maker
 
 
 class SparseLoadOp(unittest.TestCase):
@@ -30,9 +30,7 @@ class SparseLoadOp(unittest.TestCase):
 
     def net(self, emb_array, fc_array):
         with fluid.unique_name.guard():
-            dense_input = paddle.static.data(
-                'input', shape=[None, 1], dtype="int64"
-            )
+            dense_input = fluid.data('input', shape=[None, 1], dtype="int64")
 
             emb = fluid.layers.embedding(
                 input=dense_input,
@@ -40,7 +38,9 @@ class SparseLoadOp(unittest.TestCase):
                 size=[10, 10],
                 param_attr=fluid.ParamAttr(
                     name="embedding",
-                    initializer=paddle.nn.initializer.Assign(emb_array),
+                    initializer=fluid.initializer.NumpyArrayInitializer(
+                        emb_array
+                    ),
                 ),
             )
 
@@ -50,7 +50,9 @@ class SparseLoadOp(unittest.TestCase):
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
                     name='fc',
-                    initializer=paddle.nn.initializer.Assign(fc_array),
+                    initializer=fluid.initializer.NumpyArrayInitializer(
+                        fc_array
+                    ),
                 ),
             )
             loss = paddle.mean(fc1)

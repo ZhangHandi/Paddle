@@ -17,8 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import ParamAttr, core, layers
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid import ParamAttr
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, grad_var_name
@@ -133,14 +135,15 @@ class RecurrentOpTest1(unittest.TestCase):
             self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
             name='x',
+            append_batch_size=False,
         )
         x.stop_gradient = False
-        h_boot = paddle.static.data(
-            shape=[-1, self.input_dim], dtype='float32', name='h_boot'
+        h_boot = layers.data(
+            shape=[self.input_dim], dtype='float32', name='h_boot'
         )
         h_boot.stop_gradient = False
 
@@ -278,14 +281,15 @@ class RecurrentOpTest2(RecurrentOpTest1):
             self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
             name='x',
+            append_batch_size=False,
         )
         x.stop_gradient = False
-        h_boot = paddle.static.data(
-            shape=[-1, self.input_dim], dtype='float32', name='h_boot'
+        h_boot = layers.data(
+            shape=[self.input_dim], dtype='float32', name='h_boot'
         )
         h_boot.stop_gradient = False
 
@@ -299,7 +303,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='W',
-                    initializer=paddle.nn.initializer.Constant(1.0),
+                    initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
@@ -308,7 +312,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='U',
-                    initializer=paddle.nn.initializer.Constant(0.0),
+                    initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),
                 bias_attr=False,
             )
@@ -386,22 +390,25 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
             name='x',
+            append_batch_size=False,
         )
         x.stop_gradient = False
-        h_boot1 = paddle.static.data(
+        h_boot1 = layers.data(
             shape=[self.batch_size, self.input_dim],
             dtype='float32',
             name='h_boot1',
+            append_batch_size=False,
         )
         h_boot1.stop_gradient = False
-        h_boot2 = paddle.static.data(
+        h_boot2 = layers.data(
             shape=[self.batch_size, self.input_dim],
             dtype='float32',
             name='h_boot2',
+            append_batch_size=False,
         )
         h_boot2.stop_gradient = False
 
@@ -413,7 +420,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
 
             mem1 = paddle.scale(x=h_pre1, scale=1.0)
             mem2 = paddle.scale(x=h_pre2, scale=1.0)
-            out = paddle.add_n([mem1, x_t, mem2])
+            out = layers.sums(input=[mem1, x_t, mem2])
 
             rnn.update_memory(h_pre1, mem1)
             rnn.update_memory(h_pre2, mem2)
@@ -470,10 +477,11 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
             name='x',
+            append_batch_size=False,
         )
         x.stop_gradient = False
 
@@ -574,30 +582,34 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             self.output = paddle.mean(rnn_out)
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
             name='x',
+            append_batch_size=False,
         )
         x.stop_gradient = False
 
-        emb = paddle.static.data(
+        emb = layers.data(
             name='emb',
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype='float32',
+            append_batch_size=False,
         )
         emb.stop_gradient = False
 
-        w1 = paddle.static.data(
+        w1 = layers.data(
             shape=[self.input_dim, self.input_dim],
             dtype='float32',
             name='w1',
+            append_batch_size=False,
         )
         w1.stop_gradient = False
-        w2 = paddle.static.data(
+        w2 = layers.data(
             shape=[self.input_dim * 2, self.input_dim],
             dtype='float32',
             name='w2',
+            append_batch_size=False,
         )
         w2.stop_gradient = False
 
@@ -618,7 +630,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
                 init_value=0.0,
             )
             step_in = rnn.step_input(x)
-            concat_in = paddle.concat([step_in, pre_h], 1)
+            concat_in = layers.concat([step_in, pre_h], 1)
             new_h = paddle.matmul(concat_in, w2)
             new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
@@ -663,14 +675,15 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
             self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
-        x = paddle.static.data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             dtype="float32",
             name="x",
+            append_batch_size=False,
         )
         x.stop_gradient = False
-        h_boot = paddle.static.data(
-            shape=[-1, self.input_dim], dtype="float32", name="h_boot"
+        h_boot = layers.data(
+            shape=[self.input_dim], dtype="float32", name="h_boot"
         )
         h_boot.stop_gradient = True
 
@@ -684,7 +697,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name="W",
-                    initializer=paddle.nn.initializer.Constant(1.0),
+                    initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
@@ -693,7 +706,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name="U",
-                    initializer=paddle.nn.initializer.Constant(0.0),
+                    initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),
                 bias_attr=False,
             )

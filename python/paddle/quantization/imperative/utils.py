@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-from paddle.nn.quant import quant_layers
+import paddle.nn.quant.quant_layers as quant_layers
 
 layer_name_map = {
     'Conv2DTranspose': paddle.nn.Conv2DTranspose,

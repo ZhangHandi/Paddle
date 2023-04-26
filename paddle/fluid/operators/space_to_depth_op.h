@@ -67,7 +67,7 @@ class space_to_depth_compute {
   T *out_;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SpaceToDepthKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -96,7 +96,7 @@ class SpaceToDepthKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SpaceToDepthGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

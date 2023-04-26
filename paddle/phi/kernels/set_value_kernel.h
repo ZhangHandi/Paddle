@@ -17,7 +17,6 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {

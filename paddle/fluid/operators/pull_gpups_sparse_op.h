@@ -97,7 +97,7 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class PullGpuPSSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -105,7 +105,7 @@ class PullGpuPSSparseCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class PushGpuPSSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

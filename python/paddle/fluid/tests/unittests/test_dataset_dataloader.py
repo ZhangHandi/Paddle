@@ -20,7 +20,7 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -86,11 +86,11 @@ class DatasetLoaderTestBase(unittest.TestCase):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
+            image = fluid.layers.data(
+                name='image', shape=IMAGE_SHAPE, dtype='float32'
             )
-            label = paddle.static.data(
-                name='label', shape=[-1] + LABEL_SHAPE, dtype='int64'
+            label = fluid.layers.data(
+                name='label', shape=LABEL_SHAPE, dtype='int64'
             )
 
             simple_fc_net_with_inputs(image, label)
@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 1
+            file_num = 10
             os.environ['CPU_NUM'] = str(file_num)
-            places = [fluid.CPUPlace()]
+            places = fluid.cpu_places()
             use_cuda = False
         else:
-            file_num = 1
-            places = [fluid.CUDAPlace(0)]
+            file_num = fluid.core.get_cuda_device_count()
+            places = fluid.cuda_places()
             use_cuda = True
 
         filelist = []
@@ -127,7 +127,9 @@ class DatasetLoaderTestBase(unittest.TestCase):
             random_delta_batch_size = np.zeros(shape=[file_num])
 
         for i in range(file_num):
-            filename = os.path.join(self.temp_dir.name, f'dataset_test_{i}.txt')
+            filename = os.path.join(
+                self.temp_dir.name, 'dataset_test_{}.txt'.format(i)
+            )
             filelist.append(filename)
             write_reader_data_to_file(
                 filename,
@@ -143,7 +145,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog)
+        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)
@@ -151,7 +153,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         for _ in range(EPOCH_NUM):
             has_complete_batch = False
             for batch_id, data in enumerate(dataloader):
-                self.assertEqual(len(places), len(data))
+                self.assertEquals(len(places), len(data))
                 for idx, data_on_each_device in enumerate(data):
                     image = data_on_each_device["image"]
                     label = data_on_each_device["label"]
@@ -164,7 +166,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         else:
                             batch_size = BATCH_SIZE
 
-                    self.assertEqual(image.shape()[1:], IMAGE_SHAPE)
+                    self.assertEquals(image.shape()[1:], IMAGE_SHAPE)
                     self.assertTrue(
                         image._place()._equals(places[idx]),
                         msg=get_place_string(image._place())
@@ -172,24 +174,24 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         + get_place_string(places[idx]),
                     )
                     if self.drop_last:
-                        self.assertEqual(image.shape()[0], BATCH_SIZE)
+                        self.assertEquals(image.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             image.shape()[0] == BATCH_SIZE
                             or image.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEqual(label.shape()[1:], LABEL_SHAPE)
+                    self.assertEquals(label.shape()[1:], LABEL_SHAPE)
                     self.assertTrue(label._place()._equals(places[idx]))
                     if self.drop_last:
-                        self.assertEqual(label.shape()[0], BATCH_SIZE)
+                        self.assertEquals(label.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             label.shape()[0] == BATCH_SIZE
                             or label.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEqual(image.shape()[0], label.shape()[0])
+                    self.assertEquals(image.shape()[0], label.shape()[0])
 
                     if image.shape()[0] == BATCH_SIZE:
                         has_complete_batch = True

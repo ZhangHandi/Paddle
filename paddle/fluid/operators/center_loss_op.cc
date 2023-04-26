@@ -53,10 +53,11 @@ class CenterLossOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -114,11 +115,11 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
-        ctx.device_context().GetPlace());
+        ctx.device_context());
   }
 };
 
@@ -145,7 +146,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+using CPUCtx = phi::CPUContext;
 
 REGISTER_OPERATOR(center_loss,
                   ops::CenterLossOp,
@@ -157,11 +158,10 @@ REGISTER_OPERATOR(center_loss_grad,
                   ops::CenterLossGradOp,
                   ops::CenterLossGradNoNeedBufVarsInferer);
 
-PD_REGISTER_STRUCT_KERNEL(
-    center_loss, CPU, ALL_LAYOUT, ops::CenterLossKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(center_loss_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CenterLossGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(center_loss,
+                       ops::CenterLossKernel<CPUCtx, float>,
+                       ops::CenterLossKernel<CPUCtx, double>);
+
+REGISTER_OP_CPU_KERNEL(center_loss_grad,
+                       ops::CenterLossGradKernel<CPUCtx, float>,
+                       ops::CenterLossGradKernel<CPUCtx, double>);

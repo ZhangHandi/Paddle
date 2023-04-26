@@ -21,22 +21,22 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename DataT, typename ParamT>
+template <typename InT>
 struct ScaleFunctor {
-  ParamT bias;
-  ParamT scale;
+  InT bias;
+  InT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
       : bias(bias_data),
         scale(scale_data),
         bias_after_scale(is_bias_after_sacle) {}
 
-  __device__ __forceinline__ DataT operator()(const DataT x) const {
+  __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
-      return static_cast<DataT>(scale * static_cast<ParamT>(x) + bias);
+      return scale * x + bias;
     } else {
-      return static_cast<DataT>(scale * (static_cast<ParamT>(x) + bias));
+      return scale * (x + bias);
     }
   }
 };
@@ -48,7 +48,6 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
@@ -61,8 +60,7 @@ void ScaleKernel(const Context& dev_ctx,
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T, MT>(
-          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
+      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
 }
 
 }  // namespace phi

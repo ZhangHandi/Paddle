@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -445,7 +443,7 @@ void MomentumDenseImpl(const Context& ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,
@@ -457,7 +455,7 @@ void MomentumDenseImpl(const Context& ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
     funcs::ForRange<Context> for_range(ctx, param.numel());
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type) \
   DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(      \
@@ -553,7 +551,7 @@ void MomentumSparseImpl(const Context& ctx,
   merge_func(ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();
-  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
   int64_t row_numel = merged_grad->value().numel() / merged_grad->rows().size();
   funcs::ForRange<Context> for_range(ctx, param.numel());

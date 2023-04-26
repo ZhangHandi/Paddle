@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -472,7 +472,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         if not self.is_server:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
-            paddle.framework.switch_main_program(self.cloned_main)
+            fluid.framework.switch_main_program(self.cloned_main)
             print(
                 "paddle.static.default_startup_program: {}".format(
                     paddle.static.default_startup_program()._heter_pipeline_opt
@@ -483,4 +483,4 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             fluid.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
-            paddle.framework.switch_main_program(self.attrs['_main_server'])
+            fluid.framework.switch_main_program(self.attrs['_main_server'])

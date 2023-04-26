@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestUniqueWithCountsOp(OpTest):
@@ -81,15 +82,16 @@ class TestRandom(TestUniqueWithCountsOp):
 
 class TestUniqueWithCountsRaiseError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
+        def test_type():
+            paddle.unique([10])
 
-            def test_dtype():
-                data = paddle.static.data(
-                    shape=[10], dtype="int16", name="input"
-                )
-                paddle.unique(data)
+        self.assertRaises(TypeError, test_type)
 
-            self.assertRaises(TypeError, test_dtype)
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float16", name="input")
+            paddle.unique(data)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 @unittest.skipIf(

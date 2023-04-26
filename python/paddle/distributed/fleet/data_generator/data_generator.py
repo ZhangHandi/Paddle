@@ -228,7 +228,8 @@ class DataGenerator:
         '''
 
         def local_iter():
-            yield from samples
+            for sample in samples:
+                yield sample
 
         return local_iter
 

@@ -14,12 +14,8 @@
 
 #include "paddle/phi/kernels/prelu_kernel.h"
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/gpu/prelu_funcs.h"
 
 namespace phi {
@@ -31,43 +27,36 @@ void PReluKernel(const Context& dev_ctx,
                  const std::string& data_format,
                  const std::string& mode,
                  DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
   const T* x_ptr = x.data<T>();
-  const T* alpha_ptr = alpha.data<T>();
+  T* o_ptr = dev_ctx.template Alloc<T>(out);
 
+  const T* alpha_ptr = alpha.data<T>();
   int numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
 
   VLOG(4) << "dim[0]:" << dim[0] << ", dim[1]:" << dim[1] << ", dim["
-          << x_rank - 1 << "]:" << dim[x_rank - 1] << ", numel:" << numel
-          << ", mode:" << mode << ", format:" << data_format;
+          << x_rank - 1 << "]:" << dim[x_rank - 1] << ", numel:" << numel;
 
   if (mode == "channel") {
     bool channel_last = data_format == "NHWC";
     size_t channel = channel_last ? dim[x_rank - 1] : dim[1];
-    if (channel_last) {
-      auto func = PReluChannelLastWiseCUDAFunctor<T>(x_ptr, alpha_ptr, channel);
-      phi::IndexKernel<T, PReluChannelLastWiseCUDAFunctor<T>>(
-          dev_ctx, out, func);
-    } else {
-      size_t plane_size = numel / dim[0] / channel;
-      auto func = PReluChannelFirstWiseCUDAFunctor<T>(
-          x_ptr, alpha_ptr, numel, channel, plane_size);
-      phi::IndexKernel<T, PReluChannelFirstWiseCUDAFunctor<T>>(
-          dev_ctx, out, func);
-    }
+    PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
+    prelu_channel_wise(dev_ctx.stream(),
+                       x_ptr,
+                       alpha_ptr,
+                       o_ptr,
+                       dim[0],
+                       channel,
+                       channel_last,
+                       numel);
   } else if (mode == "element") {
-    size_t spatial_size = numel / dim[0];
-    auto func =
-        PreluElementWiseDirectCUDAFunctor<T>(x_ptr, alpha_ptr, spatial_size);
-    phi::IndexKernel<T, PreluElementWiseDirectCUDAFunctor<T>>(
-        dev_ctx, out, func);
+    PreluElementWiseDirectCUDAFunctor<T> prelu_element_wise;
+    prelu_element_wise(
+        dev_ctx.stream(), x_ptr, alpha_ptr, o_ptr, dim[0], numel);
   } else {
-    std::vector<const DenseTensor*> ins = {&x};
-    std::vector<DenseTensor*> outs = {out};
-    auto func = PreluScalarDirectCUDAFunctor<T>(alpha_ptr);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, func);
+    PreluScalarDirectCUDAFunctor<T> prelu_scalar;
+    prelu_scalar(dev_ctx.stream(), x_ptr, alpha_ptr, o_ptr, numel);
   }
 }
 
@@ -79,5 +68,4 @@ PD_REGISTER_KERNEL(prelu,
                    phi::PReluKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    double) {}

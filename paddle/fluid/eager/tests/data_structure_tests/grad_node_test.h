@@ -30,8 +30,9 @@ class GradTestNode : public egr::GradNodeBase {
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
   std::string name() override { return "GradTestNode"; }
-  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override {
@@ -46,8 +47,9 @@ class GradTestNode : public egr::GradNodeBase {
         meta);
     auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
-    paddle::Tensor et1(dt);
-    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+    paddle::experimental::Tensor et1(dt);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
         res = {{et1}};
     return res;
   }

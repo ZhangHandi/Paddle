@@ -19,9 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -34,7 +31,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
@@ -45,13 +42,13 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_xpu_place(ctx.GetPlace()) ||
+              platform::is_mlu_place(ctx.GetPlace()) ||
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-    return phi::KernelKey(
-        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -119,7 +116,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
@@ -130,12 +127,12 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       if (!(platform::is_gpu_place(ctx.GetPlace()) ||
             platform::is_npu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
+            platform::is_mlu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace())))
         PADDLE_THROW(platform::errors::InvalidArgument(
             "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-    return phi::KernelKey(
-        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -157,23 +154,6 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class SoftmaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    paddle::Tensor out = this->GetSingleForwardOutput("Out");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::Tensor dx = this->GetSingleInputGrad("X");
-    auto* dx_ptr = this->GetOutputPtr(&dx);
-    std::string dx_name = this->GetOutputName(dx);
-    int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(6) << "Runing softmax_grad composite func";
-    prim::softmax_grad<prim::DescTensor>(out, out_grad, axis, dx_ptr);
-    this->RecoverOutputName(dx, dx_name);
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
@@ -190,7 +170,6 @@ REGISTER_OPERATOR(softmax,
                   ops::SoftmaxOpInferVarType,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SoftmaxCompositeGradOpMaker,
                   ops::SoftmaxInplaceInferer,
                   SoftmaxInferShapeFunctor);
 DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad,

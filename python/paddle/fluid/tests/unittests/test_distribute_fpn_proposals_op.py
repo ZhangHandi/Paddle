@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -142,7 +142,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):

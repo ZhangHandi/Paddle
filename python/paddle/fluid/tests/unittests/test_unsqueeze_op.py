@@ -17,11 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -32,29 +33,6 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
-        self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-    def init_test_case(self):
-        self.ori_shape = (3, 40)
-        self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 40)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes}
-
-
-class TestUnsqueezeFP16Op(OpTest):
-    def setUp(self):
-        self.init_test_case()
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
@@ -129,22 +107,6 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
-
-
-# axis is empty, x is ND
-class TestUnsqueezeOp5(TestUnsqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = ()
-        self.axes = ()
-        self.new_shape = ()
-
-
-# axis is empty, x is 0D
-class TestUnsqueezeOp6(TestUnsqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (10, 2, 5)
-        self.axes = ()
-        self.new_shape = (10, 2, 5)
 
 
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
@@ -367,7 +329,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data = layers.data('data', [2, 3, 4], False, dtype)
         data.persistable = True
         out = paddle.unsqueeze(data, [0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -375,6 +337,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.unsqueeze_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -398,7 +361,7 @@ class TestUnsqueezeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data = layers.data('data', [2, 3, 4], False, dtype)
         data.persistable = True
         out = paddle.unsqueeze(data, [0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -406,6 +369,7 @@ class TestUnsqueezeTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.unsqueeze_wrapper, [data], out, x_init=[data_arr], place=place
         )

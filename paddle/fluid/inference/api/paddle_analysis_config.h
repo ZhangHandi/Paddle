@@ -138,7 +138,7 @@ struct DistConfig {
 /// and loading it into AnalysisPredictor.
 ///
 struct PD_INFER_DECL AnalysisConfig {
-  AnalysisConfig();
+  AnalysisConfig() = default;
   ///
   /// \brief Construct a new AnalysisConfig from another
   /// AnalysisConfig.
@@ -363,15 +363,19 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuDeviceId(int device_id = 0);
   ///
+  /// \brief Turn on NPU.
+  ///
+  /// \param device_id device_id the NPU card to use (default is 0).
+  ///
+  void EnableNpu(int device_id = 0);
+  ///
   /// \brief Turn on CustomDevice.
   ///
   /// \param device_type device_type the custom device to use.
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
-  void EnableCustomDevice(const std::string& device_type,
-                          int device_id = 0,
-                          Precision precision_mode = Precision::kFloat32);
+  void EnableCustomDevice(const std::string& device_type, int device_id = 0);
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -471,13 +475,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return string The custom device type.
   ///
   std::string custom_device_type() const { return custom_device_type_; }
-  /// \brief Get whether the custom device mixed preicsion is enabled.
-  ///
-  /// \return bool custom device mixed is enabled.
-  ///
-  bool enable_custom_device_mixed() const {
-    return enable_custom_device_mixed_;
-  }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -644,9 +641,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// mode.
   /// \param allow_build_at_runtime allow build trt engine at runtime.
   ///
-  void EnableTunedTensorRtDynamicShape(
-      const std::string& shape_range_info_path = "",
-      bool allow_build_at_runtime = true);
+  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
+                                       bool allow_build_at_runtime = true);
 
   ///
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic
@@ -1075,7 +1071,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_custom_device_{false};
   int custom_device_id_{0};
   std::string custom_device_type_;
-  bool enable_custom_device_mixed_{false};
 
   // ONNXRuntime related
   bool use_onnxruntime_{false};
@@ -1196,7 +1191,26 @@ struct PD_INFER_DECL AnalysisConfig {
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
   bool use_mkldnn_int8_{false};
   std::unordered_set<int> quantize_excluded_op_ids_{};
-  std::unordered_set<std::string> quantize_enabled_op_types_{};
+  std::unordered_set<std::string> quantize_enabled_op_types_{
+      "concat",
+      "conv2d",
+      "depthwise_conv2d",
+      "fused_conv2d",
+      "elementwise_add",
+      "elementwise_mul",
+      "fc",
+      "matmul",
+      "nearest_interp",
+      "nearest_interp_v2",
+      "pool2d",
+      "prior_box",
+      "reshape2",
+      "transpose2",
+      "fusion_gru",
+      "fusion_lstm",
+      "multi_gru",
+      "slice",
+      "split"};
 
   bool disable_mkldnn_fc_passes_{false};
 

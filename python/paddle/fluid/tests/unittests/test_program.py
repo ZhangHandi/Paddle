@@ -15,7 +15,8 @@
 import unittest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, default_main_program, program_guard
 
 paddle.enable_static()
@@ -97,7 +98,7 @@ class TestProgram(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            d = paddle.static.data(name='x', shape=[-1, 784], dtype='float32')
+            d = layers.data(name='x', shape=[784], dtype='float32')
             hidden = paddle.static.nn.fc(x=d, size=100)
             paddle.static.nn.fc(x=hidden, size=100)
 
@@ -106,7 +107,7 @@ class TestProgram(unittest.TestCase):
 
     def test_program_all_parameters(self):
         program = fluid.default_main_program()
-        data = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+        data = fluid.data(name='x', shape=[None, 13], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)

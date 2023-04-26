@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -53,7 +54,7 @@ def get_files(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print(f'/paddle/{file.filename}')
+        print('/paddle/{}'.format(file.filename))
 
 
 def diff(args):
@@ -68,7 +69,7 @@ def diff(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print(f'+++ {file.filename}')
+        print('+++ {}'.format(file.filename))
         print(file.patch)
 
 

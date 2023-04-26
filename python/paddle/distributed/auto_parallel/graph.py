@@ -44,7 +44,7 @@ class Node:
             return False
 
     def __str__(self):
-        str = f"(id: {self.id}, attrs: {self.attrs})"
+        str = "(id: {}, attrs: {})".format(self.id, self.attrs)
         return str
 
 
@@ -177,12 +177,12 @@ class Graph:
         str = ""
         str += "**************Nodes**************\n"
         for node_id in self.nodes:
-            str += f"{self.nodes[node_id]}\n"
+            str += "{}\n".format(self.nodes[node_id])
 
         str += "**************Edges**************\n"
         for src_id in self.adjs:
-            str += f"--------------{src_id}--------------\n"
+            str += "--------------{}--------------\n".format(src_id)
             for idx, tgt_id in enumerate(self.adjs[src_id]):
-                str += f"{self.adjs[src_id][tgt_id]}\n"
+                str += "{}\n".format(self.adjs[src_id][tgt_id])
 
         return str

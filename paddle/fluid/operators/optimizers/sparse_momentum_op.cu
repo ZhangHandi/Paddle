@@ -17,11 +17,8 @@
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SparseMomentumOpKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+REGISTER_OP_CUDA_KERNEL(
+    sparse_momentum,
+    ops::SparseMomentumOpKernel<phi::GPUContext, float>,
+    ops::SparseMomentumOpKernel<phi::GPUContext, double>,
+    ops::SparseMomentumOpKernel<phi::GPUContext, paddle::platform::float16>);

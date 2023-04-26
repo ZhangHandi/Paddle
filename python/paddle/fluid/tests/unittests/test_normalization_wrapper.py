@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestNormalization(unittest.TestCase):
@@ -32,10 +32,11 @@ class TestNormalization(unittest.TestCase):
 
     def set_program(self, axis, epsilon):
         """Build the test program."""
-        data = paddle.static.data(
+        data = fluid.layers.data(
             name=self.data_desc["name"],
             shape=self.data_desc["shape"],
             dtype="float32",
+            append_batch_size=False,
         )
         data.stop_gradient = False
         l2_norm = paddle.nn.functional.normalize(

@@ -26,12 +26,31 @@ using OperatorBase = TaskNode::OperatorBase;
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
                    int64_t rank,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  // Should be serially invoked, not thread-safe
+  // NOTE: when instantiate TaskNode with program, won't init task node
+  // immediately, since the provided program may be updated later (with
+  // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
+  // So, delay the init part to the Init() function.
+  static int64_t task_node_cnt = 0;
+  task_id_ = task_node_cnt++;
+}
+
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
                    int64_t task_id,
-                   int64_t max_run_times)
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : program_(program),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times) {
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
   // TODO(liyurui): Will be removed when execute program is supported.
   Init();
 }
@@ -39,20 +58,11 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
     : program_(program), rank_(rank), task_id_(rank) {
   max_run_times_ = 1;
+  max_slot_nums_ = 1;
   LOG(INFO)
       << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
       << rank
       << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
-}
-
-void TaskNode::SetVarsToDtype(
-    const std::map<std::string, std::string>& vars_to_dtype) {
-  vars_to_dtype_ = vars_to_dtype;
-}
-
-void TaskNode::SetVarsToShape(
-    const std::map<std::string, std::vector<int64_t>>& vars_to_shape) {
-  vars_to_shape_ = vars_to_shape;
 }
 
 void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
@@ -88,11 +98,13 @@ TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
                    int64_t rank,
                    int64_t task_id,
-                   int64_t max_run_times)
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times) {
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
   if (op_descs.empty()) {
     return;
   }
@@ -109,35 +121,33 @@ TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OperatorBase*>& ops,
                    int64_t rank,
                    int64_t task_id,
-                   int64_t max_run_times)
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : ops_(ops),
       role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times) {}
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
 
 TaskNode::TaskNode(int32_t role,
                    int64_t rank,
                    int64_t task_id,
-                   int64_t max_run_times)
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times) {}
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
 
-bool TaskNode::AddUpstreamTask(int64_t task_id,
-                               int64_t buff_size,
-                               DependType type) {
+bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
   const auto& ret = upstream_.emplace(task_id, buff_size);
-  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 
-bool TaskNode::AddDownstreamTask(int64_t task_id,
-                                 int64_t buff_size,
-                                 DependType type) {
+bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
   const auto& ret = downstream_.emplace(task_id, buff_size);
-  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 

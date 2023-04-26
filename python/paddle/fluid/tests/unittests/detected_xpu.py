@@ -14,7 +14,7 @@
 
 import sys
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 print("compile with xpu:", fluid.core.is_compiled_with_xpu())
 print("get_xpu_device_count:", fluid.core.get_xpu_device_count())

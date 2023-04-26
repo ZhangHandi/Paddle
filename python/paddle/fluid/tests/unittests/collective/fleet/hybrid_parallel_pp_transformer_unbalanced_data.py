@@ -27,7 +27,7 @@ from hybrid_parallel_pp_transformer import (
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 class TestDistPPTraningUnbalancedData(TestDistPPTraning):

@@ -150,7 +150,8 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
-                    f"Fail to convert tensor '{str(tensor_name)}'. " + str(err)
+                    "Fail to convert tensor '{}'. ".format(str(tensor_name))
+                    + str(err)
                 )
 
         for tensor_name in self._pre_strategy:
@@ -481,7 +482,7 @@ class Converter:
                 split_indices_list = partition_index
         split_indices_list = list(
             map(
-                lambda x, y: list(set(x) - {y} - {0}),
+                lambda x, y: list(set(x) - set([y]) - set([0])),
                 split_indices_list,
                 complete_shape,
             )

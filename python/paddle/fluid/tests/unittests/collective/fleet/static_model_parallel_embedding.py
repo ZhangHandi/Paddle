@@ -16,8 +16,8 @@ import numpy as np
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -44,7 +44,9 @@ def create_model(data, rank):
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(np_weight_part)
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    np_weight_part
+                )
             ),
             bias_attr=False,
         )
@@ -53,7 +55,7 @@ def create_model(data, rank):
             data,
             size=OUT_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(np_weight)
+                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
             ),
             bias_attr=False,
         )
@@ -65,7 +67,7 @@ def create_model(data, rank):
 class TestModelParallel(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = paddle.static.data(
+        data_in = fluid.data(
             name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
         )
 

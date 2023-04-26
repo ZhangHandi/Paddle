@@ -17,16 +17,16 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 paddle.enable_static()
 SEED = 2049
 np.random.seed(SEED)
 
 
-def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
+def matrix_rank_wraper(x, tol=None, hermitian=False, use_default_tol=True):
     return paddle.linalg.matrix_rank(x, tol, hermitian)
 
 
@@ -45,7 +45,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
@@ -175,10 +175,10 @@ class TestMatrixRankAPI(unittest.TestCase):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 tol_np = np.random.random([3, 4]).astype(np.float32)
-                x_pd = paddle.static.data(
+                x_pd = paddle.fluid.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
-                tol_pd = paddle.static.data(
+                tol_pd = paddle.fluid.data(
                     name="TolTensor", shape=[3, 4], dtype='float32'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, tol_np, hermitian=False)
@@ -196,7 +196,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.static.data(
+                x_pd = paddle.fluid.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
@@ -212,7 +212,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.static.data(
+                x_pd = paddle.fluid.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, 0.1, hermitian=False)

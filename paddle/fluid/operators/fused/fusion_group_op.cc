@@ -76,10 +76,10 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32,
-                          platform::CUDAPlace(0));
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   platform::CUDAPlace(0));
   };
 };
 

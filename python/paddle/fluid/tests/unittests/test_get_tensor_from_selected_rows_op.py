@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op import Operator
 
-import paddle
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 from paddle.nn import clip
 
 
@@ -27,7 +28,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program()):
-            x_var = paddle.static.data('X', [2, 3])
+            x_var = fluid.data('X', [2, 3])
             x_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():

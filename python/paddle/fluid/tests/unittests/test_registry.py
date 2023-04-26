@@ -18,13 +18,13 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestRegistry(unittest.TestCase):
     @prog_scope()
     def test_registry_layer(self):
-        x = paddle.static.data(name='X', shape=[-1, 10, 10], dtype='float32')
+        x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
         output = paddle.mean(x)
 
         place = fluid.CPUPlace()

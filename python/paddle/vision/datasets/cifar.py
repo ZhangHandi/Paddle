@@ -114,7 +114,7 @@ class Cifar10(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], f"mode.lower() should be 'train' or 'test', but got {mode}"
+        ], "mode.lower() should be 'train' or 'test', but got {}".format(mode)
         self.mode = mode.lower()
 
         if backend is None:
@@ -157,7 +157,7 @@ class Cifar10(Dataset):
                 each_item.name for each_item in f if self.flag in each_item.name
             )
 
-            names = sorted(names)
+            names = sorted(list(names))
 
             for name in names:
                 batch = pickle.load(f.extractfile(name), encoding='bytes')

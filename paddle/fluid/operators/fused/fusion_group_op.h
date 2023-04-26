@@ -42,7 +42,7 @@ static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

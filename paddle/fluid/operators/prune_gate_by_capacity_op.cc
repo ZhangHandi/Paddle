@@ -66,7 +66,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto gate_idx_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "GateIdx");
@@ -82,7 +82,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The dtype of the gate_idx and expert_count should "
                           "be same as int64"));
-    return phi::KernelKey(gate_idx_data_type, ctx.GetPlace());
+    return framework::OpKernelType(gate_idx_data_type, ctx.device_context());
   }
 };
 
@@ -126,9 +126,7 @@ REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity,
                              ops::PruneGateByCapacityOp,
                              ops::PruneGateByCapacityOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(prune_gate_by_capacity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PruneGateByCapacityCPUKernel,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(
+    prune_gate_by_capacity,
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int>,
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int64_t>);

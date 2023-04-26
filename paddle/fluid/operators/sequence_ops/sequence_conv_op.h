@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -85,7 +85,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

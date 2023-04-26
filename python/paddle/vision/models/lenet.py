@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 
 __all__ = []
 

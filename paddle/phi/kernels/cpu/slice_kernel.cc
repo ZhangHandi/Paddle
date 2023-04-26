@@ -21,7 +21,7 @@
 PD_REGISTER_KERNEL(slice,
                    CPU,
                    ALL_LAYOUT,
-                   phi::SliceKernel,
+                   phi::SliceRawKernel,
                    bool,
                    uint8_t,
                    int,

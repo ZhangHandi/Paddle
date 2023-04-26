@@ -16,13 +16,12 @@
 
 #include <vector>
 
-#include "glog/logging.h"
-
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
-#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 DECLARE_int32(inner_op_parallelism);
 
@@ -62,7 +61,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -72,10 +71,9 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
-    }
+    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+
     return;
   }
 
@@ -117,7 +115,7 @@ void AdamDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adam_attr_t attr(beta1_, beta2_);
+  paddle::operators::jit::adam_attr_t attr(beta1_, beta2_);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -126,8 +124,9 @@ void AdamDenseKernel(const Context& dev_ctx,
   const T* grad_ptr = grad.data<T>();
 
   auto adam =
-      phi::jit::KernelFuncs<phi::jit::AdamTuple<T>, phi::CPUPlace>::Cache().At(
-          attr);
+      paddle::operators::jit::KernelFuncs<paddle::operators::jit::AdamTuple<T>,
+                                          phi::CPUPlace>::Cache()
+          .At(attr);
 
   static constexpr int64_t chunk_size = 512;
 

@@ -71,5 +71,4 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(sum_grad, XPU, ALL_LAYOUT, phi::ReduceSumGradKernel, float) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

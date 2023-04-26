@@ -33,6 +33,10 @@ bool is_xpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::XPU;
 }
 
+bool is_mlu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::MLU;
+}
+
 bool is_npu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::NPU;
 }
@@ -72,6 +76,8 @@ bool is_same_place(const Place &p1, const Place &p2) {
         is_npu_pinned_place(p1)) {
       return true;
     } else if (is_xpu_place(p1)) {
+      return p1 == p2;
+    } else if (is_mlu_place(p1)) {
       return p1 == p2;
     } else if (is_npu_place(p1)) {
       return p1 == p2;

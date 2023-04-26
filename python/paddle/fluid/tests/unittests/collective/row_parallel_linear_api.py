@@ -16,8 +16,8 @@ import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -39,13 +39,13 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
             data = paddle.split(data, 2, axis=1)[rank]
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.Assign(
+                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
                         np_array[0:500, :]
                     ),
                 )
             else:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.Assign(
+                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
                         np_array[500:1000, :]
                     ),
                 )

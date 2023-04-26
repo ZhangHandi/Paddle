@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 fluid.core.globals()['FLAGS_allocator_strategy'] = 'naive_best_fit'
 

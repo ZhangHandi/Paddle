@@ -71,7 +71,7 @@ class TestAutoParallelGraph(unittest.TestCase):
 
         self.assertEqual(graph[4][5]["weight"], 0.4)
 
-        str = f"{graph}"
+        str = "{}".format(graph)
         self.assertIsNotNone(str)
 
         self.assertRaises(TypeError, 6 in graph)

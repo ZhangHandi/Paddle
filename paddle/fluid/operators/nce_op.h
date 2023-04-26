@@ -75,7 +75,7 @@ void PrepareSamples(const framework::ExecutionContext &context,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class NCEKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -245,7 +245,7 @@ class NCEKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class NCEGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

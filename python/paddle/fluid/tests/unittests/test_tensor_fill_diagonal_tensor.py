@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle import fluid
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
@@ -29,6 +29,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def test_dim2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]
         ).astype('float32')
@@ -47,7 +48,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
-                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=0, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
@@ -59,8 +59,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim2_offset_1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 2, 2], [1, 2, 2], [2, 1, 2], [2, 2, 1]]
         ).astype('float32')
@@ -79,7 +81,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
-                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=-1, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
@@ -91,8 +92,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim2_offset1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 1, 2], [2, 2, 1], [2, 2, 2], [2, 2, 2]]
         ).astype('float32')
@@ -111,7 +114,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
-                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=1, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
@@ -123,8 +125,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [
                 [
@@ -171,7 +175,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((2, 4, 3, 2), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
-                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=0, dim1=1, dim2=2)
                 loss = ny.sum()
                 loss.backward()
@@ -183,8 +186,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_largedim(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         if len(self.places) > 1:
             bsdim = 1024
             fsdim = 128
@@ -196,7 +201,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 y = paddle.ones((bsdim, fsdim, fsdim), dtype=dtype)
                 y.stop_gradient = False
                 y = y * 2
-                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=0, dim1=1, dim2=2)
                 loss = ny.sum()
                 loss.backward()
@@ -208,6 +212,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
                 self.assertEqual((ny == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

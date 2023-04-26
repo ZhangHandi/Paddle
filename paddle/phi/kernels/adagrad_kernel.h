@@ -25,12 +25,9 @@ void AdagradDenseKernel(const Context& dev_ctx,
                         const DenseTensor& grad,
                         const DenseTensor& moment,
                         const DenseTensor& learning_rate,
-                        const paddle::optional<DenseTensor>& master_param,
                         float epsilon,
-                        bool multi_precision,
                         DenseTensor* param_out,
-                        DenseTensor* moment_out,
-                        DenseTensor* master_param_outs);
+                        DenseTensor* moment_out);
 
 template <typename T, typename Context>
 void AdagradSparseKernel(const Context& dev_ctx,
@@ -38,11 +35,8 @@ void AdagradSparseKernel(const Context& dev_ctx,
                          const SelectedRows& grad,
                          const DenseTensor& moment,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param,
                          float epsilon,
-                         bool multi_precision,
                          DenseTensor* param_out,
-                         DenseTensor* moment_out,
-                         DenseTensor* master_param_outs);
+                         DenseTensor* moment_out);
 
 }  // namespace phi

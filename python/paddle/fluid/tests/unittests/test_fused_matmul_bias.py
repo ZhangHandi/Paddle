@@ -17,13 +17,16 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 from paddle.incubate.nn import FusedLinear
 from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 
 def is_fused_matmul_bias_supported():
-    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.ops, 'fused_gemm_epilogue')
+    else:
+        return False
 
 
 def matmul(x, y, bias, trans_x, trans_y):

@@ -16,7 +16,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
-from paddle.static import Variable
+from paddle.fluid.framework import Variable
 
 from .base_cost import Cost
 
@@ -96,7 +96,7 @@ class TensorCost:
             shape = self.shape
             dtype = self.dtype
 
-        total_count = reduce(lambda x, y: x * y, shape, 1)
+        total_count = reduce(lambda x, y: x * y, shape)
 
         if dtype == paddle.float32 or dtype == paddle.int32:
             dtype_factor = 4

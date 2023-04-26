@@ -169,11 +169,11 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   ctx->ShareLoD("Ids", "XX");
 }
 
-phi::KernelKey FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
+framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return phi::KernelKey(
+  return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
-      ctx.GetPlace());
+      ctx.device_context());
 }
 
 void FusedEmbeddingFCLSTMOpMaker::Make() {
@@ -270,7 +270,7 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_VEC_FUNC                                                        \
@@ -396,6 +396,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -410,8 +411,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -501,6 +501,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     if (ids->lod()[0].size() == 2) {
       SeqCompute(ctx);
@@ -680,9 +681,6 @@ REGISTER_OPERATOR(fused_embedding_fc_lstm,
                   ops::FusedEmbeddingFCLSTMOp,
                   ops::FusedEmbeddingFCLSTMOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(fused_embedding_fc_lstm,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusedEmbeddingFCLSTMKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
+                       ops::FusedEmbeddingFCLSTMKernel<float>,
+                       ops::FusedEmbeddingFCLSTMKernel<double>);

@@ -27,7 +27,7 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class MeanIoUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

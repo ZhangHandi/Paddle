@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/framework/op_kernel_type.h"
 
-#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -51,29 +50,16 @@ void CastDataLayout::apply() {
   }
 }
 
-void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
-                     const phi::KernelKey& expected_kernel_type,
+void TransDataLayout(const OpKernelType& kernel_type_for_var,
+                     const OpKernelType& expected_kernel_type,
                      const phi::DenseTensor& in,
-                     phi::DenseTensor* out,
-                     const phi::Place& place) {
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE(
-      backends_are_same_class(kernel_type_for_var.backend(),
-                              expected_kernel_type.backend()),
+      platform::places_are_same_class(kernel_type_for_var.place_,
+                                      expected_kernel_type.place_),
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
-  TransDataLayout(kernel_type_for_var.layout(),
-                  expected_kernel_type.layout(),
-                  place,
-                  in,
-                  out);
-}
-
-void TransDataLayout(DataLayout from_layout,
-                     DataLayout to_layout,
-                     phi::Place place,
-                     const phi::DenseTensor& in,
-                     phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       arity(in.dims()),
       4,
@@ -86,20 +72,21 @@ void TransDataLayout(DataLayout from_layout,
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
-  auto axis = GetAxis(from_layout, to_layout);
+  auto axis = GetAxis(kernel_type_for_var.data_layout_,
+                      expected_kernel_type.data_layout_);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
   }
 
   out->Resize(phi::make_ddim(dst_dim));
-  out->mutable_data(place, in.dtype());
+  out->mutable_data(expected_kernel_type.place_, in.dtype());
 
   framework::VisitDataType(
-      static_cast<proto::VarType::Type>(phi::TransToProtoVarType(in.dtype())),
-      CastDataLayout(pool.Get(place), axis, in, out));
+      framework::TransToProtoVarType(in.dtype()),
+      CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
 
-  out->set_layout(to_layout);
+  out->set_layout(expected_kernel_type.data_layout_);
 }
 
 }  // namespace framework

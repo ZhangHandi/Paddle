@@ -25,9 +25,10 @@ class NopOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -45,7 +46,7 @@ establish the dependency between input and output tensors.
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class NopKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {}
@@ -58,8 +59,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(nop, ops::NopOp, ops::NopOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(nop, CPU, ALL_LAYOUT, ops::NopKernel, float) {}
+REGISTER_OP_CPU_KERNEL(nop, ops::NopKernel<float>);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_STRUCT_KERNEL(nop, GPU, ALL_LAYOUT, ops::NopKernel, float) {}
-#endif
+REGISTER_OP_CUDA_KERNEL(nop, ops::NopKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(nop, ops::NopKernel<float>);

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -95,8 +95,7 @@ class TestCTCAlignOp(OpTest):
         }
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestCTCAlignOpCase1(TestCTCAlignOp):
@@ -162,8 +161,7 @@ class TestCTCAlignPaddingOp(OpTest):
         }
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):

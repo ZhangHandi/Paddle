@@ -20,7 +20,7 @@ from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 def set_random_seed(seed, dp_id, rank_id):

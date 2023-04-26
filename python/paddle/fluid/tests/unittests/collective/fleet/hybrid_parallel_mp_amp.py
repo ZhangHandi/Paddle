@@ -17,7 +17,7 @@ import unittest
 from hybrid_parallel_mp_model import TestDistMPTraning
 
 import paddle
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 class TestMPClipGrad(TestDistMPTraning):

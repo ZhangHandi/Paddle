@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -28,17 +28,10 @@ def huber_loss_forward(val, delta):
         return delta * (abs_val - 0.5 * delta)
 
 
-def huber_loss_wraper(x, y, delta):
-    a = paddle._C_ops.huber_loss(x, y, delta)
-    return a
-
-
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
         self.python_out_sig = ["Out"]
-        self.python_api = huber_loss_wraper
-
         self.delta = 1.0
         self.init_input()
         shape = self.set_shape()
@@ -60,10 +53,10 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

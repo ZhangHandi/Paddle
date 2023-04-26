@@ -19,9 +19,12 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid, nn, set_device
-from paddle.fluid import layers
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.nn as nn
+from paddle import Model, set_device
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.layers.utils import map_structure
 from paddle.nn import (
     RNN,
     BeamSearchDecoder,
@@ -147,9 +150,7 @@ class MLE:
             use_softmax=False,
         )
         max_seq_len = paddle.shape(probs)[1]
-        mask = paddle.static.nn.sequence_lod.sequence_mask(
-            length, maxlen=max_seq_len, dtype="float32"
-        )
+        mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
@@ -184,20 +185,16 @@ class SeqPGAgent:
 
     def build_program(self, model_cls, alg_cls, model_hparams, alg_hparams):
         with fluid.program_guard(self.main_program, self.startup_program):
-            source = paddle.static.data(
-                name="src", shape=[None, None], dtype="int64"
-            )
-            source_length = paddle.static.data(
+            source = fluid.data(name="src", shape=[None, None], dtype="int64")
+            source_length = fluid.data(
                 name="src_sequence_length", shape=[None], dtype="int64"
             )
             # only for teacher-forcing MLE training
-            target = paddle.static.data(
-                name="trg", shape=[None, None], dtype="int64"
-            )
-            target_length = paddle.static.data(
+            target = fluid.data(name="trg", shape=[None, None], dtype="int64")
+            target_length = fluid.data(
                 name="trg_sequence_length", shape=[None], dtype="int64"
             )
-            label = paddle.static.data(
+            label = fluid.data(
                 name="label", shape=[None, None, 1], dtype="int64"
             )
             self.model = model_cls(**model_hparams)
@@ -206,7 +203,7 @@ class SeqPGAgent:
                 source, source_length, target, target_length
             )
             self.samples.stop_gradient = True
-            self.reward = paddle.static.data(
+            self.reward = fluid.data(
                 name="reward",
                 shape=[None, None],  # batch_size, seq_len
                 dtype=self.probs.dtype,
@@ -409,7 +406,7 @@ class EncoderCell(SimpleRNNCell):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super().__init__(input_size, hidden_size)
+        super(EncoderCell, self).__init__(input_size, hidden_size)
         self.dropout_prob = dropout_prob
         # use add_sublayer to add multi-layers
         self.lstm_cells = []
@@ -455,7 +452,7 @@ class Encoder(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super().__init__()
+        super(Encoder, self).__init__()
         self.embedder = Embedding(vocab_size, embed_dim)
         self.stack_lstm = RNN(
             EncoderCell(
@@ -486,7 +483,7 @@ class Decoder(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super().__init__()
+        super(Decoder, self).__init__()
         self.embedder = Embedding(vocab_size, embed_dim)
         self.stack_lstm = RNN(
             DecoderCell(
@@ -511,7 +508,7 @@ class TrainingHelper:
         self.inputs = inputs
         self.sequence_length = sequence_length
         self.time_major = time_major
-        self.inputs_ = paddle.utils.map_structure(
+        self.inputs_ = map_structure(
             lambda x: paddle.nn.functional.pad(
                 x,
                 pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
@@ -528,7 +525,7 @@ class TrainingHelper:
                 shape=[1], dtype=self.sequence_length.dtype, fill_value=0
             ),
         )
-        init_inputs = paddle.utils.map_structure(
+        init_inputs = map_structure(
             lambda x: x[0] if self.time_major else x[:, 0], self.inputs
         )
         return init_inputs, init_finished
@@ -557,7 +554,7 @@ class TrainingHelper:
                 axis=axes,
             )
 
-        next_inputs = paddle.utils.map_structure(_slice, self.inputs_)
+        next_inputs = map_structure(_slice, self.inputs_)
         return finished, next_inputs, states
 
 
@@ -605,7 +602,7 @@ class BaseModel(Layer):
         dropout_prob=0.0,
         init_scale=0.1,
     ):
-        super().__init__()
+        super(BaseModel, self).__init__()
         self.hidden_size = hidden_size
         self.word_embedding = Embedding(vocab_size, embed_dim)
         self.encoder = Encoder(

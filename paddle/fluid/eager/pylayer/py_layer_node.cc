@@ -32,16 +32,18 @@ GradNodePyLayer::~GradNodePyLayer() {
   Py_XDECREF(ctx_);
 }
 
-paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
 GradNodePyLayer::operator()(
-    paddle::small_vector<std::vector<paddle::Tensor>,
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
 
-  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
 
   paddle::pybind::PyLayerObject* ctx =
@@ -62,7 +64,7 @@ GradNodePyLayer::operator()(
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
       for (size_t j = 0; j < grads[i].size(); j++) {
         if (ctx->materialize_grads && !grads[i][j].initialized()) {
-          paddle::Tensor tensor_tmp;
+          paddle::experimental::Tensor tensor_tmp;
           auto dense_tensor = std::make_shared<phi::DenseTensor>();
           dense_tensor->set_meta(forward_outputs_meta_[i][j]);
           tensor_tmp.set_impl(dense_tensor);
@@ -82,7 +84,7 @@ GradNodePyLayer::operator()(
       PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
       if (ctx->materialize_grads && !grads[i][0].initialized()) {
-        paddle::Tensor tensor_tmp;
+        paddle::experimental::Tensor tensor_tmp;
         auto dense_tensor = std::make_shared<phi::DenseTensor>();
         dense_tensor->set_meta(forward_outputs_meta_[i][0]);
         tensor_tmp.set_impl(dense_tensor);
@@ -137,7 +139,8 @@ GradNodePyLayer::operator()(
         outputs_size));
   }
 
-  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
@@ -155,21 +158,9 @@ GradNodePyLayer::operator()(
         grad_out.push_back({});
       } else {
         if (ctx->forward_input_tensor_is_duplicable[i]) {
-          grad_out.push_back(
-              paddle::pybind::GetTensorListFromPyObject(obj, true));
+          grad_out.push_back(paddle::pybind::GetTensorListFromPyObject(obj));
         } else {
-          if (paddle::pybind::PyCheckTensor(obj)) {
-            grad_out.push_back(
-                {paddle::pybind::UnSafeGetTensorFromPyObject(obj)});
-          } else if (obj == Py_None) {
-            VLOG(4) << "Got None for Tensor with pos: " << i;
-            grad_out.push_back({});
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "We can only support Tensor or None for backward output, "
-                ", but got %s, please check your PyLayer code and make it fits",
-                reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-          }
+          grad_out.push_back({paddle::pybind::GetTensorFromPyObject(obj)});
         }
       }
     } else {
@@ -177,7 +168,7 @@ GradNodePyLayer::operator()(
           this->OutputMeta()[i][0].IsStopGradient(),
           true,
           paddle::platform::errors::InvalidArgument(
-              "%s's backward function should not return empty at %d position.",
+              "%s's backward function should not return empyt at %d position.",
               name(),
               i));
       grad_out.push_back({});

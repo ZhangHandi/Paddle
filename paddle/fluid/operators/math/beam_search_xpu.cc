@@ -20,6 +20,13 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
+namespace framework {}  // namespace framework
+namespace platform {
+class XPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>

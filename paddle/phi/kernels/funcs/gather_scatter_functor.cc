@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 namespace funcs {
 

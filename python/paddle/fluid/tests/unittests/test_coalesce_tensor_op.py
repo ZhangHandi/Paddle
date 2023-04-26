@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid import core
 
 
@@ -104,9 +104,9 @@ class TestAllocContinuousSpace(OpTest):
             out[0:length] = input[1].flatten()
             inputs.append(out)
 
-        coalesce_tensor_var = np.concatenate(list(inputs))
+        coalesce_tensor_var = np.concatenate([input for input in inputs])
         if set_constant:
-            coalesce_tensor_var = np.ones(len(coalesce_tensor_var)) * constant
+            coalesce_tensor_var = np.ones((len(coalesce_tensor_var))) * constant
             outputs = [
                 (out[0], np.ones(out[1].shape).astype(self.dtype) * constant)
                 for out in outputs
@@ -160,10 +160,7 @@ class TestAllocContinuousSpace(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0),
-            no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False,
+            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
         )
         self.verify_output(core.CUDAPlace(0))
 
@@ -183,10 +180,7 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0),
-            no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False,
+            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
         )
         self.verify_output(core.CUDAPlace(0))
 

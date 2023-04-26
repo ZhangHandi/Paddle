@@ -156,7 +156,7 @@ void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   ctx->ShareLoD("X", "Y");
 }
 
-phi::KernelKey FusedBatchNormActOp::GetExpectedKernelType(
+framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
@@ -187,7 +187,11 @@ phi::KernelKey FusedBatchNormActOp::GetExpectedKernelType(
                     platform::errors::PreconditionNotMet(
                         "Variance input should be of float type"));
 
-  return phi::KernelKey(input_data_type, ctx.GetPlace());
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout, library);
 }
 
 void FusedBatchNormActOpMaker::Make() {
@@ -293,7 +297,7 @@ void FusedBatchNormActGradOp::InferShape(
   ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
 }
 
-phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
+framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
@@ -311,8 +315,14 @@ phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
         platform::errors::NotFound("Can not get the tensor value of Y@GRAD."));
   }
 
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
+
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.GetPlace(),
+      layout,
+      library);
 }
 
 }  // namespace operators

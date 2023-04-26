@@ -135,10 +135,11 @@ class LSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -303,10 +304,11 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -358,8 +360,9 @@ REGISTER_OPERATOR(lstm,
                   ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
-
-PD_REGISTER_STRUCT_KERNEL(
-    lstm, CPU, ALL_LAYOUT, ops::LSTMKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(
-    lstm_grad, CPU, ALL_LAYOUT, ops::LSTMGradKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(lstm,
+                       ops::LSTMKernel<phi::CPUContext, float>,
+                       ops::LSTMKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(lstm_grad,
+                       ops::LSTMGradKernel<phi::CPUContext, float>,
+                       ops::LSTMGradKernel<phi::CPUContext, double>);

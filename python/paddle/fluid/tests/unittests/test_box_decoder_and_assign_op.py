@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
@@ -62,8 +62,7 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
 
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "box_decoder_and_assign"

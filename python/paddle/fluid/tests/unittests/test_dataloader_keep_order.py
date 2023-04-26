@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 def create_reader(shape, batch_number):
@@ -43,9 +43,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         self.initParameters()
 
     def build_network(self, places):
-        input_data = paddle.static.data(
-            shape=self.shape, dtype='float32', name="input"
-        )
+        input_data = fluid.data(shape=self.shape, dtype='float32', name="input")
         loader = fluid.io.DataLoader.from_generator(
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
@@ -83,19 +81,23 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 start_val += 1
 
     def get_places(self):
-        place_list = [fluid.cpu_places(1)]
+        place_list = [fluid.cpu_places(1), fluid.cpu_places(4)]
         if fluid.is_compiled_with_cuda():
             if os.name == "nt":
                 place_list.extend([fluid.cuda_places(0)])
             else:
-                place_list.extend([fluid.cuda_places(0)])
+                place_list.extend(
+                    [fluid.cuda_places(0), fluid.cuda_places([0, 1])]
+                )
         return place_list
 
     def test_main(self):
         for p in self.get_places():
-            self.run_main_with_place(p)
+            use_compiled_program_list = [True] if len(p) > 1 else [False, True]
+            for use_compiled_program in use_compiled_program_list:
+                self.run_main_with_place(p, use_compiled_program)
 
-    def run_main_with_place(self, places):
+    def run_main_with_place(self, places, use_compiled_program=True):
         with fluid.scope_guard(fluid.Scope()):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 input_data, loss, loader = self.build_network(places)
@@ -105,9 +107,14 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 exe.run(fluid.default_startup_program())
 
                 dev_cnt = len(places)
-                self.assertTrue(dev_cnt == 1)
+                if dev_cnt > 1:
+                    self.assertTrue(use_compiled_program)
 
                 main_program = fluid.default_main_program()
+                if use_compiled_program:
+                    main_program = fluid.CompiledProgram(
+                        main_program
+                    ).with_data_parallel(loss_name=loss.name, places=places)
 
                 max_batch_num = min(
                     self.break_num, int(self.batch_num / dev_cnt)

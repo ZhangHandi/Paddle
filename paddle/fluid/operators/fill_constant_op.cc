@@ -56,47 +56,46 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     } else {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
-    phi::KernelKey kt = phi::KernelKey(input_data_type, ctx.GetPlace());
+    framework::OpKernelType kt =
+        framework::OpKernelType(input_data_type, ctx.GetPlace());
     // TODO(zyfncg) The force_cpu and place_type are conflicted, it's an issue
     // left before, and we may merge them in the future.
     // In order to invoke new fill_constant kernel, the place of OpKernelType
     // will be setted by force_cpu and place_type here.
     if (ctx.Attr<bool>("force_cpu")) {
-      kt.set_backend(phi::Backend::CPU);
+      kt.place_ = platform::CPUPlace();
     }
     auto place_type = ctx.Attr<int>("place_type");
     if (place_type != -1) {
       switch (place_type) {
         case 0:
-          kt.set_backend(phi::Backend::CPU);
+          kt.place_ = platform::CPUPlace();
           break;
         case 1:
         case 2:
-          kt.set_backend(phi::Backend::GPU);
+          kt.place_ = platform::CUDAPlace();
           break;
         case 3:
-          kt.set_backend(phi::Backend::XPU);
+          kt.place_ = platform::XPUPlace();
           break;
         case 4:
-          kt.set_backend(phi::Backend::NPU);
+          kt.place_ = platform::NPUPlace();
           break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(

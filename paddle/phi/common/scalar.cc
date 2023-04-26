@@ -14,11 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace experimental {
 
@@ -33,26 +31,14 @@ ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   auto cpu_place = phi::CPUPlace();
-  if (tensor_in.place().GetType() != phi::AllocationType::CPU) {
+  if (!paddle::platform::is_same_place(tensor_in.place(), cpu_place)) {
     phi::DenseTensor tensor;
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    auto dev_ctx = pool.Get(tensor_in.place());
-    phi::Copy(*dev_ctx, tensor_in, cpu_place, true, &tensor);
+    framework::TensorCopySync(tensor_in, cpu_place, &tensor);
     GetDataFromTensor(tensor);
   } else {
     GetDataFromTensor(tensor_in);
   }
 }
 
-bool operator==(const Scalar& lhs, const Scalar& rhs) {
-  return lhs.operator==(rhs);
-}
-bool operator!=(const Scalar& lhs, const Scalar& rhs) {
-  return lhs.operator!=(rhs);
-}
-
-std::ostream& operator<<(std::ostream& os, const Scalar& s) {
-  return os << s.ToString();
-}
 }  // namespace experimental
 }  // namespace paddle

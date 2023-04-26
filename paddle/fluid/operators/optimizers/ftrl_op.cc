@@ -69,11 +69,11 @@ class FTRLOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
     ctx->SetOutputDim("LinearAccumOut", param_dim);
   }
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -156,5 +156,4 @@ The paper that proposed Follow The Regularized Leader (FTRL):
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ftrl, ops::FTRLOp, ops::FTRLOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(ftrl, CPU, ALL_LAYOUT, ops::FTRLOpKernel, float) {}
+REGISTER_OP_CPU_KERNEL(ftrl, ops::FTRLOpKernel<phi::CPUContext, float>);

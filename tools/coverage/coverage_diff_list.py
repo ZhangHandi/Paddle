@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -58,7 +59,7 @@ def filter_by(list_file, max_rate):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        sys.exit()
+        exit()
 
     list_file = sys.argv[1]
     max_rate = float(sys.argv[2])

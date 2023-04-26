@@ -30,7 +30,7 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     auto x_vars_name = ctx.InputNames("X");
@@ -54,7 +54,7 @@ class SumOp : public framework::OperatorWithKernel {
                                        x_vars_name[idx]));
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
-        if (!tensor->IsInitialized()) {
+        if (tensor->numel() <= 0 || (!tensor->IsInitialized())) {
           continue;
         }
         if (dtype == -1) {
@@ -87,24 +87,27 @@ class SumOp : public framework::OperatorWithKernel {
       }
       // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-      return phi::KernelKey(data_type, ctx.GetPlace());
+      return framework::OpKernelType(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
-                                ctx.GetPlace());
+          return framework::OpKernelType(
+              framework::TransToProtoVarType(value.dtype()),
+              ctx.device_context());
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
-      return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0 && each.IsInitialized()) {
-            return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
-                                  ctx.GetPlace());
+            return framework::OpKernelType(
+                framework::TransToProtoVarType(each.dtype()),
+                ctx.device_context());
           }
         }
       }

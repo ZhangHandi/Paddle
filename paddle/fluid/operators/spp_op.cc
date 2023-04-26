@@ -109,8 +109,9 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(spp_grad, ops::SppOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(spp, CPU, ALL_LAYOUT, ops::SppKernel, float, double) {
-}
-PD_REGISTER_STRUCT_KERNEL(
-    spp_grad, CPU, ALL_LAYOUT, ops::SppGradKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(spp,
+                       ops::SppKernel<phi::CPUContext, float>,
+                       ops::SppKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(spp_grad,
+                       ops::SppGradKernel<phi::CPUContext, float>,
+                       ops::SppGradKernel<phi::CPUContext, double>);

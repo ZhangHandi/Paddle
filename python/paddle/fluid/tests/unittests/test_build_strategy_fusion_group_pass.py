@@ -16,8 +16,8 @@ import unittest
 
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
@@ -32,7 +32,7 @@ class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
         rnn_model = "static"
         config = RNNConfig("test", rnn_model)
         with fluid.scope_guard(fluid.Scope()):
-            self.train(config, use_program_cache=False)
+            self.train(config, parallel=True, use_program_cache=False)
 
 
 if __name__ == '__main__':

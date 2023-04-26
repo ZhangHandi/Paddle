@@ -26,11 +26,11 @@ class PriorBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_input_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-    return phi::KernelKey(input_input_type, ctx.GetPlace());
+    return framework::OpKernelType(input_input_type, ctx.GetPlace());
   }
 };
 

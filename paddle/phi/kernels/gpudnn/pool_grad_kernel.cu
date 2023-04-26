@@ -44,7 +44,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                              const std::string& padding_algorithm,
                              DenseTensor* dx) {
   PADDLE_ENFORCE_EQ(
-      ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      paddle::platform::is_gpu_place(ctx.GetPlace()),
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));

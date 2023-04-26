@@ -16,11 +16,11 @@ import itertools
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestQrOp(OpTest):
@@ -71,12 +71,13 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             ['Q', 'R'],
+            check_eager=True,
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
         )
@@ -224,7 +225,7 @@ class TestQrAPI(unittest.TestCase):
                             tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
                             np_q[coord] = tmp_q
                             np_r[coord] = tmp_r
-                    x = paddle.static.data(
+                    x = paddle.fluid.data(
                         name="input", shape=shape, dtype=dtype
                     )
                     if mode == "r":

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 
 // only can include the headers in paddle/phi/api dirs
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -58,17 +58,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
-
-    if (ctx->IsRuntime()) {
-      auto *x_var =
-          PADDLE_GET(framework::Variable *, ctx->GetInputVarPtrs("X")[0]);
-      auto *out_var =
-          PADDLE_GET(framework::Variable *, ctx->GetOutputVarPtrs("Out")[0]);
-      // inplace, can not to run infer shape.
-      if (x_var == out_var) {
-        return;
-      }
-    }
 
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
@@ -257,24 +246,22 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -372,11 +359,12 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -424,27 +412,27 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::CPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::GPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::XPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #endif
   }
@@ -572,25 +560,6 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    // We prefer to use x.shape instead of using xshape, this is different from
-    // PHI definition.
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::Tensor dx = this->GetSingleInputGrad("X");
-
-    auto *dx_ptr = this->GetOutputPtr(&dx);
-    std::string dx_name = this->GetOutputName(dx);
-    VLOG(6) << "Runing reshape2_grad composite func";
-    prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
-    this->RecoverOutputName(dx, dx_name);
-  }
-};
-
 template <typename T>
 class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -633,24 +602,22 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -663,30 +630,22 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
+        ctx.device_context());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-  }
-};
-
-class Reshape2InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -742,8 +701,6 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
-                  ops::Reshape2InferVarType,
-                  ops::Reshape2CompositeGradOpMaker,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,
                   ops::Reshape2GradOp,

@@ -59,7 +59,9 @@ def to_tensor(pic, data_format='CHW'):
     """
 
     if data_format not in ['CHW', 'HWC']:
-        raise ValueError(f'data_format should be CHW or HWC. Got {data_format}')
+        raise ValueError(
+            'data_format should be CHW or HWC. Got {}'.format(data_format)
+        )
 
     # PIL Image
     if pic.mode == 'I':
@@ -117,7 +119,7 @@ def resize(img, size, interpolation='bilinear'):
     if not (
         isinstance(size, int) or (isinstance(size, Iterable) and len(size) == 2)
     ):
-        raise TypeError(f'Got inappropriate size arg: {size}')
+        raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     if isinstance(size, int):
         w, h = img.size
@@ -180,7 +182,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a "
-            + f"{len(padding)} element tuple"
+            + "{} element tuple".format(len(padding))
         )
 
     assert padding_mode in [
@@ -393,7 +395,9 @@ def adjust_hue(img, hue_factor):
 
     """
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError(f'hue_factor:{hue_factor} is not in [-0.5, 0.5].')
+        raise ValueError(
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
+        )
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:

@@ -19,22 +19,24 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestConv2DAPI(unittest.TestCase):
     def test_api(self):
 
-        input_NHWC = paddle.static.data(
+        input_NHWC = fluid.layers.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],
+            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCHW = paddle.static.data(
+        input_NCHW = fluid.layers.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
+            append_batch_size=False,
             dtype="float32",
         )
 
@@ -118,9 +120,10 @@ class TestConv2DAPI(unittest.TestCase):
 
 class TestConv2DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input = paddle.static.data(
+        input = fluid.layers.data(
             name="input",
             shape=[2, 5, 5, 5],
+            append_batch_size=False,
             dtype="float32",
         )
 
@@ -203,9 +206,10 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
-        x = paddle.static.data(
+        x = fluid.layers.data(
             name="x",
             shape=[2, 5, 5, -1],
+            append_batch_size=False,
             dtype="float32",
         )
 
@@ -289,9 +293,10 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_10)
 
     def test_api_with_error_input(self):
-        input = paddle.static.data(
+        input = fluid.layers.data(
             name="error_input",
             shape=[1],
+            append_batch_size=False,
             dtype="float32",
         )
 
@@ -320,8 +325,9 @@ class TestConv2DAPI_Error(unittest.TestCase):
 class TestConv2DEnviron(unittest.TestCase):
     def run1(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            inputs = paddle.static.data(
+            inputs = fluid.layers.data(
                 shape=[2, 3, 5, 5],
+                append_batch_size=False,
                 name="inputs",
                 dtype="float32",
             )

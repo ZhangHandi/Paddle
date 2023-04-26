@@ -202,9 +202,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }
@@ -216,6 +216,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(crf_decoding,
                              ops::CRFDecodingOp,
                              ops::CRFDecodingOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    crf_decoding, CPU, ALL_LAYOUT, ops::CRFDecodingOpKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(crf_decoding,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, float>,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, double>);

@@ -18,7 +18,7 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 

@@ -28,6 +28,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  float pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
+  T value = static_cast<T>(pad_value);
   std::vector<int64_t> pads = paddings.GetData();
 
   auto in_dims = x.dims();
@@ -141,12 +142,10 @@ void Pad3dKernel(const Context& dev_ctx,
   pads_xpu[4] = pads[0];  // pl
   pads_xpu[5] = pads[1];  // pr
 
-  using XPUType = typename XPUTypeTrait<T>::Type;
-
   if (mode == "reflect") {
     int r = xpu::reflection_pad3d(dev_ctx.x_context(),
-                                  reinterpret_cast<const XPUType*>(in_data),
-                                  reinterpret_cast<XPUType*>(out_data),
+                                  in_data,
+                                  out_data,
                                   num,
                                   channels,
                                   in_depth,
@@ -157,8 +156,8 @@ void Pad3dKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reflection_pad3d");
   } else if (mode == "replicate") {
     int r = xpu::replication_pad3d(dev_ctx.x_context(),
-                                   reinterpret_cast<const XPUType*>(in_data),
-                                   reinterpret_cast<XPUType*>(out_data),
+                                   in_data,
+                                   out_data,
                                    num,
                                    channels,
                                    in_depth,
@@ -168,10 +167,9 @@ void Pad3dKernel(const Context& dev_ctx,
                                    is_ncdhw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "replication_pad3d");
   } else if (mode == "constant") {
-    XPUType value = static_cast<XPUType>(pad_value);
     int r = xpu::constant_pad3d(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUType*>(in_data),
-                                reinterpret_cast<XPUType*>(out_data),
+                                in_data,
+                                out_data,
                                 num,
                                 channels,
                                 in_depth,
@@ -186,5 +184,4 @@ void Pad3dKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d, XPU, ALL_LAYOUT, phi::Pad3dKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(pad3d, XPU, ALL_LAYOUT, phi::Pad3dKernel, float) {}

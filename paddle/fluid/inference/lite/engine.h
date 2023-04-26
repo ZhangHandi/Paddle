@@ -22,7 +22,10 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include <paddle_api.h>  // NOLINT
+#include "lite/api/cxx_api.h"
+#include "lite/api/paddle_api.h"
+#include "lite/api/paddle_place.h"
+#include "lite/api/paddle_use_passes.h"
 #pragma GCC diagnostic pop
 
 namespace paddle {

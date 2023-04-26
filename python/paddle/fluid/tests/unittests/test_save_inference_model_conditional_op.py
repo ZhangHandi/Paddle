@@ -91,14 +91,16 @@ class TestConditionalOp(unittest.TestCase):
         model_file = os.path.join(root_path.name, "while_net")
         paddle.jit.save(net, model_file)
 
-        right_pdmodel = {
-            "uniform_random",
-            "shape",
-            "slice",
-            "not_equal",
-            "while",
-            "elementwise_add",
-        }
+        right_pdmodel = set(
+            [
+                "uniform_random",
+                "shape",
+                "slice",
+                "not_equal",
+                "while",
+                "elementwise_add",
+            ]
+        )
         paddle.enable_static()
         pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(
@@ -117,14 +119,16 @@ class TestConditionalOp(unittest.TestCase):
         model_file = os.path.join(root_path.name, "for_net")
         paddle.jit.save(net, model_file)
 
-        right_pdmodel = {
-            "randint",
-            "fill_constant",
-            "cast",
-            "less_than",
-            "while",
-            "elementwise_add",
-        }
+        right_pdmodel = set(
+            [
+                "randint",
+                "fill_constant",
+                "cast",
+                "less_than",
+                "while",
+                "elementwise_add",
+            ]
+        )
         paddle.enable_static()
         pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(
@@ -143,14 +147,16 @@ class TestConditionalOp(unittest.TestCase):
         model_file = os.path.join(root_path.name, "if_net")
         paddle.jit.save(net, model_file)
 
-        right_pdmodel = {
-            "assign_value",
-            "greater_than",
-            "cast",
-            "conditional_block",
-            "logical_not",
-            "select_input",
-        }
+        right_pdmodel = set(
+            [
+                "assign_value",
+                "greater_than",
+                "cast",
+                "conditional_block",
+                "logical_not",
+                "select_input",
+            ]
+        )
         paddle.enable_static()
         pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(

@@ -166,12 +166,12 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores");
-    return phi::KernelKey(input_data_type,
-                          platform::CPUPlace());  // ctx.GetPlace());
+    return framework::OpKernelType(input_data_type,
+                                   platform::CPUPlace());  // ctx.GetPlace());
   }
 };
 
@@ -248,7 +248,7 @@ static inline T JaccardOverlap(const std::vector<T>& box1,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
  public:
   void NMSFast(const std::vector<std::vector<T>>& cls_dets,
@@ -671,9 +671,6 @@ REGISTER_OPERATOR(
     ops::RetinanetDetectionOutputOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(retinanet_detection_output,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RetinanetDetectionOutputKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
+                       ops::RetinanetDetectionOutputKernel<float>,
+                       ops::RetinanetDetectionOutputKernel<double>);

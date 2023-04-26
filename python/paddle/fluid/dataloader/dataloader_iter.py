@@ -20,7 +20,6 @@ import numbers
 import logging
 import itertools
 import threading
-import warnings
 import numpy as np
 from collections import namedtuple
 from paddle.fluid.framework import (
@@ -407,29 +406,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._base_seed = np.random.randint(low=0, high=sys.maxsize)
 
-        # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
-        # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
-        # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
-        if os.environ.get('FLAGS_use_shm_cache', False) in [
-            1,
-            '1',
-            True,
-            'True',
-            'true',
-        ]:
-            try:
-                self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
-            except:
-                self._worker_shm_buffer_size = 0
-                warnings.warn(
-                    "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
-                )
-        else:
-            self._worker_shm_buffer_size = 0
-        self._main_thread_shm_buffer_size = (
-            (self._worker_shm_buffer_size) * 2 * self._num_workers
-        )
-
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
@@ -457,7 +433,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         for i in range(self._num_workers):
             indices_queue = multiprocessing.Queue()
-            indices_queue.cancel_join_thread()
             self._indices_queues.append(indices_queue)
             worker = multiprocessing.Process(
                 target=_worker_loop,
@@ -475,7 +450,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._num_workers,
                     self._use_shared_memory,
                     self._base_seed,
-                    self._worker_shm_buffer_size,
                 ),
             )
             worker.daemon = True
@@ -506,9 +480,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._outstanding_capacity, len(self._places) > 1
-        )
-        core._set_max_memory_map_allocation_pool_size(
-            self._main_thread_shm_buffer_size
         )
         self._reader = core.create_py_reader(
             self._blocking_queue,

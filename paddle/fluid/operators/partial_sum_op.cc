@@ -91,13 +91,13 @@ class PartialSumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
-      if (input->IsInitialized()) {
+      if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
@@ -108,7 +108,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
                       1,
                       platform::errors::InvalidArgument(
                           "All Inputs of PartialSum OP are Empty!"));
-    return phi::KernelKey(input_data_type, platform::CPUPlace());
+    return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };
 
@@ -141,11 +141,11 @@ class PartialSumGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -204,19 +204,14 @@ REGISTER_OPERATOR(partial_sum,
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(partial_sum,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialSumKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(partial_sum_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialSumGradientOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(partial_sum,
+                       ops::PartialSumKernel<phi::CPUContext, float>,
+                       ops::PartialSumKernel<phi::CPUContext, int>,
+                       ops::PartialSumKernel<phi::CPUContext, double>,
+                       ops::PartialSumKernel<phi::CPUContext, int64_t>);
+
+REGISTER_OP_CPU_KERNEL(partial_sum_grad,
+                       ops::PartialSumGradientOpKernel<float>,
+                       ops::PartialSumGradientOpKernel<int>,
+                       ops::PartialSumGradientOpKernel<double>,
+                       ops::PartialSumGradientOpKernel<int64_t>);

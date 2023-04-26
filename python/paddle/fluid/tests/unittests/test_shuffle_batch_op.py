@@ -17,9 +17,9 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestShuffleBatchOpBase(OpTest):

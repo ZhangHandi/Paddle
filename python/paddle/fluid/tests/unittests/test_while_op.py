@@ -17,41 +17,43 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
-from paddle.incubate.layers.nn import shuffle_batch
 
 paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
     def simple_net(self):
-        d0 = paddle.static.data("d0", shape=[10], dtype='float32')
-        d1 = paddle.static.data("d1", shape=[10], dtype='float32')
-        d2 = paddle.static.data("d2", shape=[10], dtype='float32')
-        i = paddle.zeros(shape=[1], dtype='int64')
+        d0 = layers.data(
+            "d0", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d1 = layers.data(
+            "d1", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d2 = layers.data(
+            "d2", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        init = paddle.zeros(shape=[10], dtype='float32')
+        init = layers.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
-        i = paddle.zeros(shape=[1], dtype='int64')
+        i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        array_len = paddle.tensor.fill_constant(
-            shape=[1], dtype='int64', value=1
-        )
+        array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
         array_len.stop_gradient = True
         cond = paddle.less_than(x=i, y=array_len)
-        j = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+        j = layers.fill_constant(shape=[1], dtype='int64', value=1)
         j.stop_gradient = True
-        array_len2 = paddle.tensor.fill_constant(
-            shape=[1], dtype='int64', value=3
-        )
+        array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
         while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -59,7 +61,7 @@ class TestWhileOp(unittest.TestCase):
         with while_op.block():
             d = paddle.tensor.array_read(array=data_array, i=i)
             prev = paddle.tensor.array_read(array=mem_array, i=i)
-            result = paddle.add_n([d, prev])
+            result = layers.sums(input=[d, prev])
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
@@ -68,7 +70,7 @@ class TestWhileOp(unittest.TestCase):
             with while_op2.block():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
-                result2 = paddle.add_n([d2, prev2])
+                result2 = layers.sums(input=[d2, prev2])
 
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
@@ -116,14 +118,12 @@ class TestWhileOp(unittest.TestCase):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
     def test_exceptions(self):
-        i = paddle.zeros(shape=[2], dtype='int64')
-        array_len = paddle.tensor.fill_constant(
-            shape=[2], dtype='int64', value=1
-        )
+        i = layers.zeros(shape=[2], dtype='int64')
+        array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
         cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)
-        cond = paddle.cast(cond, dtype='float64')
+        cond = layers.cast(cond, dtype='float64')
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)
 
@@ -146,19 +146,16 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         def body_func(i, ten, batch_info, origin_seq):
             print(batch_info)
-            batch_info = shuffle_batch(batch_info)
+            batch_info = fluid.contrib.layers.shuffle_batch(batch_info)
             print(batch_info)
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
-        x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
-        y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
-        x.desc.set_need_check_feed(False)
-        y.desc.set_need_check_feed(False)
-        temp = paddle.concat([x, y], axis=-1)
-
-        i = paddle.tensor.fill_constant(shape=[1], value=0, dtype='int32')
-        num = paddle.tensor.fill_constant(shape=[1], value=5, dtype='int32')
+        x = fluid.layers.data(name='x', shape=[-1, 1, 4])
+        y = fluid.layers.data(name='y', shape=[-1, 1, 1])
+        temp = layers.concat(input=[x, y], axis=-1)
+        i = layers.fill_constant(shape=[1], value=0, dtype='int32')
+        num = layers.fill_constant(shape=[1], value=5, dtype='int32')
 
         i, ten, shuffle_temp, y = paddle.static.nn.while_loop(
             cond, body_func, [i, num, temp, y]
@@ -193,9 +190,9 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
 
             def func(x):
-                s = paddle.zeros([])
-                i = paddle.ones([])
-                max_len = paddle.shape(x)
+                s = paddle.zeros([1])
+                i = paddle.ones([1])
+                max_len = paddle.shape(x)[0]
 
                 def cond(i, s, x):
                     return i < max_len
@@ -210,7 +207,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
                 return s
 
             paddle.enable_static()
-            x = paddle.static.data(shape=[-1], name='x', dtype='float32')
+            x = paddle.static.data(shape=[-1], name='x')
             func(x)
         for op in main_program.block(0).ops:
             if op.type == "while":

@@ -19,7 +19,7 @@ from parallel_dygraph_sparse_embedding import TestSparseEmbedding
 from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
-from paddle import fluid
+import paddle.fluid as fluid
 
 flag_name = os.path.splitext(__file__)[0]
 

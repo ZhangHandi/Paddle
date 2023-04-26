@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -36,9 +36,7 @@ class TestRad2degAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x = paddle.static.data(
-                name='input', dtype=self.x_dtype, shape=self.x_shape
-            )
+            x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.rad2deg(x)
 
             place = (
@@ -65,7 +63,7 @@ class TestRad2degAPI(unittest.TestCase):
 
 class TestRad2degAPI2(TestRad2degAPI):
     def setUp(self):
-        self.x_np = [np.pi / 2]
+        self.x_np = np.pi / 2
         self.x_shape = [1]
         self.out_np = 90
         self.x_dtype = 'float32'
@@ -83,7 +81,7 @@ class TestRad2degAPI2(TestRad2degAPI):
 class TestRad2degAPI3(TestRad2degAPI):
     # Test input data type is int
     def setUp(self):
-        self.x_np = [1]
+        self.x_np = 1
         self.x_shape = [1]
         self.out_np = 180 / np.pi
         self.x_dtype = 'int64'

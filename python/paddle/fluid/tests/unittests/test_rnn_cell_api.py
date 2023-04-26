@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy
 import numpy as np
-
-sys.path.append("../../../../../test/rnn")
-from rnn_numpy import LSTMCell
-from rnn_numpy import rnn as numpy_rnn
+from rnn.rnn_numpy import LSTMCell
+from rnn.rnn_numpy import rnn as numpy_rnn
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.layers.utils as utils
+from paddle.fluid import framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.nn.layer.rnn import rnn as dynamic_rnn
@@ -39,20 +39,21 @@ class TestRnnError(unittest.TestCase):
             input_size = 16
             hidden_size = 16
             seq_len = 4
-            inputs = paddle.static.data(
+            inputs = fluid.data(
                 name='inputs', shape=[None, input_size], dtype='float32'
             )
-            pre_hidden = paddle.static.data(
+            pre_hidden = layers.data(
                 name='pre_hidden',
                 shape=[None, hidden_size],
+                append_batch_size=False,
                 dtype='float32',
             )
-            inputs_basic_lstm = paddle.static.data(
+            inputs_basic_lstm = fluid.data(
                 name='inputs_basic_lstm',
                 shape=[None, None, input_size],
                 dtype='float32',
             )
-            sequence_length = paddle.static.data(
+            sequence_length = fluid.data(
                 name="sequence_length", shape=[None], dtype='int64'
             )
 
@@ -123,7 +124,7 @@ class TestRnnError(unittest.TestCase):
             self.assertRaises(TypeError, test_initial_states_type)
 
             def test_sequence_length_type():
-                np_sequence_length = np.random.random(batch_size).astype(
+                np_sequence_length = np.random.random((batch_size)).astype(
                     "float32"
                 )
                 dynamic_rnn(
@@ -163,18 +164,18 @@ class TestRnn(unittest.TestCase):
             setattr(numpy_cell, k, param)
             fluid.global_scope().find_var(v.name).get_tensor().set(param, place)
 
-        sequence_length = paddle.static.data(
+        sequence_length = fluid.data(
             name="sequence_length", shape=[None], dtype='int64'
         )
-        inputs_rnn = paddle.static.data(
+        inputs_rnn = fluid.data(
             name='inputs_rnn',
             shape=[None, None, self.input_size],
             dtype='float64',
         )
-        pre_hidden = paddle.static.data(
+        pre_hidden = fluid.data(
             name='pre_hidden', shape=[None, self.hidden_size], dtype='float64'
         )
-        pre_cell = paddle.static.data(
+        pre_cell = fluid.data(
             name='pre_cell', shape=[None, self.hidden_size], dtype='float64'
         )
 
@@ -227,11 +228,11 @@ class TestRnnUtil(unittest.TestCase):
     def test_case(self):
         inputs = {"key1": 1, "key2": 2}
         func = lambda x: x + 1
-        outputs = paddle.utils.map_structure(func, inputs)
-        paddle.utils.assert_same_structure(inputs, outputs)
+        outputs = utils.map_structure(func, inputs)
+        utils.assert_same_structure(inputs, outputs)
         try:
             inputs["key3"] = 3
-            paddle.utils.assert_same_structure(inputs, outputs)
+            utils.assert_same_structure(inputs, outputs)
         except ValueError as identifier:
             pass
 

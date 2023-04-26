@@ -34,7 +34,7 @@ namespace operators {
 static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
-  if (src_item.IsInitialized()) {
+  if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {
@@ -58,7 +58,9 @@ static void DeepCopy(const phi::DenseTensor &src_item,
     paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
-    VLOG(4) << "No copy";
+    // Not copy, if the src tensor is empty.
+    dst_item->clear();
+    dst_item->Resize({0});
   }
   dst_item->set_lod(src_item.lod());
 }
@@ -70,53 +72,51 @@ class FetchV2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (!tensor.IsInitialized()) {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *fetch_var = ctx.InputVar("X");
     if (fetch_var == nullptr) {
-      return phi::KernelKey(framework::proto::VarType::FP32,
-                            platform::CPUPlace());
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     platform::CPUPlace());
     }
 
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       if (!src_item.IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       if (!src_item.initialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
       }
     }
 
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
-template <typename T, typename DeviceContext>
 class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -156,8 +156,7 @@ class FetchV2Kernel {
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place()) ||
-                         platform::is_custom_place(src_item.place());
+                         platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
@@ -230,19 +229,28 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-PD_REGISTER_STRUCT_KERNEL(fetch_v2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FetchV2Kernel,
-                          float,
-                          double,
-                          int,
-                          int8_t,
-                          int16_t,
-                          int64_t,
-                          uint8_t,
-                          bool,
-                          plat::float16,
-                          plat::bfloat16,
-                          plat::complex<float>,
-                          plat::complex<double>) {}
+REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2,
+                               float,
+                               ops::FetchV2Kernel,
+                               double,
+                               ops::FetchV2Kernel,
+                               int8_t,
+                               ops::FetchV2Kernel,
+                               uint8_t,
+                               ops::FetchV2Kernel,
+                               int,
+                               ops::FetchV2Kernel,
+                               int64_t,
+                               ops::FetchV2Kernel,
+                               bool,
+                               ops::FetchV2Kernel,
+                               paddle::platform::bfloat16,
+                               ops::FetchV2Kernel,
+                               paddle::platform::complex<float>,
+                               ops::FetchV2Kernel,
+                               paddle::platform::complex<double>,
+                               ops::FetchV2Kernel,
+                               plat::float16,
+                               ops::FetchV2Kernel,
+                               int16_t,
+                               ops::FetchV2Kernel);

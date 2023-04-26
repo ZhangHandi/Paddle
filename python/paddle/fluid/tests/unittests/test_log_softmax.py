@@ -17,12 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-)
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 np.random.seed(10)
 
@@ -66,10 +63,12 @@ class TestLogSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
+        )
 
 
 class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
@@ -86,10 +85,10 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
         self.attrs = {'axis': -1}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_eager=True)
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
@@ -99,29 +98,6 @@ class TestLogSoftmaxShape(TestLogSoftmaxOp):
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
     def set_attrs(self):
-        self.axis = 1
-
-
-class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
-    def set_attrs(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], max_relative_error=1e-2)
-
-
-class TestLogSoftmaxShapeFP16OP(TestLogSoftmaxFP16OP):
-    def set_attrs(self):
-        self.dtype = np.float16
-        self.shape = [12, 10]
-
-
-class TestLogSoftmaxAxisFP16OP(TestLogSoftmaxFP16OP):
-    def set_attrs(self):
-        self.dtype = np.float16
         self.axis = 1
 
 
@@ -146,7 +122,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -155,6 +131,7 @@ class TestLogSoftmaxBF16Op(OpTest):
             ['X'],
             ['Out'],
             user_defined_grads=[self.x_grad],
+            check_eager=True,
         )
 
 
@@ -174,7 +151,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         logsoftmax = paddle.nn.LogSoftmax(axis)
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=self.x_shape)
+            x = paddle.fluid.data(name='x', shape=self.x_shape)
             y = logsoftmax(x)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -208,7 +185,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             x = x.astype(dtype)
         ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=self.x_shape)
+            x = paddle.fluid.data(name='x', shape=self.x_shape)
             y = F.log_softmax(x, axis, dtype)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -227,10 +204,10 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='X1', shape=[100], dtype='int32')
+            x = paddle.fluid.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, F.log_softmax, x)
 
-            x = paddle.static.data(name='X2', shape=[100], dtype='float32')
+            x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
 
 

@@ -63,7 +63,9 @@ class GraphSampler {
   }
   ~GraphSampler() { end_graph_sampling(); }
   virtual int load_from_ssd(std::string path) = 0;
+  ;
   virtual int run_graph_sampling() = 0;
+  ;
   virtual void init(GpuPsGraphTable *gpu_table,
                     std::vector<std::string> args_) = 0;
   std::shared_ptr<::ThreadPool> thread_pool;

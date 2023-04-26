@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DevCtx>
+template <typename DevCtx, typename T>
 class DistributedFusedLambOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

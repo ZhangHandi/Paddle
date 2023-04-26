@@ -49,10 +49,10 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -111,12 +111,9 @@ REGISTER_OPERATOR(global_gather,
                   ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalGatherOpGradMaker<paddle::imperative::OpBase>)
 
-PD_REGISTER_STRUCT_KERNEL(global_gather,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GlobalGatherOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(global_gather,
+                       ops::GlobalGatherOpCPUKernel<float>,
+                       ops::GlobalGatherOpCPUKernel<double>,
+                       ops::GlobalGatherOpCPUKernel<int>,
+                       ops::GlobalGatherOpCPUKernel<int64_t>,
+                       ops::GlobalGatherOpCPUKernel<plat::float16>);

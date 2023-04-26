@@ -17,16 +17,12 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(c_identity,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CIdentityOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
+REGISTER_OP_CUDA_KERNEL(c_identity,
+                        ops::CIdentityOpKernel<float>,
+                        ops::CIdentityOpKernel<double>,
+                        ops::CIdentityOpKernel<int>,
+                        ops::CIdentityOpKernel<int64_t>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+                        ops::CIdentityOpKernel<plat::bfloat16>,
 #endif
-                          plat::float16) {
-}
+                        ops::CIdentityOpKernel<plat::float16>);

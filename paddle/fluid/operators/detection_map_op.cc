@@ -89,9 +89,9 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "DetectRes"),
         platform::CPUPlace());
   }
@@ -224,6 +224,7 @@ REGISTER_OPERATOR(
     ops::DetectionMAPOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(
-    detection_map, CPU, ALL_LAYOUT, ops::DetectionMAPOpKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(
+    detection_map,
+    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, float>,
+    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, double>);

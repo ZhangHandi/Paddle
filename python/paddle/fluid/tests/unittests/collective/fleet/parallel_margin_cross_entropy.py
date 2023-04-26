@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 
 
 def set_random_seed(seed):
@@ -34,6 +34,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
     def test_parallel_margin_softmax_cross_entropy(self):
         margin1s = [1.0, 1.0, 1.35]
@@ -92,7 +93,6 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         norm_weight = paddle.divide(weight, weight_l2)
 
                         data = paddle.matmul(norm_input, norm_weight)
-                        data.retain_grads()
                         data.stop_gradient = False
 
                         sta = (
@@ -118,7 +118,6 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             group=check_group,
                         )
                         integral_data = integral_data.detach().clone()
-                        integral_data.retain_grads()
                         integral_data.stop_gradient = False
 
                         # add arcface margin to logit

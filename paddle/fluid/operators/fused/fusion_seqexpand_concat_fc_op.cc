@@ -102,10 +102,10 @@ void FusionSeqExpandConcatFCOp::InferShape(
   ctx->ShareLoD("X", "Out", 0);
 }
 
-phi::KernelKey FusionSeqExpandConcatFCOp::GetExpectedKernelType(
+framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
@@ -147,10 +147,11 @@ The concat axis should be 1.
 )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using DeviceContext = phi::CPUContext;
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("FCWeight");
     auto* b = ctx.Input<phi::DenseTensor>("FCBias");
@@ -238,9 +239,9 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,
@@ -294,9 +295,6 @@ REGISTER_OPERATOR(fusion_seqexpand_concat_fc,
                   ops::FusionSeqExpandConcatFCOp,
                   ops::FusionSeqExpandConcatFCOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(fusion_seqexpand_concat_fc,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusionSeqExpandConcatFCOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fusion_seqexpand_concat_fc,
+                       ops::FusionSeqExpandConcatFCOpKernel<float>,
+                       ops::FusionSeqExpandConcatFCOpKernel<double>);

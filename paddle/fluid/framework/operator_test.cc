@@ -127,10 +127,14 @@ class OpWithKernelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        ctx.GetPlace(), phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+    int sub_type = ctx.Attr<int>("kernel_sub_type");
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.GetPlace(),
+                        phi::DataLayout::kAnyLayout,
+                        framework::LibraryType::kPlain,
+                        sub_type);
   }
 };
 
@@ -252,6 +256,16 @@ TEST(OpKernel, all) {
   // kerne_sub_type = 0, hence cpu_kernel is called, cpu_kernel2 is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 0);
+
+  attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("kernel_sub_type");
+  attr->set_type(paddle::framework::proto::AttrType::INT);
+  attr->set_i(1);
+  auto op2 = paddle::framework::OpRegistry::CreateOp(op_desc);
+  op2->Run(scope, cpu_place);
+  // kerne_sub_type = 1, hence cpu_kernel2 is called, cpu_kernel is not called.
+  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
+  ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 1);
 }
 
 REGISTER_OP_WITHOUT_GRADIENT(
@@ -325,11 +339,11 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "phi::DenseTensor");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -347,11 +361,11 @@ class IndicateSelectedRowsDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "SelectedRows");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 class IndicateSelectedRowsDataTypeTestProtoMaker
@@ -369,10 +383,10 @@ class IndicateOtherDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Other");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
@@ -583,10 +597,10 @@ class OpUnusedVarTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        ctx.GetPlace(), phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+    return OpKernelType(
+        proto::VarType::FP32, ctx.GetPlace(), phi::DataLayout::kAnyLayout);
   }
 };
 

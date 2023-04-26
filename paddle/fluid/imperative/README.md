@@ -14,7 +14,7 @@ https://www.tensorflow.org/guide/eager
 
 ## API
 ```python
-class Layer:
+class Layer(object):
 
   def __call__(inputs):
     # build some parameter once.
@@ -49,7 +49,7 @@ Longer term.
 ```python
 
 # Parent class.
-class PyVarBase:
+class PyVarBase(object):
   pass
 
 # Current python variable.
@@ -139,7 +139,7 @@ TODO
 import paddle
 class MyLayer(fluid.imperative.Layer):
     def __init__(self):
-        super().__init__()
+        super(MyLayer, self).__init__()
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -150,7 +150,7 @@ class MyLayer(fluid.imperative.Layer):
 
 class MyPyLayer(fluid.imperative.PyLayer):
     def __init__(self):
-        super().__init__()
+        super(MyPyLayer, self).__init__()
 
     @staticmethod
     def forward(inputs):
@@ -172,7 +172,7 @@ with fluid.imperative.guard():
 
 class MLP(fluid.Layer):
     def __init__(self, input_size):
-        super().__init__()
+        super(MLP, self).__init__()
         self._linear1 = Linear(input_size,
                        3,
                        fluid.ParamAttr(

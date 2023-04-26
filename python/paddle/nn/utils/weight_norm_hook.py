@@ -232,7 +232,6 @@ def remove_weight_norm(layer, name='weight'):
             # Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
 
             remove_weight_norm(conv)
-            # The following is the effect after removing the weight norm:
             # print(conv.weight_g)
             # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
@@ -242,4 +241,4 @@ def remove_weight_norm(layer, name='weight'):
             del layer._forward_pre_hooks[k]
             return layer
 
-    raise ValueError(f"weight_norm of '{name}' not found in {layer}")
+    raise ValueError("weight_norm of '{}' not found in {}".format(name, layer))

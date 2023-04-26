@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fft_grad_kernel.h"
-#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fft_grad_kernel_impl.h"
 
@@ -24,14 +23,10 @@ PD_REGISTER_KERNEL(fft_c2c_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(
-    fft_c2r_grad, CPU, ALL_LAYOUT, phi::FFTC2RGradKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
-}
+    fft_c2r_grad, CPU, ALL_LAYOUT, phi::FFTC2RGradKernel, float, double) {}
 PD_REGISTER_KERNEL(fft_r2c_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::FFTR2CGradKernel,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
-}
+                   phi::dtype::complex<double>) {}

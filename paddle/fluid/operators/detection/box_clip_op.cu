@@ -44,7 +44,7 @@ static __global__ void GPUBoxClip(const T *input,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -59,7 +59,7 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
-    phi::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
+    paddle::framework::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
         input->data<T>(),
         mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
@@ -74,6 +74,6 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(
-    box_clip, GPU, ALL_LAYOUT, ops::GPUBoxClipKernel, float, double) {}
+REGISTER_OP_CUDA_KERNEL(box_clip,
+                        ops::GPUBoxClipKernel<phi::GPUContext, float>,
+                        ops::GPUBoxClipKernel<phi::GPUContext, double>);

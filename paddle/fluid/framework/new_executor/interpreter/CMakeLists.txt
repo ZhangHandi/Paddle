@@ -1,12 +1,9 @@
 set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc execution_config.cc
-                     interpreter_util.cc static_build.cc stream_analyzer.cc)
+                     interpreter_util.cc stream_analyzer.cc)
 
 set(INTERPRETER_DEPS
-    buffered_reader
     device_context
-    global_utils
     op_registry
-    phi_tensor_utils
     scope
     framework_proto
     data_feed_proto
@@ -31,7 +28,6 @@ set(INTERPRETER_DEPS
     enforce
     scope
     glog
-    comm_context_manager
     ${DEVICE_EVENT_LIBS}
     glog)
 

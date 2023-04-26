@@ -103,7 +103,7 @@ class CostEstimator:
     def _check_mode(self, mode):
         if mode not in ["modeling", "profiling"]:
             raise ValueError(
-                f"Just support modeling and profiling, but got {mode}"
+                "Just support modeling and profiling, but got {}".format(mode)
             )
 
     def _is_special_var_name(self, var_name):
@@ -189,9 +189,6 @@ class CostEstimator:
 
                 # Calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
-                if not dist_op:
-                    continue
-
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.process_ids
 
@@ -228,8 +225,6 @@ class CostEstimator:
                             for rank in group_ranks:
                                 self.local_cost(rank).time = (
                                     max_time + comm_op_cost.time
-                                    if op.attr('op_role') != OpRole.Backward
-                                    else max_time + 0.9 * comm_op_cost.time
                                 )
                                 if rank not in self._bubble_time_mapping:
                                     self._bubble_time_mapping[rank] = 0
@@ -252,7 +247,7 @@ class CostEstimator:
 
     def _calculate_bytes(self, sizes, dtype):
         if sizes:
-            total_count = reduce(lambda x, y: x * y, sizes, 1)
+            total_count = reduce(lambda x, y: x * y, sizes)
         else:
             total_count = 0
 
@@ -295,7 +290,6 @@ class CostEstimator:
                 self._ordered_ops.append([op.desc.id(), op])
         self._ordered_ops.sort(key=lambda x: x[0])
 
-        parameters = set()
         for op_id, op in self._ordered_ops:
             if op.type in [
                 "create_py_reader",
@@ -304,14 +298,11 @@ class CostEstimator:
             ]:
                 continue
             dist_op = dist_context.get_dist_op_for_program(op)
-            if not dist_op:
-                continue
             process_mesh = dist_op.dist_attr.process_mesh
             for var_name in op.input_arg_names:
                 input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
                     var_name
                 )
-
                 if var_name not in var_info:
                     var_info[var_name] = {}
                 key = _convert_pm_and_dm_to_str(
@@ -320,10 +311,6 @@ class CostEstimator:
                 if key not in var_info[var_name]:
                     var_info[var_name][key] = {}
                 # It is even partition now
-                if "position" not in var_info[var_name][key]:
-                    var_info[var_name][key]["position"] = []
-                var_info[var_name][key]["position"].append(op_id)
-
                 if "memory" not in var_info[var_name][key]:
                     var = dist_op.get_serial_input(var_name)
                     global_sizes = var.shape
@@ -337,16 +324,9 @@ class CostEstimator:
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
                     )
-                    if var.persistable:
-                        name = var_name + key
-                        if name not in parameters:
-                            parameters.add(name)
-                            for process in process_mesh.process_ids:
-                                if process not in memories:
-                                    memories[process] = 0
-                                memories[process] += var_info[var_name][key][
-                                    "memory"
-                                ]
+                if "position" not in var_info[var_name][key]:
+                    var_info[var_name][key]["position"] = []
+                var_info[var_name][key]["position"].append(op_id)
 
             for var_name in op.output_arg_names:
                 output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
@@ -359,10 +339,6 @@ class CostEstimator:
                 )
                 if key not in var_info[var_name]:
                     var_info[var_name][key] = {}
-                if "position" not in var_info[var_name][key]:
-                    var_info[var_name][key]["position"] = []
-                var_info[var_name][key]["position"].append(op_id)
-
                 if "memory" not in var_info[var_name][key]:
                     var = dist_op.get_serial_output(var_name)
                     global_sizes = var.shape
@@ -376,19 +352,11 @@ class CostEstimator:
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
                     )
-                    if var.persistable:
-                        name = var_name + key
-                        if name not in parameters:
-                            parameters.add(name)
-                            for process in process_mesh.process_ids:
-                                if process not in memories:
-                                    memories[process] = 0
-                                memories[process] += var_info[var_name][key][
-                                    "memory"
-                                ]
+                if "position" not in var_info[var_name][key]:
+                    var_info[var_name][key]["position"] = []
+                var_info[var_name][key]["position"].append(op_id)
 
         has_used_vars = set()
-        not_calc_vars = set()
         for op_id, op in self._ordered_ops:
             if op.type in [
                 "create_py_reader",
@@ -399,8 +367,6 @@ class CostEstimator:
             can_free_memories = {}
             can_free_vars = set()
             dist_op = dist_context.get_dist_op_for_program(op)
-            if not dist_op:
-                continue
             process_mesh = dist_op.dist_attr.process_mesh
             for var_name in op.input_arg_names:
                 input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
@@ -412,30 +378,24 @@ class CostEstimator:
                 has_used_var = var_name + key
                 var = dist_op.get_serial_input(var_name)
                 # Not used
-                if (
-                    has_used_var not in has_used_vars
-                    and has_used_var not in parameters
-                ):
-                    if has_used_var in not_calc_vars:
-                        continue
+                if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
                     for process in process_mesh.process_ids:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
                 # Used
-                if op_id == var_info[var_name][key]["position"][-1]:
-                    if (
-                        has_used_var not in can_free_vars
-                        and not var.persistable
-                    ):
-                        can_free_vars.add(has_used_var)
-                        for process in process_mesh.process_ids:
-                            if process not in can_free_memories:
-                                can_free_memories[process] = 0
-                            can_free_memories[process] += var_info[var_name][
-                                key
-                            ]["memory"]
+                else:
+                    if op_id == var_info[var_name][key]["position"][-1]:
+                        if has_used_var not in can_free_vars:
+                            can_free_vars.add(has_used_var)
+                            if not var.persistable:
+                                for process in process_mesh.process_ids:
+                                    if process not in can_free_memories:
+                                        can_free_memories[process] = 0
+                                    can_free_memories[process] += var_info[
+                                        var_name
+                                    ][key]["memory"]
 
             for var_name in op.output_arg_names:
                 output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
@@ -446,36 +406,25 @@ class CostEstimator:
                 )
                 has_used_var = var_name + key
                 var = dist_op.get_serial_output(var_name)
-                if (
-                    op.type == "reshape2"
-                    or op.type == "transpose2"
-                    or op.type == "elementwise_add"
-                ):
-                    not_calc_vars.add(has_used_var)
-                    continue
                 # Not used
-                if (
-                    has_used_var not in has_used_vars
-                    and has_used_var not in parameters
-                ):
+                if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
                     for process in process_mesh.process_ids:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
                 # Used
-                if op_id == var_info[var_name][key]["position"][-1]:
-                    if (
-                        has_used_var not in can_free_vars
-                        and not var.persistable
-                    ):
-                        can_free_vars.add(has_used_var)
-                        for process in process_mesh.process_ids:
-                            if process not in can_free_memories:
-                                can_free_memories[process] = 0
-                            can_free_memories[process] += var_info[var_name][
-                                key
-                            ]["memory"]
+                else:
+                    if op_id == var_info[var_name][key]["position"][-1]:
+                        if has_used_var not in can_free_vars:
+                            can_free_vars.add(has_used_var)
+                            if not var.persistable:
+                                for process in process_mesh.process_ids:
+                                    if process not in can_free_memories:
+                                        can_free_memories[process] = 0
+                                    can_free_memories[process] += var_info[
+                                        var_name
+                                    ][key]["memory"]
 
             # Calc peak memory
             for process in memories:
@@ -484,6 +433,7 @@ class CostEstimator:
                 else:
                     if memories[process] > self.max_memories[process]:
                         self.max_memories[process] = memories[process]
+
             # Free memory
             for process in can_free_memories:
                 if process in memories:
@@ -563,7 +513,7 @@ class CostEstimator:
 
         # Padding automatically
         max_len = 0
-        header = ["Execution Time(us)", "Max Memory(MiB)"]
+        header = ["Execution Time(ms)", "Max Memory(MiB)"]
         vals = [round(self.global_cost.time, 3), int(self.max_memory // 1e6)]
         for memory in vals + header:
             if len(str(memory)) > max_len:
@@ -606,8 +556,8 @@ def get_cost_from_engine(engine, mode):
     )
 
     serial_startup_prog = (
-        engine._fwd_dist_contexts[mode]._original_serial_main_program.clone()
-        if mode in engine._fwd_dist_contexts
+        engine._serial_startup_progs[mode].clone()
+        if mode in engine._serial_startup_progs
         else engine._orig_startup_prog.clone()
     )
     losses = (

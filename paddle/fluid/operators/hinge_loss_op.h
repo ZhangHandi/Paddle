@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class HingeLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -38,7 +38,7 @@ class HingeLossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class HingeLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

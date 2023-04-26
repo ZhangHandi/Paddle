@@ -24,7 +24,7 @@ limitations under the License. */
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
  */
-explicit DenseTensor(phi::DataType dtype);
+explicit DenseTensor(paddle::experimental::DataType dtype);
 
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
@@ -37,18 +37,18 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                   phi::DataType type,
+                   paddle::experimental::DataType type,
                    size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                   phi::DataType type,
+                   paddle::experimental::DataType type,
                    const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
  */
-phi::DataType type() const;
+paddle::experimental::DataType type() const;
 
 // memory size returns the holding memory size in byte.
 size_t memory_size() const;
@@ -84,9 +84,9 @@ std::shared_ptr<phi::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
-                         phi::DataType type);
+                         paddle::experimental::DataType type);
 
-void set_type(phi::DataType type);
+void set_type(paddle::experimental::DataType type);
 
 InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 

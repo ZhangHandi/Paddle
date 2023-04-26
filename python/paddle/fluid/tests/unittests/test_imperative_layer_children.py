@@ -17,10 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+import paddle.fluid as fluid
+import paddle.nn as nn
 
 
-class LeNetDygraph(paddle.nn.Layer):
+class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(

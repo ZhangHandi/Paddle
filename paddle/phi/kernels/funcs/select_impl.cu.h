@@ -25,8 +25,10 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
+
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -268,7 +270,7 @@ __device__ void SelectKernelImpl(OutT *out,
   using IdT = int64_t;
   // Set index data type
   using Add = kps::AddFunctor<IdT>;  // for cumsum
-  using Cast = NonZeroFunctor<MT>;   // for mask
+  using Cast = NonZeroFunctor<InT>;  // for mask
 
   IdT init_idx = static_cast<IdT>(0.0f);
   MT init_mask = static_cast<MT>(0.0f);
@@ -389,8 +391,8 @@ void SelectKernel(const KPDevice &dev_ctx,
   using CT = int64_t;  // set Count_data Type
   const int t_size = sizeof(CT);
 
-  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  const paddle::platform::CUDAPlace &cuda_place = dev_ctx.GetPlace();
+  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;
@@ -432,12 +434,12 @@ void SelectKernel(const KPDevice &dev_ctx,
   // 3.1 set temp ptr for in;
   // 3.1 alloc for out
   // 3.1.1 get true_num for gpu place the last cumsum is the true_num
-  memory_utils::Copy(cpu_place,
-                     &total_true_num,
-                     cuda_place,
-                     cumsum_data + need_grids,
-                     t_size,
-                     dev_ctx.stream());
+  paddle::memory::Copy(cpu_place,
+                       &total_true_num,
+                       cuda_place,
+                       cumsum_data + need_grids,
+                       t_size,
+                       dev_ctx.stream());
 
   dev_ctx.Wait();
   // 3.1.2 allock for out with total_true_num

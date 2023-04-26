@@ -275,7 +275,6 @@ def _worker_loop(
     num_workers,
     use_shared_memory,
     base_seed,
-    shm_cahce_size=0,
 ):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -286,8 +285,6 @@ def _worker_loop(
 
         # set signal handler
         core._set_process_signal_handler()
-
-        core._set_max_memory_map_allocation_pool_size(shm_cahce_size)
 
         # set different numpy seed for each worker
         try:
@@ -398,6 +395,3 @@ def _worker_loop(
     finally:
         if use_shared_memory:
             _cleanup_mmap()
-    if done_event.is_set():
-        out_queue.cancel_join_thread()
-        out_queue.close()

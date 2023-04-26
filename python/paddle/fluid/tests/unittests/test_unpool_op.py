@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -130,10 +130,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
@@ -193,20 +193,6 @@ class TestUnpoolOpException(unittest.TestCase):
             ).astype("int32")
             F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
-        def x_rank_error():
-            data = paddle.rand(shape=[1, 1, 3])
-            indices = paddle.reshape(
-                paddle.arange(0, 9), shape=[1, 1, 3, 3]
-            ).astype("int32")
-            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
-
-        def indices_rank_error():
-            data = paddle.rand(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(
-                paddle.arange(0, 9), shape=[1, 3, 3]
-            ).astype("int32")
-            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
-
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
             indices = paddle.reshape(
@@ -246,16 +232,6 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
-        self.assertRaisesRegex(
-            ValueError,
-            r"The x should have \[N, C, H, W\] format",
-            x_rank_error,
-        )
-        self.assertRaisesRegex(
-            ValueError,
-            r"The indices should have \[N, C, H, W\] format",
-            indices_rank_error,
-        )
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
                 ValueError,
@@ -280,9 +256,9 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
         import numpy as np
 
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.core as core
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -321,9 +297,9 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
         import numpy as np
 
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.core as core
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -362,8 +338,8 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         import numpy as np
 
         import paddle
-        from paddle import fluid
-        from paddle.fluid import core
+        import paddle.fluid as fluid
+        import paddle.fluid.core as core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -401,9 +377,9 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
 class TestUnpoolOpAPI_st(unittest.TestCase):
     def test_case(self):
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.core as core
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
 
         paddle.enable_static()
 
@@ -411,7 +387,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
         ).astype("float32")
 
-        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
         output, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, return_mask=True
         )

@@ -73,10 +73,11 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context());
   }
 };
 
@@ -106,10 +107,6 @@ class CSoftmaxWithCrossEntropyOpMaker
               "Input(Logits) "
               "except the shape in dimension :attr:`axis` as 1. The cross "
               "entropy loss.");
-    AddAttr<int64_t>("ignore_index",
-                     "(int default -100) Specifies a target value "
-                     "that is ignored and does not contribute to the loss.")
-        .SetDefault(-100);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("rank",
@@ -153,11 +150,11 @@ class CSoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Loss")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
   }
 };
 
@@ -203,10 +200,7 @@ REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,
                   ops::CSoftmaxWithCrossEntropyOpGrad,
                   ops::CSoftmaxWithCrossEntropyGradInplaceInferer);
 
-PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CSoftmaxWithCrossEntropyOpCPUKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_softmax_with_cross_entropy,
+                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<float>,
+                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<double>,
+                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<plat::float16>);

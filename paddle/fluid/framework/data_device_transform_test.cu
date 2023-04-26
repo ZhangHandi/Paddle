@@ -47,17 +47,15 @@ class TestOpWithKernel : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  phi::KernelKey GetExpectedKernelType(
+  OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     if (Attr<bool>("use_gpu")) {
       VLOG(3) << "force use gpu kernel";
-      return phi::KernelKey(phi::Backend::GPU,
-                            phi::DataLayout::ALL_LAYOUT,
-                            phi::DataType::FLOAT32);
+      return OpKernelType(proto::VarType::FP32, platform::CUDAPlace(0));
     } else {
       VLOG(3) << "use default kernel";
-      return phi::KernelKey(proto::VarType::FP32,
-                            ctx.Input<phi::DenseTensor>("input")->place());
+      return OpKernelType(proto::VarType::FP32,
+                          ctx.Input<phi::DenseTensor>("input")->place());
     }
   }
 };

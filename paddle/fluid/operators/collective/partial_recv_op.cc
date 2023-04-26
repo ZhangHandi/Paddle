@@ -69,7 +69,7 @@ class PartialRecvOp : public framework::OperatorWithKernel {
                             out_shape[i]));
     }
     auto out_dims = phi::make_ddim(out_shape);
-    int64_t numel = phi::product(out_dims);
+    int numel = phi::product(out_dims);
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
@@ -80,12 +80,12 @@ class PartialRecvOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return phi::KernelKey(type, ctx.GetPlace());
+    return framework::OpKernelType(type, ctx.GetPlace());
   }
 };
 
@@ -98,7 +98,12 @@ class PartialRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
+        .SetDefault(0);
+#endif
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
@@ -129,12 +134,9 @@ REGISTER_OP_WITHOUT_GRADIENT(partial_recv,
                              ops::PartialRecvOp,
                              ops::PartialRecvOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(partial_recv,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialRecvOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(partial_recv,
+                       ops::PartialRecvOpCPUKernel<float>,
+                       ops::PartialRecvOpCPUKernel<double>,
+                       ops::PartialRecvOpCPUKernel<int>,
+                       ops::PartialRecvOpCPUKernel<int64_t>,
+                       ops::PartialRecvOpCPUKernel<plat::float16>);

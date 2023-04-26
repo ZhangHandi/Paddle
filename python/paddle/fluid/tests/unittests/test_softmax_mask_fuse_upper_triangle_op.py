@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid, incubate
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.incubate as incubate
 
 paddle.enable_static()
 
@@ -69,13 +70,13 @@ class TestSoftmaxMaskFuseOp1(OpTest):
     def test_check_output(self):
         try:
             self.check_output_with_place(core.CPUPlace())
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pass
 
     def test_check_grad(self):
         try:
             self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pass
 
 
@@ -91,7 +92,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     def test_static(self):
         for dtype in self.dtypes:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                input_x = paddle.static.data(
+                input_x = fluid.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)

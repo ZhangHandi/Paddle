@@ -25,8 +25,6 @@ namespace phi {
 class DeviceContext;
 class CPUContext;
 class GPUContext;
-class Allocator;
-class CUDAStream;
 }  // namespace phi
 
 namespace paddle {
@@ -88,20 +86,4 @@ class PADDLE_API DeviceContextPool {
 };
 
 }  // namespace experimental
-}  // namespace paddle
-
-namespace paddle {
-
-/**
- * Get the Allocator for the passed place.
- */
-PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-/**
- * Get the current CUDA stream for the passed CUDA device.
- */
-PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place);
-#endif
-
 }  // namespace paddle

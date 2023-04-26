@@ -18,7 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid.layers as layers
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import (
     HybridParallelInferenceHelper,
 )
@@ -65,16 +66,16 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                 )
 
             with paddle.fluid.device_guard(f'{device}:all'):
-                max_len = paddle.tensor.fill_constant(
+                max_len = layers.fill_constant(
                     shape=[1], dtype="int64", value=2, force_cpu=False, name="n"
                 )
-                step_idx = paddle.tensor.fill_constant(
+                step_idx = layers.fill_constant(
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i"
                 )
 
                 data = paddle.tensor.array_write(X, step_idx)
 
-                cond_int = paddle.tensor.fill_constant(
+                cond_int = layers.fill_constant(
                     shape=[1],
                     dtype="int64",
                     value=0,
@@ -121,19 +122,19 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
 
                     # update cond and assign to cond_int, we will sync cond_int
                     paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
-                    paddle.assign(paddle.cast(cond, dtype="int32"), cond_int)
+                    layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):
                     # the code below must at end of while block and exists in device:all
-                    paddle.assign(paddle.cast(cond_int, dtype='bool'), cond)
+                    layers.assign(layers.cast(cond_int, dtype='bool'), cond)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 out = paddle.tensor.create_array(data.dtype)
-                paddle.assign(data, out)
+                layers.assign(data, out)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
-                paddle.assign(paddle.tensor.create_array(data.dtype), data)
+                layers.assign(paddle.tensor.create_array(data.dtype), data)
 
         helper = HybridParallelInferenceHelper(
             startup_program,

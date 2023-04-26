@@ -26,26 +26,29 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &x,
-                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *out);
+  void operator()(
+      const DeviceContext &ctx,
+      const phi::DenseTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      phi::DenseTensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &dout,
-                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *dx);
+  void operator()(
+      const DeviceContext &ctx,
+      const phi::DenseTensor &dout,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      phi::DenseTensor *dx);
 };
 
 template <typename T>
 struct SequenceExpandAsFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &context,
-                  const phi::DenseTensor &x,
-                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *out) {
+  void operator()(
+      const phi::CPUContext &context,
+      const phi::DenseTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      phi::DenseTensor *out) {
     int64_t height = x.dims()[0];
     int64_t width = phi::product(x.dims()) / height;
 
@@ -67,7 +70,7 @@ struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -119,10 +122,11 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
  * */
 template <typename T>
 struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &context,
-                  const phi::DenseTensor &dout,
-                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *dx) {
+  void operator()(
+      const phi::CPUContext &context,
+      const phi::DenseTensor &dout,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      phi::DenseTensor *dx) {
     int64_t height = dx->dims()[0];
     int64_t width = phi::product(dx->dims()) / height;
 
@@ -144,7 +148,7 @@ struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

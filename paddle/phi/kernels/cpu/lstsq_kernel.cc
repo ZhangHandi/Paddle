@@ -301,6 +301,4 @@ void LstsqKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lstsq, CPU, ALL_LAYOUT, phi::LstsqKernel, float, double) {
-  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
-}
+PD_REGISTER_KERNEL(lstsq, CPU, ALL_LAYOUT, phi::LstsqKernel, float, double) {}

@@ -21,7 +21,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 def fake_ctr_reader():
@@ -52,23 +52,26 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = 10, 10
 
-        dnn_data = paddle.static.data(
+        dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        lr_data = paddle.static.data(
+        lr_data = fluid.layers.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
+            append_batch_size=False,
         )
-        label = paddle.static.data(
+        label = fluid.layers.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
+            append_batch_size=False,
         )
 
         datas = [dnn_data, lr_data, label]
@@ -86,24 +89,24 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
-            init = paddle.nn.initializer.Constant(value=0.01)
+            init = fluid.initializer.Constant(value=0.01)
         elif initializer == 1:
-            init = paddle.nn.initializer.Uniform()
+            init = fluid.initializer.Uniform()
         elif initializer == 2:
-            init = paddle.nn.initializer.Normal()
+            init = fluid.initializer.Normal()
         else:
-            raise ValueError(f"error initializer code: {initializer}")
+            raise ValueError("error initializer code: {}".format(initializer))
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
-        dnn_embedding = paddle.static.nn.sparse_embedding(
+        dnn_embedding = fluid.contrib.layers.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
             entry=entry,
             param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
         )
-        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -113,29 +116,26 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.Constant(value=0.01)
+                    initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
             dnn_out = fc
 
         # build lr model
-        lr_embbding = paddle.static.nn.sparse_embedding(
+        lr_embbding = fluid.contrib.layers.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=paddle.nn.initializer.Constant(value=0.01),
+                initializer=fluid.initializer.Constant(value=0.01),
             ),
         )
 
-        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
-        )
-        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
-
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )

@@ -16,10 +16,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -314,10 +314,10 @@ class TestGraphSendUERecvSumOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestSumCase1(TestGraphSendUERecvSumOp):
@@ -420,10 +420,10 @@ class TestGraphSendUERecvMeanOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestMeanCase1(TestGraphSendUERecvMeanOp):
@@ -526,13 +526,14 @@ class TestGraphSendUERecvMaxOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
             user_defined_grads=self.gradients,
+            check_eager=True,
         )
 
 
@@ -636,13 +637,14 @@ class TestGraphSendUERecvMinOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
             user_defined_grads=self.gradients,
+            check_eager=True,
         )
 
 

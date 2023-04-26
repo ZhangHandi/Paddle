@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def bipartite_match(distance, match_indices, match_dist):
@@ -105,7 +105,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBipartiteMatchOpWithoutLoD(OpTest):
@@ -122,7 +122,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
@@ -139,7 +139,7 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
@@ -162,7 +162,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBipartiteMatchOpWithEmptyLoD(OpTest):
@@ -179,7 +179,7 @@ class TestBipartiteMatchOpWithEmptyLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 if __name__ == '__main__':

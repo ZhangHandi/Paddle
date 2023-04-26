@@ -25,7 +25,8 @@ class pstring;
 }  // namespace dtype
 }  // namespace phi
 
-namespace phi {
+namespace paddle {
+namespace experimental {
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
@@ -39,7 +40,7 @@ enum class DataType {
 
   BOOL,
 
-  UINT8,  // Byte
+  UINT8,  // BYte
   INT8,   // Char
   UINT16,
   INT16,
@@ -70,7 +71,7 @@ enum class DataType {
   BFLOAT16,
 
   NUM_DATA_TYPES,
-  // See Note [ Why we need ALL in basic kernel key member? ]
+  // See Note [ Why we need ALL in baisc kernel key member? ]
   ALL_DTYPE = UNDEFINED,
 };
 
@@ -252,15 +253,22 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
+}  // namespace experimental
+}  // namespace paddle
+
+namespace phi {
+using DataType = paddle::experimental::DataType;
+using paddle::experimental::DataTypeToString;
+using paddle::experimental::SizeOf;
 }  // namespace phi
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
-using DataType = phi::DataType;
-using bfloat16 = phi::bfloat16;
-using complex64 = phi::complex64;
-using complex128 = phi::complex128;
-using float16 = phi::float16;
-using pstring = phi::pstring;
+using DataType = paddle::experimental::DataType;
+using bfloat16 = paddle::experimental::bfloat16;
+using complex64 = paddle::experimental::complex64;
+using complex128 = paddle::experimental::complex128;
+using float16 = paddle::experimental::float16;
+using pstring = paddle::experimental::pstring;
 
 }  // namespace paddle

@@ -63,98 +63,97 @@ class GraphBrpcService;
 typedef int32_t (GraphBrpcService::*serviceFunc)(
     Table *table,
     const PsRequestMessage &request,
-    PsResponseMessage &response,  // NOLINT
+    PsResponseMessage &response,
     brpc::Controller *cntl);
 
 class GraphBrpcService : public PsBaseService {
  public:
-  int32_t Initialize() override;
+  virtual int32_t Initialize() override;
 
-  void service(::google::protobuf::RpcController *controller,
-               const PsRequestMessage *request,
-               PsResponseMessage *response,
-               ::google::protobuf::Closure *done) override;
+  virtual void service(::google::protobuf::RpcController *controller,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
+                       ::google::protobuf::Closure *done) override;
 
  protected:
   std::unordered_map<int32_t, serviceFunc> _service_handler_map;
   int32_t InitializeShardInfo();
   int32_t pull_graph_list(Table *table,
                           const PsRequestMessage &request,
-                          PsResponseMessage &response,  // NOLINT
+                          PsResponseMessage &response,
                           brpc::Controller *cntl);
   int32_t graph_random_sample_neighbors(Table *table,
                                         const PsRequestMessage &request,
-                                        PsResponseMessage &response,  // NOLINT
+                                        PsResponseMessage &response,
                                         brpc::Controller *cntl);
   int32_t graph_random_sample_nodes(Table *table,
                                     const PsRequestMessage &request,
-                                    PsResponseMessage &response,  // NOLINT
+                                    PsResponseMessage &response,
                                     brpc::Controller *cntl);
 
   int32_t graph_get_node_feat(Table *table,
                               const PsRequestMessage &request,
-                              PsResponseMessage &response,  // NOLINT
+                              PsResponseMessage &response,
                               brpc::Controller *cntl);
   int32_t graph_set_node_feat(Table *table,
                               const PsRequestMessage &request,
-                              PsResponseMessage &response,  // NOLINT
+                              PsResponseMessage &response,
                               brpc::Controller *cntl);
   int32_t clear_nodes(Table *table,
                       const PsRequestMessage &request,
-                      PsResponseMessage &response,  // NOLINT
+                      PsResponseMessage &response,
                       brpc::Controller *cntl);
   int32_t add_graph_node(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,  // NOLINT
+                         PsResponseMessage &response,
                          brpc::Controller *cntl);
   int32_t remove_graph_node(Table *table,
                             const PsRequestMessage &request,
-                            PsResponseMessage &response,  // NOLINT
+                            PsResponseMessage &response,
                             brpc::Controller *cntl);
   int32_t Barrier(Table *table,
                   const PsRequestMessage &request,
-                  PsResponseMessage &response,  // NOLINT
+                  PsResponseMessage &response,
                   brpc::Controller *cntl);
   int32_t LoadOneTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,  // NOLINT
+                       PsResponseMessage &response,
                        brpc::Controller *cntl);
   int32_t LoadAllTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,  // NOLINT
+                       PsResponseMessage &response,
                        brpc::Controller *cntl);
   int32_t StopServer(Table *table,
                      const PsRequestMessage &request,
-                     PsResponseMessage &response,  // NOLINT
+                     PsResponseMessage &response,
                      brpc::Controller *cntl);
   int32_t StartProfiler(Table *table,
                         const PsRequestMessage &request,
-                        PsResponseMessage &response,  // NOLINT
+                        PsResponseMessage &response,
                         brpc::Controller *cntl);
   int32_t StopProfiler(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,  // NOLINT
+                       PsResponseMessage &response,
                        brpc::Controller *cntl);
 
   int32_t PrintTableStat(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,  // NOLINT
+                         PsResponseMessage &response,
                          brpc::Controller *cntl);
 
-  int32_t sample_neighbors_across_multi_servers(
-      Table *table,
-      const PsRequestMessage &request,
-      PsResponseMessage &response,  // NOLINT
-      brpc::Controller *cntl);
+  int32_t sample_neighbors_across_multi_servers(Table *table,
+                                                const PsRequestMessage &request,
+                                                PsResponseMessage &response,
+                                                brpc::Controller *cntl);
 
   int32_t use_neighbors_sample_cache(Table *table,
                                      const PsRequestMessage &request,
-                                     PsResponseMessage &response,  // NOLINT
+                                     PsResponseMessage &response,
                                      brpc::Controller *cntl);
 
   int32_t load_graph_split_config(Table *table,
                                   const PsRequestMessage &request,
-                                  PsResponseMessage &response,  // NOLINT
+                                  PsResponseMessage &response,
                                   brpc::Controller *cntl);
 
  private:

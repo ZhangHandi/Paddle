@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid import framework
+import paddle.fluid.framework as framework
 
 
 class ConstantTest(unittest.TestCase):

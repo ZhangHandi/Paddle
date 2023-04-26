@@ -50,9 +50,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
         platform::CPUPlace());
   }
@@ -64,7 +64,7 @@ bool DistPairDescend(std::tuple<int, int, T> pair1,
   return std::get<2>(pair1) > std::get<2>(pair2);
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
@@ -318,10 +318,6 @@ REGISTER_OPERATOR(
     ops::BipartiteMatchOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(bipartite_match,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::BipartiteMatchKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(bipartite_match,
+                       ops::BipartiteMatchKernel<float>,
+                       ops::BipartiteMatchKernel<double>);

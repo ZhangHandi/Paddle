@@ -110,10 +110,10 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
-    return phi::KernelKey(data_type, platform::CPUPlace());
+    return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
 
@@ -328,7 +328,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
   return res;
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -533,9 +533,5 @@ REGISTER_OPERATOR(
     ops::GenerateMaskLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(generate_mask_labels,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GenerateMaskLabelsKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(generate_mask_labels,
+                       ops::GenerateMaskLabelsKernel<float>);

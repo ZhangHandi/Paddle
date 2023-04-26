@@ -89,10 +89,11 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -179,10 +180,11 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -262,15 +264,10 @@ REGISTER_OPERATOR(sigmoid_focal_loss,
                   ops::SigmoidFocalLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::SigmoidFocalLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sigmoid_focal_loss_grad, ops::SigmoidFocalLossGradOp);
-PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SigmoidFocalLossKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SigmoidFocalLossGradKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(sigmoid_focal_loss,
+                       ops::SigmoidFocalLossKernel<phi::CPUContext, float>,
+                       ops::SigmoidFocalLossKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_focal_loss_grad,
+    ops::SigmoidFocalLossGradKernel<phi::CPUContext, float>,
+    ops::SigmoidFocalLossGradKernel<phi::CPUContext, double>);

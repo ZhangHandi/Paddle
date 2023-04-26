@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import datetime
-import os
 
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+import paddle.fluid.core as core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -63,7 +62,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'heter', 'xccl', 'bkcl']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'bkcl']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -278,13 +277,23 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
+            elif core.is_compiled_with_npu():
+                place = core.NPUPlace(genv.device_id)
+                core.HCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
+            elif core.is_compiled_with_mlu():
+                place = core.MLUPlace(genv.device_id)
+                core.CNCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             else:
-                raise AssertionError("no cuda device found")
+                assert False, "no cuda device found"
         else:
             return gp
 
@@ -316,29 +325,3 @@ def is_available():
 
     """
     return core.is_compiled_with_dist()
-
-
-def _init_parallel_env(backend):
-    master_endpoint = os.getenv("PADDLE_MASTER", None)
-    if master_endpoint:
-        master_addr = master_endpoint.split(":")[0]
-        master_port = int(master_endpoint.split(":")[1])
-        global_env = _get_global_env()
-        rank = global_env.rank
-        world_size = global_env.world_size
-        dev_id = global_env.device_id
-        is_master = rank == 0
-        store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
-        )
-        if backend == "gloo":
-            core.CommContextManager.create_gloo_comm_context(
-                store, 0, rank, world_size
-            )
-        elif backend == "nccl":
-            core.CommContextManager.create_nccl_comm_context(
-                store, dev_id, 0, rank, world_size
-            )

@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = phi::DenseTensor;
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceReshapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -85,7 +85,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceReshapeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

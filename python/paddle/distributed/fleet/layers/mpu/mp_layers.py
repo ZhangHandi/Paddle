@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.autograd import PyLayer
 from paddle.fluid import core
+from paddle.nn import Layer
 from paddle.nn import functional as F
 
 from ...base import topology as tp
@@ -29,10 +29,13 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.ops, 'fused_gemm_epilogue')
+    else:
+        return False
 
 
-class VocabParallelEmbedding(paddle.nn.Layer):
+class VocabParallelEmbedding(Layer):
     """Embedding mp parallelized in the vocabulary dimension.
     this class is used for splitting embedding in mp group.
 
@@ -143,7 +146,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
         if self.weight.is_distributed:
-            self.weight.split_axis = 0
+            setattr(self.weight, "split_axis", 0)
 
     def forward(self, x):
         if self.is_mp:
@@ -170,7 +173,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         return output
 
 
-class ColumnParallelLinear(paddle.nn.Layer):
+class ColumnParallelLinear(Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
 
@@ -277,7 +280,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
         self.weight.is_distributed = True if self.is_mp else False
 
         if self.weight.is_distributed:
-            self.weight.split_axis = 1
+            setattr(self.weight, "split_axis", 1)
 
         if has_bias:
             # initialize bias to zero like Megatron
@@ -289,7 +292,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
             )
             self.bias.is_distributed = True if self.is_mp else False
             if self.bias.is_distributed:
-                self.bias.split_axis = 0
+                setattr(self.bias, "split_axis", 0)
         else:
             self.bias = None
 
@@ -329,18 +332,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
         return output
 
 
-class MPScale(PyLayer):
-    @staticmethod
-    def forward(ctx, x, mp_degree):
-        out = paddle.scale(x, 1.0 / mp_degree)
-        return out
-
-    @staticmethod
-    def backward(ctx, dout):
-        return dout
-
-
-class RowParallelLinear(paddle.nn.Layer):
+class RowParallelLinear(Layer):
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
 
@@ -454,7 +446,7 @@ class RowParallelLinear(paddle.nn.Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
         if self.weight.is_distributed:
-            self.weight.split_axis = 0
+            setattr(self.weight, "split_axis", 0)
 
         if has_bias:
             self.bias = self.create_parameter(
@@ -479,7 +471,6 @@ class RowParallelLinear(paddle.nn.Layer):
             from paddle.incubate.nn.functional import fused_linear
 
             self.linear = fused_linear
-        self.fuse_matmul_bias = fuse_matmul_bias
 
     def forward(self, x):
         if self.input_is_parallel or (not self.is_mp):
@@ -489,30 +480,16 @@ class RowParallelLinear(paddle.nn.Layer):
             input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
 
         if self.is_mp:
-            if self.fuse_matmul_bias:
-                bias = MPScale.apply(self.bias, self.world_size)
-                output_parallel = self.linear(
-                    input_parallel, self.weight, bias, name=self._name
-                )
-                output = mp_ops._mp_allreduce(
-                    output_parallel,
-                    group=self.model_parallel_group,
-                    use_calc_stream=True,
-                    use_model_parallel=True,
-                )
-            else:
-                output_parallel = self.linear(
-                    input_parallel, self.weight, name=self._name
-                )
-                output_ = mp_ops._mp_allreduce(
-                    output_parallel,
-                    group=self.model_parallel_group,
-                    use_calc_stream=True,
-                    use_model_parallel=True,
-                )
-                output = (
-                    output_ + self.bias if self.bias is not None else output_
-                )
+            output_parallel = self.linear(
+                input_parallel, self.weight, name=self._name
+            )
+            output_ = mp_ops._mp_allreduce(
+                output_parallel,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True,
+            )
+            output = output_ + self.bias if self.bias is not None else output_
         else:
             output = self.linear(
                 input_parallel, self.weight, self.bias, name=self._name
@@ -521,7 +498,7 @@ class RowParallelLinear(paddle.nn.Layer):
         return output
 
 
-class ParallelCrossEntropy(paddle.nn.Layer):
+class ParallelCrossEntropy(Layer):
     """CrossEntropy with mp parallelized.
     this class is used for splitting softmax cross entropy in mp group.
 
@@ -529,9 +506,6 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
-        ignore_index (long int, optional):  Specifies a target value that is ignored and
-            does not contribute to the loss. A negative value means that no label value
-            needs to be ignored. Default is -100 .
 
     Examples:
         .. code-block:: python
@@ -539,7 +513,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         loss = loss_func(img, lable)
     """
 
-    def __init__(self, mp_group=None, name=None, ignore_index=-100):
+    def __init__(self, mp_group=None, name=None):
         super().__init__()
         self.name = name
         self.model_parallel_group = (
@@ -557,13 +531,9 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             if mp_group is None
             else mp_group.rank
         )
-        self.ignore_index = ignore_index
 
     def forward(self, input, label):
         loss = mp_ops._c_softmax_with_cross_entropy(
-            input,
-            label,
-            group=self.model_parallel_group,
-            ignore_index=self.ignore_index,
+            input, label, group=self.model_parallel_group
         )
         return loss

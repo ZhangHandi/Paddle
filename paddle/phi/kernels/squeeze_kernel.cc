@@ -21,44 +21,30 @@
 
 namespace phi {
 template <typename T, typename Context>
-void SqueezeInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const IntArray& axes,
-                        DenseTensor* out) {
-  auto out_dims = out->dims();
+void SqueezeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& axes,
+                   DenseTensor* out) {
+  auto x_dims = x.dims();
+  std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
+  auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
+  out->Resize(out_dims);
+
   dev_ctx.template Alloc<T>(out);
-  if (x.Holder() == out->Holder()) {
-    return;
-  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
 }
 
 template <typename T, typename Context>
-void SqueezeKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& axes,
-                   DenseTensor* out,
-                   DenseTensor* xshape) {
-  SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+void SqueezeWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& axes,
+                             DenseTensor* out,
+                             DenseTensor* xshape) {
+  SqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(squeeze_infer,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SqueezeInferKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   bool,
-                   int,
-                   uint8_t,
-                   int8_t,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(squeeze,
                    CPU,
@@ -74,11 +60,26 @@ PD_REGISTER_KERNEL(squeeze,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(squeeze_with_xshape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SqueezeWithXShapeKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   bool,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(squeeze_infer,
+PD_REGISTER_KERNEL(squeeze,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SqueezeInferKernel,
+                   phi::SqueezeKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -91,10 +92,10 @@ PD_REGISTER_KERNEL(squeeze_infer,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(squeeze,
+PD_REGISTER_KERNEL(squeeze_with_xshape,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SqueezeKernel,
+                   phi::SqueezeWithXShapeKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -109,10 +110,10 @@ PD_REGISTER_KERNEL(squeeze,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(squeeze_infer,
+PD_REGISTER_KERNEL(squeeze,
                    XPU,
                    ALL_LAYOUT,
-                   phi::SqueezeInferKernel,
+                   phi::SqueezeKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -122,10 +123,10 @@ PD_REGISTER_KERNEL(squeeze_infer,
                    int8_t,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(squeeze,
+PD_REGISTER_KERNEL(squeeze_with_xshape,
                    XPU,
                    ALL_LAYOUT,
-                   phi::SqueezeKernel,
+                   phi::SqueezeWithXShapeKernel,
                    float,
                    double,
                    phi::dtype::float16,

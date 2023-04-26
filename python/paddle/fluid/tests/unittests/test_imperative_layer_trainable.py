@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import dygraph
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dygraph
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):

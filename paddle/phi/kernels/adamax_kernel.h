@@ -26,14 +26,11 @@ void AdamaxKernel(const Context& dev_ctx,
                   const DenseTensor& moment,
                   const DenseTensor& inf_norm,
                   const DenseTensor& beta1_pow,
-                  const paddle::optional<DenseTensor>& master_param,
                   float beta1,
                   float beta2,
                   float epsilon,
-                  bool multi_precision,
                   DenseTensor* param_out,
                   DenseTensor* moment_out,
-                  DenseTensor* inf_norm_out,
-                  DenseTensor* master_param_outs);
+                  DenseTensor* inf_norm_out);
 
 }  // namespace phi

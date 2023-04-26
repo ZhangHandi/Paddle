@@ -14,7 +14,6 @@
 
 #include <stack>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/tree2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

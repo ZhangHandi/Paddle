@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -80,7 +81,7 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
-        changed.append(f'/paddle/build/{file}.gcda')
+        changed.append('/paddle/build/{}.gcda'.format(file))
 
     for parent, dirs, files in os.walk('/paddle/build/'):
         for gcda in files:

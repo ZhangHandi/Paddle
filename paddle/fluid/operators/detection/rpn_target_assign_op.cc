@@ -94,9 +94,9 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
@@ -392,7 +392,7 @@ std::vector<phi::DenseTensor> SampleRpnFgBgGt(
   return loc_score_tgtlbl_gt;
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -851,9 +851,9 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
@@ -995,7 +995,7 @@ std::vector<phi::DenseTensor> GetAllFgBgGt(
   return loc_score_tgtlbl_gt;
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -1236,21 +1236,15 @@ REGISTER_OPERATOR(
     ops::RpnTargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(rpn_target_assign,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RpnTargetAssignKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(rpn_target_assign,
+                       ops::RpnTargetAssignKernel<float>,
+                       ops::RpnTargetAssignKernel<double>);
 REGISTER_OPERATOR(
     retinanet_target_assign,
     ops::RetinanetTargetAssignOp,
     ops::RetinanetTargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(retinanet_target_assign,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RetinanetTargetAssignKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(retinanet_target_assign,
+                       ops::RetinanetTargetAssignKernel<float>,
+                       ops::RetinanetTargetAssignKernel<double>);

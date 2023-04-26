@@ -48,7 +48,7 @@ def run_test(
     if os.name == 'nt':
         return
     args = locals()
-    log_dir = os.path.join(temp_dir.name, f'log_{os.getpid()}')
+    log_dir = os.path.join(temp_dir.name, 'log_{}'.format(os.getpid()))
     cmd = [
         sys.executable,
         '-u',
@@ -69,13 +69,13 @@ def run_test(
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = os.path.join(
         temp_dir.name,
-        f'distributed_fused_lamb_touch_file_{os.getpid()}',
+        'distributed_fused_lamb_touch_file_{}'.format(os.getpid()),
     )
     os.environ[touch_file_env] = touch_file_name
     try:
         assert os.system(cmd) == 0 and os.path.exists(
             touch_file_name
-        ), f'Test failed when {args}'
+        ), 'Test failed when {}'.format(args)
     finally:
         temp_dir.cleanup()
 

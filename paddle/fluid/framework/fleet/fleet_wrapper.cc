@@ -78,7 +78,6 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
                             const_cast<uint64_t*>(host_sign_list.data()),
                             node_num,
                             index);
-    dist_desc_ = dist_desc;
     is_initialized_ = true;
   } else {
     VLOG(3) << "Worker can be initialized only once";
@@ -1463,12 +1462,9 @@ void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
 #endif
 }
 
-void FleetWrapper::PrintTableStat(uint64_t table_id,
-                                  uint32_t pass_id,
-                                  size_t threshold) {
+void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret =
-      pslib_ptr_->_worker_ptr->print_table_stat(table_id, pass_id, threshold);
+  auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {

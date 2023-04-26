@@ -98,7 +98,7 @@ __global__ void LSTMUnitGradientKernel(const int nthreads,
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -131,7 +131,7 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -183,11 +183,9 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(
-    lstm_unit, GPU, ALL_LAYOUT, ops::LstmUnitOpCUDAKernel, float, double) {}
-PD_REGISTER_STRUCT_KERNEL(lstm_unit_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::LstmUnitGradOpCUDAKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(lstm_unit,
+                        ops::LstmUnitOpCUDAKernel<float>,
+                        ops::LstmUnitOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lstm_unit_grad,
+                        ops::LstmUnitGradOpCUDAKernel<float>,
+                        ops::LstmUnitGradOpCUDAKernel<double>);

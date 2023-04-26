@@ -88,10 +88,10 @@ void FusionSeqConvEltAddReluOp::InferShape(
   ctx->ShareLoD("X", "Out");
 }
 
-phi::KernelKey FusionSeqConvEltAddReluOp::GetExpectedKernelType(
+framework::OpKernelType FusionSeqConvEltAddReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
 }
 
 void FusionSeqConvEltAddReluOpMaker::Make() {
@@ -148,10 +148,11 @@ Fusion Sequence Conv and ElementwiseAdd Operator.
 )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("Filter");
     auto* b = ctx.Input<phi::DenseTensor>("Bias");
@@ -159,8 +160,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
-    auto x_dims = phi::vectorize<int64_t>(x->dims());
-    auto w_dims = phi::vectorize<int64_t>(w->dims());
+    auto x_dims = x->dims();
+    auto w_dims = w->dims();
     PADDLE_ENFORCE_EQ(
         b->numel(),
         w_dims[1],
@@ -282,9 +283,6 @@ REGISTER_OPERATOR(fusion_seqconv_eltadd_relu,
                   ops::FusionSeqConvEltAddReluOp,
                   ops::FusionSeqConvEltAddReluOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(fusion_seqconv_eltadd_relu,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FusionSeqConvEltAddReluKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,
+                       ops::FusionSeqConvEltAddReluKernel<float>,
+                       ops::FusionSeqConvEltAddReluKernel<double>);

@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.framework import core
+from paddle.fluid import core
 
 
 class ProcessMesh(core.ProcessMesh):
@@ -22,7 +22,7 @@ class ProcessMesh(core.ProcessMesh):
     The class `Processmesh` describes the topology of logical processes.
 
     Args:
-        mesh (list|numpy.array): an N-dimensional array describes the topology
+        mesh (list|numpy.array): an N-dimensional array describes the toplogy
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.

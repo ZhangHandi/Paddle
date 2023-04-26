@@ -16,12 +16,11 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/common/transform.h"
+#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
@@ -78,13 +77,13 @@ inline void TensorContainsNAN(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
     return;
   }
@@ -95,13 +94,13 @@ inline void TensorContainsInf(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
     return;
   }
@@ -112,13 +111,13 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
                            phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));
     return;
   }
@@ -130,17 +129,17 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
 inline bool TensorContainsNAN(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsNAN(tensor, &out);
-  return paddle::framework::GetValue<bool>(&out);
+  return GetValue<bool>(&out);
 }
 inline bool TensorContainsInf(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsInf(tensor, &out);
-  return paddle::framework::GetValue<bool>(&out);
+  return GetValue<bool>(&out);
 }
 inline bool TensorIsfinite(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorIsfinite(tensor, &out);
-  return paddle::framework::GetValue<bool>(&out);
+  return GetValue<bool>(&out);
 }
 }  // namespace framework
 namespace operators {

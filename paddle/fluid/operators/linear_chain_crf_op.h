@@ -48,7 +48,7 @@ struct ScalarMul {
 
 using framework::LoD;
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -245,7 +245,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

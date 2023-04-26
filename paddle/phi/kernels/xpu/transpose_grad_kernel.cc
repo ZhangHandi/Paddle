@@ -26,34 +26,20 @@ void TransposeGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
-  if (x_grad->numel() == 0) {
-    return;
-  }
-
-  size_t axis_size = axis.size();
-  if (axis_size == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    return;
-  }
-
-  std::vector<int> formated_axis = axis;
-  for (size_t i = 0; i < axis_size; i++) {
-    if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + axis_size;
-    }
-  }
-
   std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < axis_size; i++) {
-    reversed_axis[formated_axis[i]] = i;
+  for (size_t i = 0; i < axis.size(); i++) {
+    reversed_axis[axis[i]] = i;
   }
-
-  std::vector<int> out_grad_dim_vec = phi::vectorize<int>(out_grad.dims());
+  int ndims = axis.size();
+  std::vector<int> out_shape_host(ndims, 0);
+  for (int i = 0; i < ndims; ++i) {
+    out_shape_host[i] = out_grad.dims()[i];
+  }
   int r = xpu::transpose<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
       reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      out_grad_dim_vec,
+      out_shape_host,
       reversed_axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose_grad");
 }
@@ -64,7 +50,4 @@ PD_REGISTER_KERNEL(transpose_grad,
                    ALL_LAYOUT,
                    phi::TransposeGradKernel,
                    float,
-                   phi::dtype::float16,
-                   int64_t,
-                   int,
-                   bool) {}
+                   phi::dtype::float16) {}

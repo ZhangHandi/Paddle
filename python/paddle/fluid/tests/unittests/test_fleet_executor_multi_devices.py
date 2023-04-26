@@ -16,20 +16,18 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
-    def run_fleet_executor(self, place, fleet_opt={}):
+    def run_fleet_executor(self, place, fleet_opt=dict()):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype=paddle.float32
-            )
+            x = fluid.layers.data(name='x', shape=[1], dtype=paddle.float32)
         empty_program._pipeline_opt = {
             "fleet_opt": fleet_opt,
             "section_program": empty_program,

@@ -65,10 +65,15 @@ class TopkOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -123,11 +128,11 @@ class TopkOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -146,18 +151,6 @@ class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class TopkInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
-    if (ctx->HasInput("K")) {
-      ctx->SyncTypeAndDataType("K", "Indices");
-    } else {
-      ctx->SetOutputDataType("Indices", framework::proto::VarType::INT32);
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -165,7 +158,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(top_k,
                   ops::TopkOp,
                   ops::TopkOpMaker,
-                  ops::TopkInferVarType,
                   ops::TopkGradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkGradOpMaker<paddle::imperative::OpBase>);
 

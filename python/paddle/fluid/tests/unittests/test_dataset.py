@@ -21,8 +21,8 @@ import tempfile
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestDataset(unittest.TestCase):
@@ -100,14 +100,14 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset.update_settings(pipe_command="cat1")
         dataset._init_distributed_settings(
@@ -192,15 +192,15 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32,
-            thread_num=2,
+            thread_num=3,
             pipe_command="cat",
             download_cmd="cat",
             use_var=slots_vars,
@@ -257,14 +257,14 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([filename1, filename2])
@@ -313,7 +313,6 @@ class TestDataset(unittest.TestCase):
         dataset.set_graph_config(graph_config)
         dataset.set_pass_id(0)
         dataset.get_pass_id()
-        dataset.get_epoch_finish()
 
     def test_in_memory_dataset_masterpatch(self):
         """
@@ -351,20 +350,19 @@ class TestDataset(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             for slot in slots[:2]:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                var = fluid.layers.data(
+                    name=slot, shape=[1], dtype="int64", lod_level=1
                 )
                 slots_vars.append(var)
             for slot in slots[2:]:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                var = fluid.layers.data(
+                    name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
-
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars
         )
         dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist(
@@ -390,6 +388,7 @@ class TestDataset(unittest.TestCase):
         # dataset._set_merge_by_lineid(2)
         dataset.update_settings(merge_size=2)
         dataset.dataset.merge_by_lineid()
+
         temp_dir.cleanup()
 
     def test_in_memory_dataset_masterpatch1(self):
@@ -426,23 +425,23 @@ class TestDataset(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            var1 = paddle.static.data(
-                name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
+            var1 = fluid.layers.data(
+                name="slot1", shape=[1], dtype="int64", lod_level=0
             )
-            var2 = paddle.static.data(
-                name="slot2", shape=[-1, 1], dtype="int64", lod_level=0
+            var2 = fluid.layers.data(
+                name="slot2", shape=[1], dtype="int64", lod_level=0
             )
-            var3 = paddle.static.data(
-                name="slot3", shape=[-1, 1], dtype="float32", lod_level=0
+            var3 = fluid.layers.data(
+                name="slot3", shape=[1], dtype="float32", lod_level=0
             )
-            var4 = paddle.static.data(
-                name="slot4", shape=[-1, 1], dtype="float32", lod_level=0
+            var4 = fluid.layers.data(
+                name="slot4", shape=[1], dtype="float32", lod_level=0
             )
             slots_vars = [var1, var2, var3, var4]
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars
         )
         dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist(
@@ -499,14 +498,14 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="float32", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
@@ -522,21 +521,21 @@ class TestDataset(unittest.TestCase):
         for i in range(2):
             try:
                 exe.train_from_dataset(fluid.default_main_program(), dataset)
-                # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=1
-                # )
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=1
+                )
                 exe.train_from_dataset(
                     fluid.default_main_program(), dataset, thread=2
                 )
-                # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=2
-                # )
-                # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=3
-                # )
-                # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=4
-                # )
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=2
+                )
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=3
+                )
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=4
+                )
             except ImportError as e:
                 pass
             except Exception as e:
@@ -615,14 +614,14 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.QueueDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset.set_filelist([filename1, filename2])
 
@@ -646,15 +645,15 @@ class TestDataset(unittest.TestCase):
 
         dataset2 = paddle.distributed.QueueDataset()
         dataset2.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset.set_filelist([])
-        # try:
-        #    exe.train_from_dataset(fluid.default_main_program(), dataset2)
-        # except ImportError as e:
-        #    print("warning: we skip trainer_desc_pb2 import problem in windows")
-        # except Exception as e:
-        #    self.assertTrue(False)
+        try:
+            exe.train_from_dataset(fluid.default_main_program(), dataset2)
+        except ImportError as e:
+            print("warning: we skip trainer_desc_pb2 import problem in windows")
+        except Exception as e:
+            self.assertTrue(False)
 
         temp_dir.cleanup()
 
@@ -683,14 +682,14 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="float32", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.QueueDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset.set_filelist([filename1, filename2])
 
@@ -744,7 +743,7 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
+            var = fluid.data(
                 name=slot, shape=[None, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
@@ -808,15 +807,15 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32,
-            thread_num=2,
+            thread_num=1,
             pipe_command="cat",
             data_feed_type="SlotRecordInMemoryDataFeed",
             use_var=slots_vars,
@@ -873,8 +872,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -900,7 +899,6 @@ class TestDataset(unittest.TestCase):
         dataset.set_pass_id(2)
         pass_id = dataset.get_pass_id()
 
-        dataset.set_thread(2)
         dataset.load_into_memory()
 
         dataset.get_memory_data_size()
@@ -946,18 +944,16 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         slots_vars = []
         poolings = []
         for slot in slots:
-            data = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            data = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
             )
-            var = paddle.cast(x=data, dtype='float32')
-            pool = paddle.static.nn.sequence_lod.sequence_pool(
-                input=var, pool_type='AVERAGE'
-            )
+            var = fluid.layers.cast(x=data, dtype='float32')
+            pool = fluid.layers.sequence_pool(input=var, pool_type='AVERAGE')
 
             slots_vars.append(data)
             poolings.append(pool)
 
-        concated = paddle.concat(poolings, axis=1)
+        concated = fluid.layers.concat(poolings, axis=1)
         fc = paddle.static.nn.fc(x=concated, activation='tanh', size=32)
         return slots_vars, fc
 
@@ -971,7 +967,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         """
         dataset = paddle.distributed.QueueDataset()
         dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=inputs
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=inputs
         )
         dataset.set_filelist(files)
         return dataset
@@ -1113,7 +1109,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 
@@ -1121,8 +1117,8 @@ class TestDataset2(unittest.TestCase):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                var = fluid.layers.data(
+                    name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1147,7 +1143,7 @@ class TestDataset2(unittest.TestCase):
 
             dataset.init(
                 batch_size=32,
-                thread_num=2,
+                thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars,
             )
@@ -1185,16 +1181,14 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
-            fleet,
-        )
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                var = fluid.layers.data(
+                    name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1226,7 +1220,7 @@ class TestDataset2(unittest.TestCase):
             dataset = paddle.distributed.InMemoryDataset()
             dataset.init(
                 batch_size=32,
-                thread_num=2,
+                thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars,
             )
@@ -1318,16 +1312,14 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
-            fleet,
-        )
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                var = fluid.layers.data(
+                    name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1359,7 +1351,7 @@ class TestDataset2(unittest.TestCase):
             dataset = paddle.distributed.fleet.BoxPSDataset()
             dataset.init(
                 batch_size=32,
-                thread_num=2,
+                thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars,
             )

@@ -18,7 +18,7 @@ import sys
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed import fleet
+import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import dygraph_only
 
@@ -173,7 +173,7 @@ def _state_dict_groups(state_dict, max_size):
     max_size = max(max_size, max_tensor_size)
     logger.debug(f"max tensor size: {max_size}")
 
-    state_group = {}
+    state_group = dict()
     k_list = list(state_dict.keys())
     index = 0
     bits = 0
@@ -185,7 +185,7 @@ def _state_dict_groups(state_dict, max_size):
         )
         if bits + bsize >= max_size:
             yield state_group
-            state_group = {}
+            state_group = dict()
             bits = 0
 
         state_group[k_list[index]] = state_dict[k_list[index]]
@@ -317,7 +317,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
             )
 
     total = 0
-    output_state = {}
+    output_state = dict()
 
     logger.info("start all gather ...")
     # gather all state_dict by groups

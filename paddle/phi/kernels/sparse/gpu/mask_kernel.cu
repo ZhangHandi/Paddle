@@ -50,10 +50,10 @@ __global__ void MaskKernel(const T* x_ptr,
 }
 
 template <typename T, typename IntT>
-void MaskCooGPUKernel(const GPUContext& dev_ctx,
-                      const DenseTensor& x,
-                      const SparseCooTensor& mask,
-                      SparseCooTensor* out) {
+void SparseMaskGPUKernel(const GPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const SparseCooTensor& mask,
+                         SparseCooTensor* out) {
   const DDim& dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x.dims(),
@@ -108,13 +108,13 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void MaskCooKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCooTensor& mask,
-                   SparseCooTensor* out) {
+void SparseMaskKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.indices().dtype(), "MaskCooGPUKernel", ([&] {
-        MaskCooGPUKernel<T, data_t>(dev_ctx, x, mask, out);
+      mask.indices().dtype(), "SparseMaskGPUKernel", ([&] {
+        SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
 
@@ -155,17 +155,17 @@ __global__ void MaskCopy(const IntT* mask_indexs,
 }
 
 template <typename T, typename IntT>
-void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& mask_indices,
-                            DenseTensor* out) {
+void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
+                               const SparseCooTensor& x,
+                               const DenseTensor& mask_indices,
+                               DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       mask_indices.dims().size(),
       2,
       phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
   const int32_t sparse_dim = x.sparse_dim();
-  auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
+  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
 
   std::vector<IntT> sparse_offsets(sparse_dim);
 
@@ -279,23 +279,23 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MaskHelperCooKernel(const Context& dev_ctx,
-                         const SparseCooTensor& x,
-                         const DenseTensor& mask_indices,
-                         DenseTensor* out) {
+void SparseMaskHelperKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "MaskHelperCooGPUKernel", ([&] {
-        MaskHelperCooGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
+      x.indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
+        SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(mask_coo,
+PD_REGISTER_KERNEL(mask,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::MaskCooKernel,
+                   phi::sparse::SparseMaskKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -303,15 +303,14 @@ PD_REGISTER_KERNEL(mask_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t,
-                   bool) {
+                   int64_t) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(mask_helper_coo,
+PD_REGISTER_KERNEL(mask_helper,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::MaskHelperCooKernel,
+                   phi::sparse::SparseMaskHelperKernel,
                    float,
                    double,
                    phi::dtype::float16,

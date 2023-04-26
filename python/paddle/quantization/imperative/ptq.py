@@ -19,7 +19,7 @@ import os
 import numpy as np
 
 import paddle
-from paddle.nn.quant import quant_layers
+import paddle.nn.quant.quant_layers as quant_layers
 
 from ...static.log_helper import get_logger
 from ...static.quantization.utils import (
@@ -250,7 +250,9 @@ class ImperativePTQ:
             if self._is_quant_layer(sub_layer):
                 cur_num += 1
                 if cur_num % 5 == 0:
-                    _logger.info(f"Process the {cur_num} / {total_num} layer")
+                    _logger.info(
+                        "Process the %s / %s layer" % (cur_num, total_num)
+                    )
 
                 quant_config = sub_layer._quant_config
 

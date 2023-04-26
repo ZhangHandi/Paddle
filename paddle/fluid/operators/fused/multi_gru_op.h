@@ -28,7 +28,7 @@ class MultiGRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override;
 };
 

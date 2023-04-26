@@ -16,10 +16,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <unordered_map>
@@ -62,8 +58,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(set_to_1d);
-
 namespace paddle {
 namespace pybind {
 
@@ -77,7 +71,7 @@ extern PyTypeObject* p_tensor_type;
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
-    paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
+    paddle::experimental::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
         tensor.initialized(),
         true,
@@ -89,9 +83,13 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
         CastPyArg2Tensor(obj, 0).impl().get())));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::Tensor or VarBase in this "
+        "We should only get paddle::experimental::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
+}
+
+bool PyCheckTensor(PyObject* obj) {
+  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
 static PyObject* tensor_method_numpy(TensorObject* self,
@@ -122,46 +120,17 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
-  size_t py_rank = tensor_dims.size();
   size_t numel = 1;
-  if (py_rank == 0) {
-    Py_ssize_t args_num = PyTuple_Size(args);
-    // true by default
-    bool set_to_1d = FLAGS_set_to_1d;
-    if (args_num == (Py_ssize_t)1) {
-      PyObject* obj = PyTuple_GET_ITEM(args, 0);
-      if (obj == Py_False) {
-        set_to_1d = false;
-      }
-    }
-    if (set_to_1d) {
-      // 0D Tensor hack process to 1D numpy, will remove in future
-      VLOG(0)
-          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
-             "order to avoid this problem, "
-             "0D Tensor will be changed to 1D numpy currently, but it's not "
-             "correct and will be "
-             "removed in future. For Tensor contain only one element, Please "
-             "modify "
-             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
-             "possible, "
-             "otherwise 'Tensor.numpy()[0]' will raise error in future.";
-      py_rank = 1;
-      py_dims[0] = 1;
-      py_strides[0] = sizeof_dtype * numel;
-    }
-  } else {
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * numel;
-      numel *= py_dims[i];
-    }
+  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+    py_strides[i] = sizeof_dtype * numel;
+    numel *= py_dims[i];
   }
 
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
+      tensor_dims.size(),
       py_dims,
       py_strides,
       nullptr,
@@ -295,7 +264,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
       // TODO(qili93): temporary for ascned npu performance to be removed along
       // with npu_identity op
-      paddle::Tensor temp_tensor(std::make_shared<phi::DenseTensor>());
+      paddle::experimental::Tensor temp_tensor(
+          std::make_shared<phi::DenseTensor>());
       if (dense_tensor->storage_properties_initialized()) {
         temp_tensor = npu_identity_ad_func(self->tensor, -1);
         dense_tensor =
@@ -411,7 +381,7 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
 }
 
 static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const paddle::Tensor& tensor, const platform::Place& place) {
+    const paddle::experimental::Tensor& tensor, const platform::Place& place) {
   auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();
@@ -434,7 +404,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
-  paddle::Tensor cp_tensor;
+  paddle::experimental::Tensor cp_tensor;
   {
     eager_gil_scoped_release guard;
     cp_tensor = self->tensor.copy_to(place, blocking);
@@ -454,7 +424,7 @@ static PyObject* tensor_method_cpu(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor cp_tensor;
+  paddle::experimental::Tensor cp_tensor;
   {
     eager_gil_scoped_release guard;
     cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
@@ -471,7 +441,8 @@ static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::experimental::Tensor src_tensor =
+      CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
   std::string orig_name = self->tensor.name();
   VLOG(6) << "Start Reconstructing Tensor from" << src_tensor.name() << " to "
           << orig_name;
@@ -491,7 +462,8 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::experimental::Tensor src_tensor =
+      CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -524,7 +496,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor out;
+  paddle::experimental::Tensor out;
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
@@ -572,7 +544,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
-  paddle::Tensor* grad;
+  paddle::experimental::Tensor* grad;
   bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -632,7 +604,8 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
-    paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+    paddle::experimental::Tensor* grad =
+        egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
                        "Detected NULL grad"
@@ -672,7 +645,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* dst_ptr =
+  paddle::experimental::Tensor* dst_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
   PADDLE_ENFORCE_EQ(self->tensor.initialized(),
                     true,
@@ -696,7 +669,7 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* dst_ptr =
+  paddle::experimental::Tensor* dst_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
   PADDLE_ENFORCE_EQ(self->tensor.initialized(),
                     true,
@@ -719,7 +692,7 @@ static PyObject* tensor__share_underline_tensor_to(TensorObject* self,
                                                    PyObject* args,
                                                    PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* src_ptr =
+  paddle::experimental::Tensor* src_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
   PADDLE_ENFORCE_EQ(self->tensor.initialized(),
                     true,
@@ -737,7 +710,8 @@ static PyObject* tensor__is_shared_underline_tensor_with(TensorObject* self,
                                                          PyObject* args,
                                                          PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::experimental::Tensor src_tensor =
+      CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
   PADDLE_ENFORCE_EQ(src_tensor.initialized(),
                     true,
                     platform::errors::InvalidArgument(
@@ -758,7 +732,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
                                       PyObject* kwargs) {
   EAGER_TRY
   PADDLE_ENFORCE_EQ(
-      self->tensor.defined(),
+      self->tensor.initialized(),
       true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         self->tensor.name()));
@@ -766,7 +740,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
   PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::Tensor();
+    new (&(v->tensor)) paddle::experimental::Tensor();
     v->tensor.set_impl(self->tensor.impl());
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
@@ -835,7 +809,8 @@ static PyObject* tensor_method__get_tensor_from_selected_rows(
       static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
   VLOG(4) << "dense_tensor: " << dense_tensor->IsInitialized();
 
-  auto t = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
   t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
 
   return ToPyObject(t);
@@ -875,10 +850,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                      &list_select_idxs,
                      &list_select_flag);
 
-  auto out =
-      slice_axes.empty() && !list_select_flag
-          ? self->tensor
-          : paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+  auto out = slice_axes.empty() && !list_select_flag
+                 ? self->tensor
+                 : paddle::experimental::Tensor(
+                       egr::Controller::Instance().GenerateUniqueName());
 
   if (!slice_axes.empty()) {
     framework::AttributeMap attrs = {{"axes", slice_axes},
@@ -923,8 +898,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   }
 
   if (!none_axes.empty()) {
+    // Deal with cases when all axes are decreased.
+    // After slice, the shape of out is [1], which should have been
+    // [], but Paddle doesn't support scalar.
+    // In order to ensure the correctness of the final shape of out,
+    // one dimension of out needs to be decreased.
+    // For example:
+    // # x.shape: (2,3,4)
+    // out = x[0, 1, 1, None] # out.shape : (1)
+    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+      none_axes.pop_back();
+    }
     if (!none_axes.empty()) {
-      paddle::Tensor new_out;
+      paddle::experimental::Tensor new_out;
       {
         eager_gil_scoped_release guard;
         // Deal with cases that decrease_axes is not empty
@@ -949,8 +935,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // the index is a list
   if (list_select_flag) {
     eager_gil_scoped_release guard;
-    auto select_index =
-        paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+    auto select_index = paddle::experimental::Tensor(
+        egr::Controller::Instance().GenerateUniqueName());
     auto idx_tensor = std::make_shared<phi::DenseTensor>();
     select_index.set_impl(idx_tensor);
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
@@ -969,14 +955,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  phi::DenseTensor* ptr = nullptr;
-  if (self->tensor.is_selected_rows()) {
-    auto* selected_rows =
-        static_cast<phi::SelectedRows*>(self->tensor.impl().get());
-    ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-  } else {
-    ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  }
+  auto ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           platform::errors::InvalidArgument(
                               "%s is not a DenseTensor.", self->tensor.name()));
@@ -1156,51 +1135,44 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
               self->tensor.name()));
     }
 
-    paddle::Tensor value_tensor;
+    paddle::experimental::Tensor value_tensor;
 
     if (PyCheckTensor(value_obj)) {
       value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
     } else if (py::isinstance<py::array>(value_obj)) {
-      paddle::Tensor value_tensor_tmp(
+      paddle::experimental::Tensor value_tensor_tmp(
           std::make_shared<phi::DenseTensor>(),
           egr::Controller::Instance().GenerateUniqueName());
       py::object value_obj_tmp(py::handle(value_obj), true);
       py::object value = value_obj_tmp;
-      if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+      if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
         if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
+      } else if (self->tensor.dtype() ==
+                 paddle::experimental::DataType::FLOAT64) {
         if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == phi::DataType::INT32) {
+      } else if (self->tensor.dtype() ==
+                 paddle::experimental::DataType::INT32) {
         if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == phi::DataType::INT64) {
+      } else if (self->tensor.dtype() ==
+                 paddle::experimental::DataType::INT64) {
         if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == phi::DataType::BOOL) {
+      } else if (self->tensor.dtype() == paddle::experimental::DataType::BOOL) {
         if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
-        }
-      } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
-        if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
-          value = pybind11::detail::CastNumpyArray<std::complex<float>>(
-              value_obj_tmp);
-        }
-      } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
-        if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
-          value = pybind11::detail::CastNumpyArray<std::complex<double>>(
-              value_obj_tmp);
         }
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When assign a numpy.np value to a paddle.Tensor, "
             "the data type of the paddle.Tensor must be bool, "
-            "float32, float64, complex64, complex128, int32 or int64, "
+            "float32, int32 or int64, "
             "please check the type of tensor."));
       }
 
@@ -1216,38 +1188,34 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // convert the value to self data type
       if (py::isinstance<py::float_>(value_obj_tmp) ||
           py::isinstance<py::int_>(value_obj_tmp) ||
-          py::isinstance<py::bool_>(value_obj_tmp) ||
-          PyComplex_Check(value_obj)) {
-        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<double>()};
-        } else if (self->tensor.dtype() == phi::DataType::INT32) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int32_t>()};
-        } else if (self->tensor.dtype() == phi::DataType::INT64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int64_t>()};
-        } else if (self->tensor.dtype() == phi::DataType::BOOL) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
-        } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<std::complex<float>>()};
-        } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
-          attrs["values"] = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<std::complex<double>>()};
+          py::isinstance<py::bool_>(value_obj_tmp)) {
+        if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+          attrs["fp32_values"] =
+              std::vector<float>{value_obj_tmp.cast<float>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::FLOAT64) {
+          attrs["fp64_values"] =
+              std::vector<double>{value_obj_tmp.cast<double>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::INT32) {
+          attrs["int32_values"] =
+              std::vector<int32_t>{value_obj_tmp.cast<int32_t>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::INT64) {
+          attrs["int64_values"] =
+              std::vector<int64_t>{value_obj_tmp.cast<int64_t>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::BOOL) {
+          attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::FLOAT16) {
+          attrs["fp16_values"] =
+              std::vector<float>{value_obj_tmp.cast<float>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, float64, complex64, complex128, int32, int64 or "
-              "float16, "
+              "float32, int32, int64 or float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
@@ -1255,7 +1223,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Value type error. The assign value allows "
-            "numpy.ndarray, integer, float, complex  or bool, "
+            "numpy.ndarray, integer, float or bool, "
             "but received %s.",
             Py_TYPE(value_obj)));
       }
@@ -1266,7 +1234,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // use inplace set_value_ operator
       if (value_tensor.initialized() &&
           (self->tensor.dtype() != value_tensor.dtype())) {
-        paddle::small_vector<std::vector<paddle::Tensor>,
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                              egr::kSlotSmallVectorSize>
             tmps = {{self->tensor}, {value_tensor}};
         auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
@@ -1511,7 +1479,7 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
   target_dense_tensor.ShareDataWith(*dense_tensor);
   target_dense_tensor.set_meta(target_dense_meta);
   // Construct returned tensor
-  paddle::Tensor target_tensor(
+  paddle::experimental::Tensor target_tensor(
       std::make_shared<phi::DenseTensor>(target_dense_tensor),
       self->tensor.name());
   target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
@@ -1539,7 +1507,7 @@ static PyObject* tensor_method_set_string_list(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
   EAGER_TRY
-  using Strings = paddle::framework::Strings;
+  using Strings = std::vector<std::string>;
   auto strings = CastPyArg2VectorOfString(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Strings>() = strings;
@@ -1594,7 +1562,7 @@ static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                      "this method is only effective for SparseCooTensor"));
   auto sparse_coo_tensor =
       std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
-  paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(
+  paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
       sparse_coo_tensor->non_zero_indices()));
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1612,13 +1580,13 @@ static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
   if (self->tensor.is_sparse_coo_tensor()) {
     auto sparse_coo_tensor =
         std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
-    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(
+    paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
         sparse_coo_tensor->non_zero_elements()));
     return ToPyObject(tensor);
   } else {
     auto sparse_csr_tensor =
         std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
-    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(
+    paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
         sparse_csr_tensor->non_zero_elements()));
     return ToPyObject(tensor);
   }
@@ -1634,7 +1602,7 @@ static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
                      "this method is only effective for SparseCsrTensor"));
   auto sparse_csr_tensor =
       std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
-  paddle::Tensor tensor(
+  paddle::experimental::Tensor tensor(
       std::make_shared<phi::DenseTensor>(sparse_csr_tensor->non_zero_crows()));
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1649,7 +1617,7 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
                      "this method is only effective for SparseCsrTensor"));
   auto sparse_csr_tensor =
       std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
-  paddle::Tensor tensor(
+  paddle::experimental::Tensor tensor(
       std::make_shared<phi::DenseTensor>(sparse_csr_tensor->non_zero_cols()));
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1777,6 +1745,14 @@ static PyObject* tensor_method_get_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_methon_element_size(TensorObject* self,
+                                            PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1787,7 +1763,8 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
   if (grad && grad->defined() && grad->is_dense_tensor() &&
       grad->initialized()) {
     grad->reset_inplace_version(set_to_zero);
@@ -1855,7 +1832,8 @@ static PyObject* tensor__grad_name(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE_EQ(grad != nullptr,
                     true,
                     platform::errors::InvalidArgument(
@@ -1869,7 +1847,8 @@ static PyObject* tensor__grad_value(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE_EQ(grad != nullptr,
                     true,
                     platform::errors::InvalidArgument(
@@ -1894,7 +1873,8 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE_EQ(grad != nullptr,
                     true,
                     platform::errors::InvalidArgument(
@@ -1922,21 +1902,6 @@ static PyObject* tensor_data_ptr(TensorObject* self,
             ->data());
   }
   RETURN_PY_NONE
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* tensor__grad_ivar(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
-  EAGER_TRY
-  VLOG(6) << "Get grad for tensor: " << self->tensor.name();
-  auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
-  if (meta && meta->Grad().initialized()) {
-    return ToPyObject(meta->Grad());
-  } else {
-    RETURN_PY_NONE
-  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -2171,6 +2136,10 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    {"element_size",
+     (PyCFunction)(void (*)(void))tensor_methon_element_size,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS,
@@ -2197,10 +2166,6 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"data_ptr",
      (PyCFunction)(void (*)(void))tensor_data_ptr,
-     METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {"_grad_ivar",
-     (PyCFunction)(void (*)(void))tensor__grad_ivar,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)

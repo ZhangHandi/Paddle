@@ -44,8 +44,7 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)

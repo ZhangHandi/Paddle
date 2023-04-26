@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/selected_rows_impl.h"
 
-#include "glog/logging.h"
-
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 
@@ -211,13 +211,4 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
     }
   }
 }
-
-void SelectedRowsImpl::set_type(const DataType dtype) {
-  value_->set_type(dtype);
-}
-
-void SelectedRowsImpl::set_layout(const DataLayout layout) {
-  value_->set_layout(layout);
-}
-
 }  // namespace phi

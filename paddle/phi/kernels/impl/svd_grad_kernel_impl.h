@@ -83,17 +83,27 @@ void SvdGradKernel(const Context& dev_ctx,
   DenseTensor U, VH, dU, dV, dVH;
   if (full_matrices) {
     // if full_matrices is set, slice the U and VT to k columns
-    U = Slice<T, Context>(dev_ctx, u, {u.dims().size() - 1}, {0}, {k});
-    // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
-
-    VH = Slice<T, Context>(dev_ctx, vh, {vh.dims().size() - 2}, {0}, {k});
+    U = SliceKernel<T, Context>(
+        dev_ctx, u, {u.dims().size() - 1}, {0}, {k}, {1}, {});
+    VH = SliceKernel<T, Context>(
+        dev_ctx, vh, {vh.dims().size() - 2}, {0}, {k}, {1}, {});
     if (u_grad.get_ptr() != nullptr) {
-      dU = Slice<T, Context>(
-          dev_ctx, *(u_grad.get_ptr()), {u.dims().size() - 1}, {0}, {k});
+      dU = SliceKernel<T, Context>(dev_ctx,
+                                   *(u_grad.get_ptr()),
+                                   {u.dims().size() - 1},
+                                   {0},
+                                   {k},
+                                   {1},
+                                   {});
     }
     if (vh_grad.get_ptr() != nullptr) {
-      dVH = Slice<T, Context>(
-          dev_ctx, *(vh_grad.get_ptr()), {vh.dims().size() - 2}, {0}, {k});
+      dVH = SliceKernel<T, Context>(dev_ctx,
+                                    *(vh_grad.get_ptr()),
+                                    {vh.dims().size() - 2},
+                                    {0},
+                                    {k},
+                                    {1},
+                                    {});
     }
   } else {
     U = u;

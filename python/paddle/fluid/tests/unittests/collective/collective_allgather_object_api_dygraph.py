@@ -15,7 +15,7 @@
 import test_collective_api_base as test_base
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):

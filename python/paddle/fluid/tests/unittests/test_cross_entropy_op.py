@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard, randomize_probability
+from op_test import OpTest, randomize_probability
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 class TestCrossEntropyOp(OpTest):
@@ -387,7 +388,7 @@ def create_test_class(parent, cls_name):
                     place, ['X'], 'Y', max_relative_error=0.9
                 )
 
-    cls_name = f"{cls_name}"
+    cls_name = "{0}".format(cls_name)
     TestCrossEntropyFP16Op.__name__ = cls_name
     globals()[cls_name] = TestCrossEntropyFP16Op
 
@@ -426,35 +427,19 @@ class TestCrossEntropyOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                with paddle_static_guard():
-                    # the input dtype of cross_entropy must be float16 or float32 or float64
-                    # float16 only can be set on GPU place
-                    x2 = paddle.static.data(
-                        name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
-                    )
-                    lab2 = paddle.static.data(
-                        name='lab2', shape=[-1, 3, 4, 5, 6], dtype="int32"
-                    )
-                    paddle.nn.functional.cross_entropy(
-                        x2, lab2, reduction='none', use_softmax=False
-                    )
+                # the input dtype of cross_entropy must be float16 or float32 or float64
+                # float16 only can be set on GPU place
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                )
+                lab2 = fluid.layers.data(
+                    name='lab2', shape=[3, 4, 5, 6], dtype="int32"
+                )
+                paddle.nn.functional.cross_entropy(
+                    x2, lab2, reduction='none', use_softmax=False
+                )
 
             self.assertRaises(TypeError, test_dtype)
-
-            def test_input_dims():
-                with paddle_static_guard():
-                    # "input_dims - 1 != label_dims and input_dims != label_dims" must be false.
-                    x3 = paddle.static.data(
-                        name='x3', shape=[-1, 3, 4, 5], dtype="int32"
-                    )
-                    lab3 = paddle.static.data(
-                        name='lab3', shape=[-1, 3, 4, 5, 6], dtype="int32"
-                    )
-                    paddle.nn.functional.cross_entropy(
-                        x3, lab3, reduction='none', use_softmax=False
-                    )
-
-            self.assertRaises(ValueError, test_input_dims)
 
 
 if __name__ == "__main__":

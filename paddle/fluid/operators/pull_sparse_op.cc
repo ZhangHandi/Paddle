@@ -58,9 +58,10 @@ class PullSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 
@@ -126,11 +127,11 @@ class PushSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 }  // namespace operators
@@ -143,7 +144,5 @@ REGISTER_OPERATOR(pull_sparse,
                   ops::PushSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse, ops::PushSparseOp);
-PD_REGISTER_STRUCT_KERNEL(
-    pull_sparse, CPU, ALL_LAYOUT, ops::PullSparseCPUKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    push_sparse, CPU, ALL_LAYOUT, ops::PushSparseCPUKernel, float) {}
+REGISTER_OP_CPU_KERNEL(pull_sparse, ops::PullSparseCPUKernel<float>)
+REGISTER_OP_CPU_KERNEL(push_sparse, ops::PushSparseCPUKernel<float>)

@@ -150,7 +150,7 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
                                        size_t alignment,
                                        size_t nranks,
                                        phi::DataType dtype) {
-  auto sizeof_dtype = phi::SizeOf(dtype);
+  auto sizeof_dtype = paddle::experimental::SizeOf(dtype);
   PADDLE_ENFORCE_EQ(
       alignment % sizeof_dtype,
       0,
@@ -261,7 +261,7 @@ static phi::DenseTensor CopyAndShareBufferForInitedTensor(
                sliced_tensor.data(),
                place,
                origin->data(),
-               numel * phi::SizeOf(dtype),
+               numel * paddle::experimental::SizeOf(dtype),
                stream);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
@@ -340,7 +340,7 @@ static T ClipByBound(T x, T low_value, T high_value) {
 }
 
 template <typename T>
-class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
+class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -790,8 +790,6 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb_init,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::DistributedFusedLambInitOpKernel,
-                          float) {}
+REGISTER_OP_CUDA_KERNEL(
+    distributed_fused_lamb_init,
+    ops::DistributedFusedLambInitOpKernel<phi::GPUContext, float>);

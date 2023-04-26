@@ -14,8 +14,7 @@
 
 # TODO: define specitial functions used in computer vision task
 
-from .. import functional
-from .layers import Layer
+from .. import Layer, functional
 
 __all__ = []
 
@@ -79,11 +78,11 @@ class PixelShuffle(Layer):
         )
 
     def extra_repr(self):
-        main_str = f'upscale_factor={self._upscale_factor}'
+        main_str = 'upscale_factor={}'.format(self._upscale_factor)
         if self._data_format != 'NCHW':
-            main_str += f', data_format={self._data_format}'
+            main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
-            main_str += f', name={self._name}'
+            main_str += ', name={}'.format(self._name)
         return main_str
 
 
@@ -145,11 +144,11 @@ class PixelUnshuffle(Layer):
         )
 
     def extra_repr(self):
-        main_str = f'downscale_factor={self._downscale_factor}'
+        main_str = 'downscale_factor={}'.format(self._downscale_factor)
         if self._data_format != 'NCHW':
-            main_str += f', data_format={self._data_format}'
+            main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
-            main_str += f', name={self._name}'
+            main_str += ', name={}'.format(self._name)
         return main_str
 
 
@@ -220,9 +219,9 @@ class ChannelShuffle(Layer):
         )
 
     def extra_repr(self):
-        main_str = f'groups={self._groups}'
+        main_str = 'groups={}'.format(self._groups)
         if self._data_format != 'NCHW':
-            main_str += f', data_format={self._data_format}'
+            main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
-            main_str += f', name={self._name}'
+            main_str += ', name={}'.format(self._name)
         return main_str

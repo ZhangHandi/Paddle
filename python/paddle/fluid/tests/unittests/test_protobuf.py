@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.proto import framework_pb2
+import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestFrameworkProto(unittest.TestCase):

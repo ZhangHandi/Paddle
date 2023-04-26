@@ -14,7 +14,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
-#include <fcntl.h>
 #include <cstddef>
 #include <string>
 #include <unordered_set>
@@ -135,16 +134,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       VLOG(3) << node->Op()->Type().c_str()
               << " is diabled by config in TensorRT";
       return false;
-    }
-    for (const auto &out_var : node->Op()->OutputNames()) {
-      for (const auto &var_name : node->Op()->Output(out_var)) {
-        if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(), var_name) !=
-            trt_disabled_ops.end()) {
-          VLOG(3) << node->Op()->Type().c_str()
-                  << " is diabled by config in TensorRT";
-          return false;
-        }
-      }
     }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
@@ -297,16 +286,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  // var may have the same name but not have the same id.
-  // e.g., var(batch_norm2d_0.w_1) may have id: 10, 13, 25.... in a graph.
-  // so we must find all the var_name+id.
-  // https://github.com/PaddlePaddle/Paddle/pull/53184
-  for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && input_names.count(n->Name())) {
-      input_names_with_id.insert(n->Name() + std::to_string(n->id()));
-    }
-  }
-
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
@@ -360,38 +339,18 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
-  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
-    if (!shape_range_info_path.empty()) {
-      VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
-      inference::DeserializeShapeRangeInfo(shape_range_info_path,
-                                           &min_input_shape,
-                                           &max_input_shape,
-                                           &opt_input_shape,
-                                           &min_shape_tensor,
-                                           &max_shape_tensor,
-                                           &opt_shape_tensor);
-    } else {
-      shape_range_info_path =
-          Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
-      if (open(shape_range_info_path.c_str(), O_RDONLY) != -1) {
-        VLOG(1) << "trt dynamic_shape deserialize from "
-                << shape_range_info_path;
-        inference::DeserializeShapeRangeInfo(shape_range_info_path,
-                                             &min_input_shape,
-                                             &max_input_shape,
-                                             &opt_input_shape,
-                                             &min_shape_tensor,
-                                             &max_shape_tensor,
-                                             &opt_shape_tensor);
-      } else {
-        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT, 0644);
-        close(fd);
-      }
-    }
+    VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
+    inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                         &min_input_shape,
+                                         &max_input_shape,
+                                         &opt_input_shape,
+                                         &min_shape_tensor,
+                                         &max_shape_tensor,
+                                         &opt_shape_tensor);
   }
 
   // The following procedure is used to rename all the intermediate
@@ -478,7 +437,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
-  op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -595,7 +553,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode,
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
-                  with_dynamic_shape,
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
@@ -623,27 +580,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         Get<std::string>("model_opt_cache_dir"), engine_key);
     // we can load the engine info serialized before from the disk.
     if (!trt_engine_serialized_data.empty()) {
-      try {
-        trt_engine->Deserialize(trt_engine_serialized_data);
-        LOG(INFO) << "Load TRT Optimized Info from "
-                  << GetTrtEngineSerializedPath(
-                         Get<std::string>("model_opt_cache_dir"), engine_key);
-        return;
-      } catch (const std::exception &exp) {
-        LOG(WARNING)
-            << "Fail to load TRT Optimized Info from "
-            << GetTrtEngineSerializedPath(
-                   Get<std::string>("model_opt_cache_dir"), engine_key)
-            << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
-      }
+      trt_engine->Deserialize(trt_engine_serialized_data);
+      LOG(INFO) << "Load TRT Optimized Info from "
+                << GetTrtEngineSerializedPath(
+                       Get<std::string>("model_opt_cache_dir"), engine_key);
+      return;
     }
-  }
-
-  // If with_dynamic_shape is configured，but min_input_shape is empty,
-  // create trt engine in runtime instead of in pass.
-  if (with_dynamic_shape && min_input_shape.empty()) {
-    return;
   }
 
   // the following code will NOT run in following situation:

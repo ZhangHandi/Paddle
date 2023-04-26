@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/group_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -116,7 +114,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
@@ -134,8 +132,8 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
                             platform::errors::InvalidArgument(
                                 "Input(Y@GRAD) phi::DenseTensor of "
                                 "GroupNormGradOp should not be null"));
-    return phi::KernelKey(framework::TransToProtoVarType(t->dtype()),
-                          ctx.GetPlace());
+    return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
+                                   ctx.GetPlace());
   }
 };
 
@@ -159,59 +157,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
 
     op->SetAttrMap(this->Attrs());
-  }
-};
-
-class GroupNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    // inputs and outputs of group_norm
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::optional<paddle::Tensor> scale =
-        this->GetOptionalSingleForwardInput("Scale");
-    paddle::optional<paddle::Tensor> bias =
-        this->GetOptionalSingleForwardInput("Bias");
-    paddle::Tensor y = this->GetSingleForwardOutput("Y");
-    paddle::Tensor mean = this->GetSingleForwardOutput("Mean");
-    paddle::Tensor variance = this->GetSingleForwardOutput("Variance");
-
-    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
-    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
-    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
-    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
-
-    auto dx_ptr = this->GetOutputPtr(&x_grad);
-    std::string dx_name = this->GetOutputName(x_grad);
-    auto dscale_ptr = this->GetOutputPtr(&scale_grad);
-    std::string dscale_name = this->GetOutputName(scale_grad);
-    auto dbias_ptr = this->GetOutputPtr(&bias_grad);
-    std::string dbias_name = this->GetOutputName(bias_grad);
-
-    // attrs of group_norm
-    auto groups = this->Attr<int>("groups");
-    auto epsilon = this->Attr<float>("epsilon");
-    auto data_layout = this->Attr<std::string>("data_layout");
-
-    VLOG(3) << "Runing group_norm composite func";
-
-    prim::group_norm_grad<prim::DescTensor>(x,
-                                            scale,
-                                            bias,
-                                            y,
-                                            mean,
-                                            variance,
-                                            y_grad,
-                                            epsilon,
-                                            groups,
-                                            data_layout,
-                                            dx_ptr,
-                                            dscale_ptr,
-                                            dbias_ptr);
-    this->RecoverOutputName(x_grad, dx_name);
-    this->RecoverOutputName(scale_grad, dscale_name);
-    this->RecoverOutputName(bias_grad, dbias_name);
   }
 };
 
@@ -243,7 +188,6 @@ REGISTER_OPERATOR(group_norm,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
                   ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormCompositeGradOpMaker,
                   GroupNormInferShapeFunctor);
 REGISTER_OPERATOR(group_norm_grad,
                   ops::GroupNormGradOp,

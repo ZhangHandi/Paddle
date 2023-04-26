@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle.distributed.fleet.base import role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 
@@ -35,7 +35,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_trainer(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        from paddle.distributed import fleet
+        import paddle.distributed.fleet as fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -45,8 +45,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
-        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+        x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
@@ -73,7 +73,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
-        from paddle.distributed import fleet
+        import paddle.distributed.fleet as fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -83,8 +83,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
-        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+        x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 

@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

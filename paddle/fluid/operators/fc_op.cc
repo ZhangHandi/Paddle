@@ -124,11 +124,11 @@ class FCOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -206,6 +206,6 @@ REGISTER_OPERATOR(
     ops::FCOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(fc, CPU, ALL_LAYOUT, ops::FCOpKernel, float, double) {
-}
+REGISTER_OP_CPU_KERNEL(fc,
+                       ops::FCOpKernel<phi::CPUContext, float>,
+                       ops::FCOpKernel<phi::CPUContext, double>);

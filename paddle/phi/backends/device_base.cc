@@ -359,7 +359,7 @@ void DeviceInterface::CCLRecv(void* recvbuf,
 // blas
 void DeviceInterface::BlasAXPBY(size_t dev_id,
                                 const stream::Stream& stream,
-                                phi::DataType dtype,
+                                paddle::experimental::DataType dtype,
                                 size_t numel,
                                 float alpha,
                                 void* x,
@@ -369,33 +369,35 @@ void DeviceInterface::BlasAXPBY(size_t dev_id,
 }
 
 // profiler
-void DeviceInterface::ProfilerInitialize(phi::TraceEventCollector* collector,
-                                         void** user_data) {
+void DeviceInterface::ProfilerInitialize(
+    paddle::platform::TraceEventCollector* collector, void** user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerFinalize(phi::TraceEventCollector* collector,
-                                       void* user_data) {
+void DeviceInterface::ProfilerFinalize(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::ProfilerPrepareTracing(
-    phi::TraceEventCollector* collector, void* user_data) {
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerStartTracing(phi::TraceEventCollector* collector,
-                                           void* user_data) {
+void DeviceInterface::ProfilerStartTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerStopTracing(phi::TraceEventCollector* collector,
-                                          void* user_data) {
+void DeviceInterface::ProfilerStopTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::ProfilerCollectTraceData(
-    phi::TraceEventCollector* collector, uint64_t start_ns, void* user_data) {
+    paddle::platform::TraceEventCollector* collector,
+    uint64_t start_ns,
+    void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 

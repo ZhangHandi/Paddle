@@ -240,7 +240,7 @@ void MatchMatrixTensorOpMaker::Make() {
     )DOC");
 }
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -275,8 +275,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     memset(
         bottom_l_trans_data, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     call_gemm(blas,
               CblasNoTrans,
@@ -298,7 +297,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-        auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+        auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
         call_gemm_with_lda(blas_2,
                            CblasNoTrans,
                            CblasTrans,
@@ -321,7 +320,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -391,8 +390,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     auto* t_data = w->data<T>();
     auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
@@ -458,13 +456,10 @@ REGISTER_OPERATOR(
     ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
-PD_REGISTER_STRUCT_KERNEL(match_matrix_tensor,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CPUMatchMatrixTensorOPKernel,
-                          float) {}
-PD_REGISTER_STRUCT_KERNEL(match_matrix_tensor_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CPUMatchMatrixTensorOPGradKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(
+    match_matrix_tensor,
+    ops::CPUMatchMatrixTensorOPKernel<phi::CPUContext, float>);
+
+REGISTER_OP_CPU_KERNEL(
+    match_matrix_tensor_grad,
+    ops::CPUMatchMatrixTensorOPGradKernel<phi::CPUContext, float>);

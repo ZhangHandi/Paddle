@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 namespace funcs {
 

@@ -499,6 +499,8 @@ class Profiler:
             profileoption.trace_switch |= 1
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= 1 << 1
+        if ProfilerTarget.MLU in self.targets:
+            profileoption.trace_switch |= 1 << 2
         if ProfilerTarget.CUSTOM_DEVICE in self.targets:
             profileoption.trace_switch |= 1 << 3
             if not custom_device_types:
@@ -592,7 +594,7 @@ class Profiler:
             self.profiler.prepare()
             self.profiler.start()
         self.record_event = RecordEvent(
-            name=f"ProfileStep#{self.step_num}",
+            name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep,
         )
         self.record_event.begin()
@@ -682,7 +684,7 @@ class Profiler:
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
         self.record_event = RecordEvent(
-            name=f"ProfileStep#{self.step_num}",
+            name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep,
         )
         self.record_event.begin()
@@ -905,7 +907,7 @@ def get_profiler(config_path):
         with open(config_path, 'r') as filehandle:
             config_dict = json.load(filehandle)
     except Exception as e:
-        print(f'Load config file for profiler error: {e}')
+        print('Load config file for profiler error: {}'.format(e))
         print('Use default parameters instead.')
         return Profiler()
     translated_config_dict = {}

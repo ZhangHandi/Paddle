@@ -82,7 +82,8 @@ REGISTER_TRAINER_CLASS(HeterXpuTrainer);
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
 #endif
 }  // namespace framework

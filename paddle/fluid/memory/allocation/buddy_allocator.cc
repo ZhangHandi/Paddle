@@ -19,7 +19,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU) || defined(PADDLE_WITH_ASCEND_CL)
 #define USE_DEVICE
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -56,6 +57,12 @@ BuddyAllocator::BuddyAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
     re_allocate_size_func_ = &platform::GpuReallocSize;
+#elif defined(PADDLE_WITH_ASCEND_CL)
+    init_allocate_size_func_ = &platform::NPUInitAllocSize;
+    re_allocate_size_func_ = &platform::NPUReallocSize;
+#elif defined(PADDLE_WITH_MLU)
+    init_allocate_size_func_ = &platform::MLUInitAllocSize;
+    re_allocate_size_func_ = &platform::MLUReallocSize;
 #endif
   }
 #endif
@@ -250,6 +257,12 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(
       &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_ASCEND_CL)
+  allocate_bytes = DeviceAllocateSize(
+      &platform::NPUInitAllocSize, &platform::NPUReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_MLU)
+  allocate_bytes = DeviceAllocateSize(
+      &platform::MLUInitAllocSize, &platform::MLUReallocSize, request_bytes);
 #endif
 #endif
 

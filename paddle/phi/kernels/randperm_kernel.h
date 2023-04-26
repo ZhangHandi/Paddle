@@ -20,6 +20,10 @@
 namespace phi {
 
 template <typename T, typename Context>
+void RandpermRawKernel(
+    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out);
+
+template <typename T, typename Context>
 void RandpermKernel(const Context& dev_ctx,
                     int n,
                     DataType dtype,

@@ -143,11 +143,11 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "MaxProbs"),
-        ctx.GetPlace());
+        ctx.device_context());
   }
 };
 
@@ -242,9 +242,7 @@ REGISTER_OPERATOR(
     ops::PrecisionRecallOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(precision_recall,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PrecisionRecallKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    precision_recall,
+    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, float>,
+    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, double>);

@@ -16,7 +16,7 @@ import unittest
 import warnings
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 paddle.enable_static()
 

@@ -397,6 +397,4 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, GPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
-}
+    viterbi_decode, GPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}

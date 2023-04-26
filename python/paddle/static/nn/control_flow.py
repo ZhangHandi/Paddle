@@ -16,6 +16,7 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+import paddle.fluid.core as core
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
@@ -23,12 +24,12 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
-from paddle.utils import (
+from paddle.fluid.layers.tensor import assign, cast
+from paddle.fluid.layers.utils import (
     assert_same_structure,
     copy_mutable_vars,
     flatten,
@@ -300,7 +301,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {}.".format(
+                "condition expected shape as [1], but given shape as {0}.".format(
                     list(cond.shape)
                 )
             )
@@ -329,7 +330,7 @@ class While:
             if inner_var:
                 out_vars.append(inner_var)
 
-        x_name_list |= {x.name for x in out_vars}
+        x_name_list |= set(map(lambda x: x.name, out_vars))
         # NOTE(dev): cond_var has been contained in Input('Condition'), so
         # we remove it from Input('X')
         x_name_list -= {self.cond_var.name}
@@ -368,7 +369,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.eager.Tensor)):
+    if not isinstance(input, (Variable, core.VarBase)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -462,11 +463,11 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
-            f"but given shape as {list(pre_cond.shape)}."
+            "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
     if _non_static_mode():
-        now_cond = pre_cond.item()
+        now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -476,7 +477,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).item()
+            now_cond = cond(*output_vars).numpy()[0]
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
@@ -500,7 +501,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         except ValueError as e:
             raise ValueError(
                 "body in while_loop should return the same arity "
-                f"(length and structure) as loop_vars: {e}"
+                "(length and structure) as loop_vars: {0}".format(e)
             )
         now_cond = cond(*output_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
@@ -568,7 +569,7 @@ def case(pred_fn_pairs, default=None, name=None):
     This operator works like an if-elif-elif-else chain.
 
     Args:
-        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor whose numel should be 1 (shape [] or shape [1]), ``fn`` is a callable. All callables return the same structure of Tensors.
+        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -701,7 +702,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     This operator is like a C++ switch/case statement.
 
     Args:
-        branch_index(Tensor): A Tensor whose numel should be 1 (shape [] or shape [1]) to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
+        branch_index(Tensor): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
         branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -839,7 +840,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        f"The type of function for key {key}",
+                        "The type of function for key {}".format(key),
                         "branch_fns",
                         "switch_case",
                         "callable",
@@ -909,9 +910,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         branch will be executed during runtime.
 
     Args:
-        pred(Tensor): A boolean tensor whose numel should be 1 (shape []
-            or shape [1]). The boolean value determines whether to return the
-            result of ``true_fn`` or ``false_fn`` .
+        pred(Tensor): A boolean tensor whose numel should be 1. The boolean
+            value determines whether to return the result of ``true_fn`` or
+            ``false_fn`` .
         true_fn(callable, optional): A callable to be performed if ``pred`` is
             true. The default value is ``None`` .
         false_fn(callable, optional): A callable to be performed if ``pred`` is
@@ -968,7 +969,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
         assert pred.size == 1, "condition input's numel should be 1"
-        pred = pred.item()
+        pred = pred.numpy()[0]
         if pred:
             if true_fn is not None:
                 if not callable(true_fn):
@@ -1116,7 +1117,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output, false_output
         )
 
-    mask = paddle.cast(pred, dtype='int32')
+    mask = cast(pred, dtype='int32')
     merge_func = (
         lambda name, false_var, true_var: select_input_with_buildin_type(
             [false_var, true_var], mask, name
@@ -1157,7 +1158,7 @@ def copy_var_to_parent_block(var, layer_helper):
         parent_block_var = parent_block.create_var(
             dtype=var.dtype, shape=var.shape, type=var.type
         )
-        paddle.assign(var, parent_block_var)
+        assign(var, parent_block_var)
     return parent_block_var
 
 

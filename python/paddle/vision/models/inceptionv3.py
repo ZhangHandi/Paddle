@@ -15,7 +15,7 @@
 import math
 
 import paddle
-from paddle import nn
+import paddle.nn as nn
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, AvgPool2D, Dropout, Linear, MaxPool2D
 from paddle.nn.initializer import Uniform

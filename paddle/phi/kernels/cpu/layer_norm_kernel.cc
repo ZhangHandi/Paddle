@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
-#include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #endif
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -123,9 +123,10 @@ void LayerNormKernel(const Context& dev_ctx,
                           right));
   }
 
-  auto ker =
-      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, phi::CPUPlace>::Cache()
-          .At(right);
+  auto ker = paddle::operators::jit::KernelFuncs<
+                 paddle::operators::jit::LayerNormTuple<T>,
+                 phi::CPUPlace>::Cache()
+                 .At(right);
   ker(x_tmp.data<T>(),
       out.data<T>(),
       mean->data<T>(),
@@ -141,7 +142,4 @@ void LayerNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
-}
+    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {}

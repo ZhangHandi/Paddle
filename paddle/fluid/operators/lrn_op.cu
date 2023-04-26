@@ -274,6 +274,5 @@ template struct LRNGradFunctor<phi::GPUContext, double>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(lrn, GPU, ALL_LAYOUT, ops::LRNKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    lrn_grad, GPU, ALL_LAYOUT, ops::LRNGradKernel, float) {}
+REGISTER_OP_CUDA_KERNEL(lrn, ops::LRNKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(lrn_grad, ops::LRNGradKernel<phi::GPUContext, float>);

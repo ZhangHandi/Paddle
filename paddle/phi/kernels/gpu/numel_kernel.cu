@@ -29,6 +29,4 @@ PD_REGISTER_KERNEL(numel,
                    phi::dtype::bfloat16,
                    float,
                    double,
-                   bool) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
-}
+                   bool) {}

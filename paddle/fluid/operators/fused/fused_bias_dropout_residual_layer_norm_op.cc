@@ -35,17 +35,16 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
                    "Output",
                    "LnVariance",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
-                   "Output",
-                   "DropoutMaskOut",
-                   "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"),
                    "Output",
                    "BiasDropoutResidualOut",
                    "FusedBiasDropoutResidualLnOp");
+    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
+                   "Output",
+                   "DropoutMaskOut",
+                   "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(
         ctx->HasOutput("Y"), "Output", "Y", "FusedBiasDropoutResidualLnOp");
-
     auto x_dim = ctx->GetInputDim("X");
     int left = 1;
     for (int i = 0; i < x_dim.size() - 1; i++) {
@@ -61,11 +60,11 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -191,11 +190,11 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

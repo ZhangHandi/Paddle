@@ -19,10 +19,10 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 
-from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import in_dygraph_mode
 from ..framework import LayerHelper, core
+from ..static import Variable
 from .creation import _complex_to_real_dtype, assign
 
 __all__ = []
@@ -78,7 +78,7 @@ def shape(input):
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, bfloat16, float16, float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
@@ -92,7 +92,7 @@ def shape(input):
             import paddle
             paddle.enable_static()
 
-            inputs = paddle.static.data(name="x", shape=[3, 100, 100], dtype="float32")
+            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = paddle.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -113,7 +113,6 @@ def shape(input):
             'input',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -121,7 +120,6 @@ def shape(input):
                 'int64',
                 'complex64',
                 'complex128',
-                'uint16',
             ],
             'shape',
         )
@@ -164,7 +162,9 @@ def is_complex(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
@@ -196,7 +196,9 @@ def is_floating_point(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
     is_fp_dtype = (
         dtype == core.VarDesc.VarType.FP32
@@ -234,7 +236,9 @@ def is_integer(x):
             # True
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
     is_int_dtype = (
         dtype == core.VarDesc.VarType.UINT8

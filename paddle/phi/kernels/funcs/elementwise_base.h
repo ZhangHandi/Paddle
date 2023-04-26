@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -220,12 +220,12 @@ class TransformFunctor {
   }
 
   inline void Run() const {
-    phi::Transform<DeviceContext> trans;
+    paddle::platform::Transform<DeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
-  inline void RunRowWise(int n) const {
-    phi::Transform<DeviceContext> trans;
+  inline void RunRowWise(int n, int pre) const {
+    paddle::platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -243,8 +243,8 @@ class TransformFunctor {
     }
   }
 
-  inline void RunMidWise(int n, int post) const {
-    phi::Transform<DeviceContext> trans;
+  inline void RunMidWise(int n, int pre, int post) const {
+    paddle::platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -435,10 +435,10 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
   }
 
   if (post == 1) {
-    functor.RunRowWise(n);
+    functor.RunRowWise(n, pre);
     return;
   } else {
-    functor.RunMidWise(n, post);
+    functor.RunMidWise(n, pre, post);
     return;
   }
 }
@@ -567,15 +567,13 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
   using ArgsT = typename Traits::ArgsTuple;
   const int Arity = Traits::arity;
   int vec_size = 4;
-  uint64_t addr = static_cast<uint64_t>(0);
   ArgsT arg;
   // The Arg VecSize=1 is to match the Unroller template.
   Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    addr = (addr | reinterpret_cast<uint64_t>((*iter)->data<OutT>()));
+    vec_size =
+        std::min<int>(vec_size, phi::GetVectorizedSize((*iter)->data<OutT>()));
   }
-  vec_size = std::min(
-      vec_size, phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(addr)));
 #endif
   return vec_size;
 }

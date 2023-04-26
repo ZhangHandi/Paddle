@@ -91,11 +91,9 @@ class CPUQuantizeSquashPass : public FusePassBase {
   void ScaleQuantSquash(Graph* graph) const;
 
   /*
-   * Squash quantize if is before bfloat16 conv2d or fused_conv2d
+   * Squash quantize if is before bfloat16 conv2d
    */
   void QuantizeBf16Conv(Graph* graph) const;
-
-  void QuantizeBf16ConvImpl(Graph* graph, const std::string& conv_type) const;
 
   const std::string name_scope_{"squash"};
 };

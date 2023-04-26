@@ -58,5 +58,4 @@ PD_REGISTER_KERNEL(scale,
                    phi::ScaleKernel,
                    float,
                    phi::dtype::float16,
-                   int,
                    int64_t) {}

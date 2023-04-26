@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
   return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d UNUSED) {
+inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d) {
   return os;
 }
 

@@ -167,10 +167,11 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Score"),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Score"),
+        ctx.device_context());
   }
 };
 
@@ -253,10 +254,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(positive_negative_pair,
                              ops::PositiveNegativePairOp,
                              ops::PositiveNegativePairOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(positive_negative_pair,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PositiveNegativePairKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(
+    positive_negative_pair,
+    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, float>,
+    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, double>);

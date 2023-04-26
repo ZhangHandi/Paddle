@@ -84,8 +84,7 @@ class ConditionalOp : public framework::OperatorBase {
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (platform::is_npu_place(ips[0]->place())) {
-    } else if (platform::is_xpu_place(ips[0]->place())) {
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_ASCEND_CL
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();

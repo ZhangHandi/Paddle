@@ -13,11 +13,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-import paddle.nn.functional as F
-from paddle import fluid
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -37,7 +36,6 @@ class TestGumbelSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
-        self.python_api = F.gumbel_softmax
         self.init_attrs()
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -53,13 +51,9 @@ class TestGumbelSoftmaxOp(OpTest):
 
 
 class TestGumbelSoftmax_ZeroDim(OpTest):
-    def init_attrs(self):
-        self.dtype = "float64"
-
     def setUp(self):
         self.op_type = "gumbel_softmax"
-        self.python_api = F.gumbel_softmax
-        self.init_attrs()
+        self.dtype = "float64"
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = np.array(1.0).astype(self.dtype)
 
@@ -106,43 +100,6 @@ class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
         self.dtype = "float64"
 
 
-class TestGumbelSoftmax_ZeroDim_FP16OP(TestGumbelSoftmax_ZeroDim):
-    def init_attrs(self):
-        self.dtype = np.float16
-
-
-class TestGumbelSoftmaxFP16OP2(TestGumbelSoftmaxOp):
-    def init_attrs(self):
-        self.shape = [20, 10]
-        self.attrs = {"hard": True, "axis": 0}
-        self.count_expected = 10
-        self.dtype = np.float16
-
-
-class TestGumbelSoftmaxFP16OP3(TestGumbelSoftmaxOp):
-    def init_attrs(self):
-        self.shape = [100]
-        self.attrs = {"hard": True, "axis": -1}
-        self.count_expected = 1
-        self.dtype = np.float16
-
-
-class TestGumbelSoftmaxFP16OP4(TestGumbelSoftmaxOp):
-    def init_attrs(self):
-        self.shape = [20, 10, 5]
-        self.attrs = {"hard": True, "axis": -1}
-        self.count_expected = 200
-        self.dtype = np.float16
-
-
-class TestGumbelSoftmaxFP16OP5(TestGumbelSoftmaxOp):
-    def init_attrs(self):
-        self.shape = [20, 10, 5]
-        self.attrs = {"hard": True, "axis": 1}
-        self.count_expected = 100
-        self.dtype = np.float16
-
-
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):
     def softmax(self, x):
         x_row_max = x.max(axis=-1)
@@ -166,7 +123,6 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
-        self.python_api = F.gumbel_softmax
         self.init_attrs()
         single_x = np.array([0.2, 0.3, 0.5])
         batch_x = np.ones(self.shape) * single_x
@@ -186,7 +142,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         # Construct statistics z for samples and
         # z is approximately N(0,1) for unbiased count
         expected = self.probs * self.shape[0]
-        z = (self.counts - expected) / np.sqrt(expected * (1 - self.probs))
+        z = (self.counts - expected) / np.sqrt((expected * (1 - self.probs)))
         # A (lazy) approximate 99% two-sided test:
         # occurs with prob alpha~>=0.01 if unbiased
         self.assertLess(np.max(np.abs(z)).item(), 2.58)
@@ -235,7 +191,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
     def test_check_api(self):
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=self.x_shape)
+            x = paddle.fluid.data(name='x', shape=self.x_shape)
             y = paddle.nn.functional.gumbel_softmax(x, hard=True)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -284,7 +240,7 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
         def test_dtype():
             with paddle.static.program_guard(paddle.static.Program()):
-                x_int32 = paddle.static.data(
+                x_int32 = paddle.fluid.data(
                     name='x_int32', shape=[2, 3], dtype='int32'
                 )
                 paddle.nn.functional.gumbel_softmax(x_int32)

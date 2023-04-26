@@ -16,6 +16,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -24,7 +33,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a bilinear_interp_v2 op to tensorrt OP";
+    VLOG(3) << "convert a fluid bilinear_interp_v2 op";
 
     framework::OpDesc op_desc(op, nullptr);
 

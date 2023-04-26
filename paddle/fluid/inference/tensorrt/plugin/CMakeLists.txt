@@ -24,6 +24,7 @@ list(
   deformable_conv_op_plugin.cu
   matmul_op_int8_plugin.cu
   multihead_matmul_roformer_plugin.cu
+  roformer_op_plugin.cu
   transformer_input_output_convert_plugin.cu
   remove_padding_plugin.cu
   recover_padding_plugin.cu
@@ -33,12 +34,8 @@ list(
   layernorm_shift_partition_op.cu
   reverse_roll_op_plugin.cu
   prelnlayernorm_shift_partition_op.cu
-  trans_layernorm_op_plugin.cu
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
-  skip_groupnorm_act_op_plugin.cu
-  preln_groupnorm_act_op_plugin.cu
-  elementwiseadd_transpose_op_plugin.cu
   generic_plugin.cu
   lookup_table.cu
   many_emb_layernorm_plugin.cu

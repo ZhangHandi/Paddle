@@ -13,7 +13,7 @@
 # limitations under the License.
 import unittest
 
-from eager_op_test import OpTest
+from op_test import OpTest
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
@@ -30,8 +30,7 @@ class TestMarkerOp(OpTest):
         self.outputs = {}
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 if __name__ == "__main__":

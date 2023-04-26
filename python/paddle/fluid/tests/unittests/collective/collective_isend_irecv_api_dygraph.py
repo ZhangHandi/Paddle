@@ -16,7 +16,7 @@ import test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid
+import paddle.fluid as fluid
 
 
 class TestCollectiveIsendIrecvAPI(test_base.TestCollectiveAPIRunnerBase):

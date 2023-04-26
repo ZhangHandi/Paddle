@@ -30,9 +30,10 @@ class MarkerOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -54,7 +55,7 @@ class MarkerOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class MarkerOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -75,5 +76,4 @@ class MarkerOpCPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(marker, ops::MarkerOp, ops::MarkerOpMaker);
-PD_REGISTER_STRUCT_KERNEL(
-    marker, CPU, ALL_LAYOUT, ops::MarkerOpCPUKernel, float) {}
+REGISTER_OP_CPU_KERNEL(marker, ops::MarkerOpCPUKernel<float>);

@@ -79,9 +79,9 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
+    return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
@@ -160,7 +160,7 @@ void GetMaxScoreIndexWithLocalityAware(
   }
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
   void LocalityAwareNMSFast(phi::DenseTensor* bbox,
@@ -520,9 +520,6 @@ REGISTER_OPERATOR(
     ops::LocalityAwareNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(locality_aware_nms,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LocalityAwareNMSKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(locality_aware_nms,
+                       ops::LocalityAwareNMSKernel<float>,
+                       ops::LocalityAwareNMSKernel<double>);

@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -35,7 +34,7 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     int rank = x->dims().size();
     auto label_dims = labels->dims();
-    phi::DenseTensor x_2d = phi::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
     phi::DenseTensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
@@ -45,8 +44,8 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
       y_2d.Resize({phi::product(y->dims()), 1});
 
     } else {
-      labels_2d = phi::ReshapeToMatrix(*labels, rank - 1);
-      y_2d = phi::ReshapeToMatrix(*y, rank - 1);
+      labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+      y_2d = framework::ReshapeToMatrix(*y, rank - 1);
     }
 
     int axis_dim = x->dims()[rank - 1];
@@ -121,7 +120,7 @@ class XeGradFunctor {
   size_t ignore_index_;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -239,7 +238,7 @@ struct HardLabelCrossEntropyBackwardFunctor {
   int64_t feature_size_;
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -266,7 +265,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

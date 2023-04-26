@@ -18,8 +18,6 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 /* see [Why use single type kernel] */
-PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CinnInstructionRunOpKernel,
-                          float) {}
+REGISTER_OP_CUDA_KERNEL(
+    cinn_instruction_run,
+    ops::CinnInstructionRunOpKernel<phi::GPUContext, float>);

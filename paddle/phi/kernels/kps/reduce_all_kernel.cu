@@ -34,11 +34,7 @@ void AllRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
 #else
-PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
 #endif

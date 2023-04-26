@@ -14,9 +14,6 @@
 
 #include "paddle/phi/kernels/conv_kernel.h"
 
-#include "glog/logging.h"
-
-#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -27,6 +24,7 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -82,11 +80,18 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 
 #ifdef PADDLE_WITH_HIP
   // MIOPEN need to set groups in cdesc in miopen_desc.h
-  args.cdesc.set(
-      dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn(), groups);
+  args.cdesc.set(dtype,
+                 padding_common,
+                 strides,
+                 dilations,
+                 paddle::platform::AllowTF32Cudnn(),
+                 groups);
 #else
-  args.cdesc.set(
-      dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
+  args.cdesc.set(dtype,
+                 padding_common,
+                 strides,
+                 dilations,
+                 paddle::platform::AllowTF32Cudnn());
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -94,7 +99,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   // FIXME(typhoonzero): find a better way to disable groups
   // rather than setting it to 1.
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnSetConvolutionGroupCount(args.cdesc.desc(), groups));
+      paddle::platform::dynload::cudnnSetConvolutionGroupCount(
+          args.cdesc.desc(), groups));
   groups = 1;
 #endif
 #ifdef PADDLE_WITH_HIP
@@ -180,19 +186,20 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_handle.RunFunc(
       [&](void* workspace_ptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::miopenConvolutionForward(handle,
-                                                   &alpha,
-                                                   args.idesc.desc(),
-                                                   input_data,
-                                                   args.wdesc.desc(),
-                                                   filter_data,
-                                                   args.cdesc.desc(),
-                                                   fwd_result.algo,
-                                                   &beta,
-                                                   args.odesc.desc(),
-                                                   output_data,
-                                                   workspace_ptr,
-                                                   workspace_size));
+            paddle::platform::dynload::miopenConvolutionForward(
+                handle,
+                &alpha,
+                args.idesc.desc(),
+                input_data,
+                args.wdesc.desc(),
+                filter_data,
+                args.cdesc.desc(),
+                fwd_result.algo,
+                &beta,
+                args.odesc.desc(),
+                output_data,
+                workspace_ptr,
+                workspace_size));
       },
       workspace_size);
 #else
@@ -231,7 +238,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      phi::errors::Unimplemented(
+      paddle::platform::errors::Unimplemented(
           "Group concolution using CUDNNv8 API unsupported for now"));
 
   T* input_data = const_cast<T*>(input_tensor->data<T>());

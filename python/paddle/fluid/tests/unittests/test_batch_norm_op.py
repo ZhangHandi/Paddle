@@ -16,18 +16,14 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
-from op import Operator
+from op_test import OpTest, _set_use_system_allocator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import grad_var_name
+from paddle.fluid.op import Operator
 
 _set_use_system_allocator(True)
 
@@ -244,10 +240,7 @@ class TestBatchNormOpInference(unittest.TestCase):
                 raise ValueError("Unknown data layout.")
         scale_shape = [c]
 
-        if dtype == np.uint16:
-            x_val = np.random.random_sample(x_shape).astype(np.float32)
-        else:
-            x_val = np.random.random_sample(x_shape).astype(dtype)
+        x_val = np.random.random_sample(x_shape).astype(dtype)
         # generate some negative values to test case with relu fused
         x_val = x_val - 0.5
         scale_val = np.random.random_sample(scale_shape).astype(np.float32)
@@ -256,20 +249,12 @@ class TestBatchNormOpInference(unittest.TestCase):
         mean = np.zeros(scale_shape).astype(np.float32)
         variance = np.ones(scale_shape).astype(np.float32)
 
-        if dtype == np.uint16:
-            y_out = _reference_testing(
-                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
-            ).astype(np.float32)
-            y_out = convert_float_to_uint16(y_out)
-        else:
-            y_out = _reference_testing(
-                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
-            ).astype(dtype)
+        y_out = _reference_testing(
+            x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+        ).astype(dtype)
         if self.fuse_with_relu:
             y_out = np.maximum(y_out, 0)
 
-        if dtype == np.uint16:
-            x_val = convert_float_to_uint16(x_val)
         scope = core.Scope()
 
         # create input
@@ -340,11 +325,6 @@ class TestBatchNormOpInference(unittest.TestCase):
             y_tensor._set_dims(dims)
 
         # check inference result
-        atol = 1e-3
-        if dtype == np.uint16:
-            y_tensor = convert_uint16_to_float(y_tensor)
-            y_out = convert_uint16_to_float(y_out)
-            atol = 1e-2
         self.__assert_close(
             y_tensor,
             y_out,
@@ -356,7 +336,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             + str(np.dtype(dtype))
             + str(np.array(y_tensor))
             + str(y_out),
-            atol=atol,
+            atol=1e-3,
         )
 
     def test_check_output(self):
@@ -388,29 +368,6 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 places.append(place)
-        for place in places:
-            # for data_format in ["NCHW", "NHWC"]:
-            for data_format in ["NCHW"]:
-                self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
-                )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
-class TestBF16BatchNormOpInference(TestBatchNormOpInference):
-    def setUp(self):
-        self.dtype = np.uint16
-        self.use_mkldnn = False
-        self.fuse_with_relu = False
-        self.init_kernel_type()
-
-    def test_check_output(self):
-        places = [core.CUDAPlace(0)]
         for place in places:
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
@@ -661,7 +618,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -685,7 +642,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = {'x@GRAD'}
+        self.no_grad_set = set(['x@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
 
 
@@ -791,7 +748,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 ):
     def init_test_case(self):
         self.use_global_stats = True
-        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -806,14 +763,8 @@ class TestBatchNormOpError(unittest.TestCase):
 
             # the input dtype of batch_norm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = paddle.static.data(
-                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
-            )
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
-
-            # the first dimension of input for batch_norm must between [2d, 5d].
-            x3 = paddle.static.data("", shape=[0], dtype="float32")
-            self.assertRaises(ValueError, paddle.static.nn.batch_norm, x3)
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
@@ -828,9 +779,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = paddle.static.data(
-                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
-            )
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, batch_norm, x2)
 
 
@@ -872,9 +821,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    x = paddle.static.data(
-                        name='x', shape=x_np.shape, dtype=x_np.dtype
-                    )
+                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -891,7 +838,7 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            x = paddle.static.data(name='x', shape=x.shape, dtype=x.dtype)
+            x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
             # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
             batch_norm = paddle.nn.BatchNorm(7, data_layout="NHWC")

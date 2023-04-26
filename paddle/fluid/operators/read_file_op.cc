@@ -16,15 +16,15 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class CPUReadFileKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -61,10 +61,10 @@ class ReadFileOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::UINT8,
-                          platform::CPUPlace());
+    return framework::OpKernelType(framework::proto::VarType::UINT8,
+                                   platform::CPUPlace());
   }
 };
 
@@ -92,5 +92,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-PD_REGISTER_STRUCT_KERNEL(
-    read_file, CPU, ALL_LAYOUT, ops::CPUReadFileKernel, uint8_t) {}
+REGISTER_OP_CPU_KERNEL(read_file, ops::CPUReadFileKernel<uint8_t>)

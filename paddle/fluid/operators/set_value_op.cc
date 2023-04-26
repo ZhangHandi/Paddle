@@ -45,24 +45,22 @@ class SetValue : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -110,9 +108,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
                  framework::proto::VarType::INT64,
                  framework::proto::VarType::FP32,
                  framework::proto::VarType::FP64,
-                 framework::proto::VarType::FP16,
-                 framework::proto::VarType::COMPLEX64,
-                 framework::proto::VarType::COMPLEX128})
+                 framework::proto::VarType::FP16})
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int64_t>>(
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
@@ -133,7 +129,17 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("none_axes", "(list<int>) The axes to none.")
         .SetDefault({});
 
-    AddAttr<std::vector<paddle::experimental::Scalar>>("values", "values")
+    AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("fp32_values", "Store the float32 values.")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("int32_values", "Store the int32 values.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("int64_values", "Store the int64 values.")
+        .SetDefault({});
+    AddAttr<std::vector<double>>("fp64_values", "Store the float64 values.")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("fp16_values", "Store the float16 values.")
         .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
@@ -208,25 +214,23 @@ class SetValueGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto in_tensor = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          in_tensor->place());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   in_tensor->place());
   }
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const phi::KernelKey &expected_kernel_type) const override {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
-      return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                            expected_kernel_type.layout(),
-                            expected_kernel_type.dtype());
+      return expected_kernel_type;
     }
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -290,15 +294,4 @@ Upgrade set_value, add 1 attribute [decrease_axes].
 Upgrade set_value, add 1 attribute [none_axes].
               )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "none_axes", "The axes with none index.", std::vector<int64_t>{}))
-    .AddCheckpoint(
-        R"ROC(Upgrade set_value to support generic Scalars as value and remove plain values, so as to support complex types.)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("values",
-                     "values",
-                     std::vector<paddle::experimental::Scalar>())
-            .DeleteAttr("bool_values", "remove plain attributes")
-            .DeleteAttr("fp32_values", "remove plain attributes")
-            .DeleteAttr("int32_values", "remove plain attributes")
-            .DeleteAttr("int64_values", "remove plain attributes")
-            .DeleteAttr("fp64_values", "remove plain attributes"));
+            "none_axes", "The axes with none index.", std::vector<int64_t>{}));

@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def quantize_max_abs(x, max_range):
@@ -319,7 +319,7 @@ class TestDequantizeOpHalf(TestDequantizeOp):
 
     def _get_places(self):
         import paddle
-        from paddle.fluid import core
+        import paddle.fluid.core as core
 
         if core.is_compiled_with_cuda():
             place = paddle.fluid.core.CUDAPlace(0)

@@ -69,12 +69,12 @@ class RecvOpV2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return phi::KernelKey(type, ctx.GetPlace());
+    return framework::OpKernelType(type, ctx.GetPlace());
   }
 };
 
@@ -87,7 +87,12 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
+        .SetDefault(0);
+#endif
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
@@ -114,12 +119,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(recv_v2, ops::RecvOpV2, ops::RecvOpV2Maker);
 
-PD_REGISTER_STRUCT_KERNEL(recv_v2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RecvOpV2CPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(recv_v2,
+                       ops::RecvOpV2CPUKernel<float>,
+                       ops::RecvOpV2CPUKernel<double>,
+                       ops::RecvOpV2CPUKernel<int>,
+                       ops::RecvOpV2CPUKernel<int64_t>,
+                       ops::RecvOpV2CPUKernel<plat::float16>);

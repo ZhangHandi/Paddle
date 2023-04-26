@@ -44,7 +44,7 @@ struct ChannelDequantizeFunctor {
                   phi::DenseTensor* out);
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
@@ -62,7 +62,7 @@ class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

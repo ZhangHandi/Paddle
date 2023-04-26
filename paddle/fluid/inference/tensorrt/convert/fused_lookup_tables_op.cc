@@ -17,6 +17,16 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/lookup_table.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -60,11 +70,11 @@ class FusedLookupTablesOpConverter : public OpConverter {
     auto w_dims = w_tensor->dims();
     weight = engine_->GetTrtWeight(w_name, *w_tensor);
     auto weight_size = phi::product(w_dims);
-    int output_fp16;
+    bool output_fp16;
     if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
-      output_fp16 = 0;
+      output_fp16 = false;
     } else {
-      output_fp16 = 1;
+      output_fp16 = true;
     }
 
     int32_t weight_width = static_cast<int32_t>(w_dims[1]);

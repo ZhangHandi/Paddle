@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EigGradKernel(const Context& dev_ctx,
+void EigGardKernel(const Context& dev_ctx,
                    const DenseTensor& out_w,
                    const DenseTensor& out_v,
                    const DenseTensor& dout_w,

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -64,10 +62,10 @@ void IndexSelectInner(const Context& ctx,
   auto index_size = index.dims()[0];
 
   DenseTensor index_cpu_copy;
-  if (index.place().GetType() != phi::AllocationType::CPU) {
+  if (!paddle::platform::is_cpu_place(index.place())) {
     phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
+  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
   ctx.template Alloc<T>(output);

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -284,7 +282,7 @@ void MergedMomentumInnerCompute(
           multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
-      if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+      if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
@@ -297,7 +295,7 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocitys_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+      } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
         phi::funcs::ForRange<Context> for_range(
             static_cast<const Context &>(ctx), params[idx]->numel());
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \

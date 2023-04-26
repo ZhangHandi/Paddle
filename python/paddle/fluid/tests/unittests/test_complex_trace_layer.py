@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 from numpy.random import random as rand
 
+import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle import fluid, tensor
+from paddle import tensor
 
 
 class TestComplexTraceLayer(unittest.TestCase):

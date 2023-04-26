@@ -17,7 +17,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestDetectionMAPOp(OpTest):
@@ -267,8 +267,7 @@ class TestDetectionMAPOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):

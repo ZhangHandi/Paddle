@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
 
 EPOCH_NUM = 5
 BATCH_SIZE = 16
@@ -42,12 +42,10 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[-1, 784], dtype='float32'
+            image = fluid.layers.data(
+                name='image', shape=[784], dtype='float32'
             )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             py_reader = fluid.io.PyReader(
                 feed_list=[image, label],
                 capacity=4,
@@ -61,7 +59,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                     size=hidden_size,
                     activation='tanh',
                     bias_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.Constant(value=1.0)
+                        initializer=fluid.initializer.Constant(value=1.0)
                     ),
                 )
 
@@ -86,6 +84,7 @@ class TestBase(unittest.TestCase):
     def run_main(
         self,
         use_legacy_py_reader,
+        with_data_parallel,
         places,
         use_double_buffer,
     ):
@@ -107,6 +106,10 @@ class TestBase(unittest.TestCase):
             exe.run(startup_prog)
 
             prog = fluid.CompiledProgram(main_prog)
+            if with_data_parallel:
+                prog = prog.with_data_parallel(
+                    loss_name=loss.name, places=places
+                )
 
             step = 0
             step_list = []
@@ -158,33 +161,39 @@ class TestBase(unittest.TestCase):
             }
             return ret
 
-    def prepare_places(self, with_cpu=True, with_gpu=True):
+    def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
         places = []
         if with_cpu:
             places.append([fluid.CPUPlace()])
+            if with_data_parallel:
+                places.append([fluid.CPUPlace()] * 2)
 
         if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
+            if with_data_parallel:
+                places.append(tmp)
             places.append([tmp[0]])
         return places
 
     def test_main(self):
-        for p in self.prepare_places():
-            for use_double_buffer in [False, True]:
-                results = []
-                for use_legacy_py_reader in [False, True]:
-                    ret = self.run_main(
-                        use_legacy_py_reader=use_legacy_py_reader,
-                        places=p,
-                        use_double_buffer=use_double_buffer,
-                    )
-                    results.append(ret)
-                if not use_double_buffer:
-                    diff = np.max(
-                        np.abs(results[0]['loss'] - results[1]['loss'])
-                    )
-                    self.assertLess(diff, 1e-3)
+        for with_data_parallel in [True, False]:
+            for p in self.prepare_places(with_data_parallel):
+                for use_double_buffer in [False, True]:
+                    results = []
+                    for use_legacy_py_reader in [False, True]:
+                        ret = self.run_main(
+                            use_legacy_py_reader=use_legacy_py_reader,
+                            with_data_parallel=with_data_parallel,
+                            places=p,
+                            use_double_buffer=use_double_buffer,
+                        )
+                        results.append(ret)
+                    if not use_double_buffer:
+                        diff = np.max(
+                            np.abs(results[0]['loss'] - results[1]['loss'])
+                        )
+                        self.assertLess(diff, 1e-3)
 
 
 if __name__ == '__main__':

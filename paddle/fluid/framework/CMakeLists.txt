@@ -162,11 +162,37 @@ cc_test(
   eigen_test
   SRCS eigen_test.cc
   DEPS tensor)
+cc_library(
+  mixed_vector
+  SRCS mixed_vector.cc
+  DEPS device_context place memory)
 
+if(WITH_GPU)
+  nv_test(
+    mixed_vector_test
+    SRCS mixed_vector_test.cc mixed_vector_test.cu
+    DEPS mixed_vector place memory device_context tensor)
+elseif(WITH_ROCM)
+  hip_test(
+    mixed_vector_test
+    SRCS mixed_vector_test.cc mixed_vector_test.cu
+    DEPS mixed_vector place memory device_context tensor)
+else()
+  cc_test(
+    mixed_vector_test
+    SRCS mixed_vector_test.cc
+    DEPS mixed_vector place memory device_context tensor)
+endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim mixed_vector place tensor framework_proto version)
+  DEPS ddim
+       mixed_vector
+       place
+       tensor
+       framework_proto
+       version
+       serialization)
 
 cc_test(
   lod_tensor_test
@@ -362,10 +388,7 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-cc_test(
-  op_desc_test
-  SRCS op_desc_test.cc
-  DEPS proto_desc)
+
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -383,7 +406,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
+  DEPS framework_proto attribute ops_extra_info glog)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -432,30 +455,24 @@ if(WITH_XPU)
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
-         dense_tensor
          selected_rows_utils
-         int_array
-         scalar
          place
          phi
          var_type_traits
+         phi_api_utils
          op_info
-         xpu_op_list
-         convert_utils)
+         xpu_op_list)
 else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
-         dense_tensor
          selected_rows_utils
-         int_array
-         scalar
          place
          phi
          var_type_traits
-         op_info
-         convert_utils)
+         phi_api_utils
+         op_info)
 endif()
 
 if(WITH_XPU)
@@ -484,8 +501,7 @@ if(WITH_XPU)
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos
-         get_kerneltype_forvar_utils)
+         op_compat_infos)
 else()
   cc_library(
     operator
@@ -511,8 +527,7 @@ else()
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos
-         get_kerneltype_forvar_utils)
+         op_compat_infos)
 endif()
 
 cc_test(
@@ -532,7 +547,7 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -541,10 +556,7 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr
-       scalar
-       op_version_proto
-       op_version_registry)
+       dist_attr)
 
 cc_library(
   op_registry
@@ -589,23 +601,23 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
   #Generate an empty \
   #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(fleet_proto_init)
-  add_custom_command(
-    TARGET fleet_proto_init
+  add_custom_target(
+    fleet_proto_init ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
     COMMAND
       ${CMAKE_COMMAND} -E touch
       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
+  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
+                                                        touch __init__.py)
   add_dependencies(
     framework_py_proto
+    framework_py_proto_init
     trainer_py_proto
     distributed_strategy_py_proto
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    pslib_py_proto
     ps_py_proto_init)
   if(NOT WIN32)
     add_custom_command(
@@ -618,18 +630,16 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(NOT WITH_ROCM)
-      add_custom_target(
-        fleet_executor_proto_init ALL
-        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
-        COMMAND
-          cp
-          ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
-          ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMENT
-          "Copy generated python proto into directory paddle/distributed/fleet/proto."
-      )
-    endif()
+    add_custom_target(
+      fleet_executor_proto_init ALL
+      DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+      COMMAND
+        cp
+        ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
+        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMENT
+        "Copy generated python proto into directory paddle/distributed/fleet/proto."
+    )
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
@@ -853,8 +863,7 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
-           flags)
+           fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -1071,7 +1080,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           generated_op
+           scale_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1088,7 +1097,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           generated_op
+           scale_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1117,7 +1126,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows device_context)
+  DEPS selected_rows serialization device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1157,6 +1166,11 @@ cc_test_old(
   glog)
 
 cc_library(
+  generator
+  SRCS generator.cc
+  DEPS enforce place)
+
+cc_library(
   infershape_utils
   SRCS infershape_utils.cc
   DEPS lod_tensor
@@ -1165,7 +1179,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_utils
+       phi_api_utils
        op_info
        shape_inference
        sparse_coo_tensor)
@@ -1205,10 +1219,7 @@ cc_library(
        string_helper
        phi_tensor
        op_meta_info
-       phi_api
-       tensor_api
-       phi_tensor_operants
-       operants_manager)
+       phi_api)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

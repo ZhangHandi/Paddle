@@ -28,9 +28,10 @@
 #include "paddle/phi/api/include/sparse_api.h"
 DECLARE_bool(check_nan_inf);
 
-paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
-    paddle::small_vector<std::vector<paddle::Tensor>,
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -52,7 +53,8 @@ Conv2dGradNodeFinal::operator()(
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)
@@ -157,6 +159,8 @@ Conv2dGradNodeFinal::operator()(
     }
     grad_node->SetGradInMeta(grad_input, 0);
     grad_node->SetGradInMeta(grad_filter, 1);
+    egr::EagerUtils::CheckAndRetainGrad(grad_input);
+    egr::EagerUtils::CheckAndRetainGrad(grad_filter);
     // Set TensorWrappers for Forward Outputs if needed
   }
 
@@ -165,9 +169,10 @@ Conv2dGradNodeFinal::operator()(
   return returns;
 }
 
-paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
 Conv2dDoubleGradNodeFinal::operator()(
-    paddle::small_vector<std::vector<paddle::Tensor>,
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -187,17 +192,17 @@ Conv2dDoubleGradNodeFinal::operator()(
   auto grad_out = egr::EagerUtils::RecoverTensorWrapper(&this->grad_out_);
   auto& grad_input_grad = hooked_grads[0][0];
 
-  paddle::optional<paddle::Tensor> grad_input_grad_optional;
+  paddle::optional<paddle::experimental::Tensor> grad_input_grad_optional;
   if (grad_input_grad.initialized())
     grad_input_grad_optional =
-        paddle::make_optional<paddle::Tensor>(grad_input_grad);
+        paddle::make_optional<paddle::experimental::Tensor>(grad_input_grad);
 
   auto& grad_filter_grad = hooked_grads[1][0];
 
-  paddle::optional<paddle::Tensor> grad_filter_grad_optional;
+  paddle::optional<paddle::experimental::Tensor> grad_filter_grad_optional;
   if (grad_filter_grad.initialized())
     grad_filter_grad_optional =
-        paddle::make_optional<paddle::Tensor>(grad_filter_grad);
+        paddle::make_optional<paddle::experimental::Tensor>(grad_filter_grad);
 
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;
@@ -208,7 +213,8 @@ Conv2dDoubleGradNodeFinal::operator()(
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
       returns(3);
   for (int i = 0; i < 3; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)

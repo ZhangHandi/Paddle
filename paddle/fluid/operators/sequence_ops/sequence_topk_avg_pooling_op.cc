@@ -100,10 +100,10 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -137,13 +137,9 @@ REGISTER_OPERATOR(
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
-PD_REGISTER_STRUCT_KERNEL(sequence_topk_avg_pooling,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceTopkAvgPoolingKernel,
-                          float) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_topk_avg_pooling_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceTopkAvgPoolingGradKernel,
-                          float) {}
+REGISTER_OP_CPU_KERNEL(
+    sequence_topk_avg_pooling,
+    ops::SequenceTopkAvgPoolingKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_topk_avg_pooling_grad,
+    ops::SequenceTopkAvgPoolingGradKernel<phi::CPUContext, float>);

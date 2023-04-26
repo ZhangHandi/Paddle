@@ -43,14 +43,16 @@ template <typename VarType>
 const std::string& GetNameFromVar(std::shared_ptr<VarType> var);
 
 template <typename VarType>
-bool CheckCachedKey(std::shared_ptr<VarType> tensor, const phi::KernelKey& key);
+bool CheckCachedKey(std::shared_ptr<VarType> tensor,
+                    const paddle::framework::OpKernelType& key);
 template <typename VarType>
 void SetCachedValue(std::shared_ptr<VarType> tensor,
-                    const phi::KernelKey& key,
+                    const paddle::framework::OpKernelType& key,
                     std::shared_ptr<VarType> res);
 template <typename VarType>
-std::shared_ptr<VariableWrapper> GetCachedValue(std::shared_ptr<VarType> tensor,
-                                                const phi::KernelKey& key);
+std::shared_ptr<VariableWrapper> GetCachedValue(
+    std::shared_ptr<VarType> tensor,
+    const paddle::framework::OpKernelType& key);
 
 template <typename VarType>
 void SetType(std::shared_ptr<VarType> var,

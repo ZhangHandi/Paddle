@@ -30,7 +30,7 @@ class Pad3dOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
@@ -40,31 +40,32 @@ class Pad3dOp : public framework::OperatorWithKernel {
         ctx.Input<phi::DenseTensor>("X")
                 ->mem_desc()
                 .data.format_desc.blocking.inner_nblks == 0) {
-      return phi::KernelKey(phi::Backend::ONEDNN,
-                            phi::DataLayout::ONEDNN,
-                            phi::TransToPhiDataType(input_data_type));
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  phi::KernelKey GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      return phi::KernelKey(tensor.place(),
-                            phi::StringToDataLayout(data_format),
-                            expected_kernel_type.dtype());
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     phi::StringToDataLayout(data_format));
     }
 #endif
-    return phi::KernelKey(
-        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -182,11 +183,11 @@ class Pad3dOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 

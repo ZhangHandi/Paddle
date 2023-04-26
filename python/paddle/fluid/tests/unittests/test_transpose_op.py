@@ -17,11 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -31,8 +33,6 @@ class TestTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -48,10 +48,10 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.shape = (3, 40)
@@ -118,46 +118,7 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
-class TestCase10(TestTransposeOp):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-        }
-        self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float64"),
-            'Out': self.inputs['X'].transpose(self.axis),
-        }
-
-    def initTestCase(self):
-        self.shape = (10, 8, 2)
-        self.axis = (-1, 1, -3)
-
-
 class TestCase_ZeroDim(TestTransposeOp):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
-        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-        }
-        self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float64"),
-            'Out': self.inputs['X'].transpose(self.axis),
-        }
-
     def initTestCase(self):
         self.shape = ()
         self.axis = ()
@@ -168,8 +129,6 @@ class TestAutoTuneTransposeOp(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -192,125 +151,11 @@ class TestAutoTuneTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
         fluid.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestAutoTuneTransposeFP16Op(OpTest):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.dtype = np.float16
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-        }
-        self.outputs = {
-            'XShape': np.random.random(self.shape).astype(self.dtype),
-            'Out': self.inputs['X'].transpose(self.axis),
-        }
-
-    def initTestCase(self):
-        fluid.core.set_autotune_range(0, 3)
-        fluid.core.update_autotune_status()
-        fluid.core.enable_autotune()
-        self.shape = (1, 12, 256, 1)
-        self.axis = (0, 3, 2, 1)
-
-    def init_op_type(self):
-        self.op_type = "transpose2"
-        self.use_mkldnn = False
-
-    def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
-        fluid.core.disable_autotune()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestAutoTuneTransposeBF16Op(OpTest):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.dtype = np.uint16
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
-        x = np.random.random(self.shape).astype("float32")
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-        }
-        self.outputs = {
-            'XShape': convert_float_to_uint16(
-                np.random.random(self.shape).astype("float32")
-            ),
-            'Out': self.inputs['X'].transpose(self.axis),
-        }
-
-    def initTestCase(self):
-        fluid.core.set_autotune_range(0, 3)
-        fluid.core.update_autotune_status()
-        fluid.core.enable_autotune()
-        self.shape = (2, 8, 10)
-        self.axis = (0, 2, 1)
-
-    def init_op_type(self):
-        self.op_type = "transpose2"
-        self.use_mkldnn = False
-
-    def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
-        fluid.core.disable_autotune()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestTransposeFP16Op(OpTest):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.dtype = np.float16
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
-        x = np.random.random(self.shape).astype(self.dtype)
-
-        self.inputs = {'X': x}
-        self.attrs = {
-            'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
-        }
-        self.outputs = {
-            'XShape': np.random.random(self.shape).astype(self.dtype),
-            'Out': self.inputs['X'].transpose(self.axis),
-        }
-
-    def init_op_type(self):
-        self.op_type = "transpose2"
-        self.use_mkldnn = False
-
-    def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-    def initTestCase(self):
-        self.shape = (3, 40)
-        self.axis = (1, 0)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestTransposeBF16Op(OpTest):
@@ -318,10 +163,6 @@ class TestTransposeBF16Op(OpTest):
         self.init_op_type()
         self.initTestCase()
         self.dtype = np.uint16
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
-        self.python_api = paddle.transpose
-        self.public_python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
 
         self.inputs = {'X': convert_float_to_uint16(x)}
@@ -448,9 +289,7 @@ class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x = paddle.static.data(
-                name='x', shape=[-1, 10, 5, 3], dtype='float64'
-            )
+            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable
@@ -460,8 +299,8 @@ class TestTransposeOpError(unittest.TestCase):
 
             def test_x_dtype_check():
                 # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
-                x1 = paddle.static.data(
-                    name='x1', shape=[-1, 10, 5, 3], dtype='int8'
+                x1 = fluid.layers.data(
+                    name='x1', shape=[10, 5, 3], dtype='int8'
                 )
                 paddle.transpose(x1, perm=[1, 0, 2])
 
@@ -527,7 +366,7 @@ class TestTransposeApi(unittest.TestCase):
 class TestTAPI(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            data = paddle.static.data(shape=[10], dtype="float64", name="data")
+            data = fluid.data(shape=[10], dtype="float64", name="data")
             data_t = paddle.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -537,9 +376,7 @@ class TestTAPI(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.static.data(
-                shape=[10, 5], dtype="float64", name="data"
-            )
+            data = fluid.data(shape=[10, 5], dtype="float64", name="data")
             data_t = paddle.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -549,9 +386,7 @@ class TestTAPI(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.static.data(
-                shape=[1, 5], dtype="float64", name="data"
-            )
+            data = fluid.data(shape=[1, 5], dtype="float64", name="data")
             data_t = paddle.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -586,7 +421,7 @@ class TestTAPI(unittest.TestCase):
 
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data(name='x', shape=[10, 5, 3], dtype='float64')
+            x = fluid.data(name='x', shape=[10, 5, 3], dtype='float64')
 
             def test_x_dimension_check():
                 paddle.t(x)
@@ -685,7 +520,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data = layers.data('data', [2, 3, 4], False, dtype)
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -693,6 +528,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -716,7 +552,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data = layers.data('data', [2, 3, 4], False, dtype)
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -724,6 +560,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -740,12 +577,11 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
 class TestTransposeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.transpose(x, [])
-        if hasattr(out, 'retain_grads'):
-            out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])

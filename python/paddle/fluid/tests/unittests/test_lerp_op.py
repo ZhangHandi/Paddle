@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -30,11 +30,9 @@ class TestLerp(OpTest):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        self.init_xyshape()
-        self.init_wshape()
-        x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.xshape)
-        y = np.full(100, 10.0).astype(self.dtype).reshape(self.yshape)
-        w = np.random.random(self.wshape).astype(self.dtype)
+        x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.shape)
+        y = np.full(100, 10.0).astype(self.dtype).reshape(self.shape)
+        w = np.asarray([0.5]).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
 
@@ -44,18 +42,11 @@ class TestLerp(OpTest):
     def init_shape(self):
         self.shape = [100]
 
-    def init_xyshape(self):
-        self.xshape = self.shape
-        self.yshape = self.shape
-
-    def init_wshape(self):
-        self.wshape = [1]
-
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -83,46 +74,30 @@ class TestLerpWithDim6(TestLerp):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
-class TestLerpWithDim6Fp16(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 1, 2, 5, 1, 5]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLerpWihFp16BroadXY(TestLerp):
-    def init_xyshape(self):
-        self.xshape = [2, 1, 2, 5, 5]
-        self.yshape = [2, 2, 1, 5, 5]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLerpWithFp16BroadWToXY(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 2, 5, 5]
-
-    def init_wshape(self):
-        self.wshape = [5]
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
 class TestLerpBroadXY(TestLerp):
-    def init_xyshape(self):
-        self.xshape = [2, 1, 2, 5, 5]
-        self.yshape = [2, 2, 1, 5, 5]
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1.0, 201.0).astype(self.dtype).reshape([2, 1, 2, 50])
+        y = np.full(200, 10.0).astype(self.dtype).reshape([2, 2, 1, 50])
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
 
 
 class TestLerpBroadWToXY(TestLerp):
-    def init_shape(self):
-        self.shape = [2, 2, 5, 5]
-
-    def init_wshape(self):
-        self.wshape = [5]
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.full(600, 2.5).astype(self.dtype).reshape([50, 2, 2, 3])
+        y = np.full(600, 1.0).astype(self.dtype).reshape([50, 2, 2, 3])
+        w = np.random.random([3]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
 
 
 class TestLerpAPI(unittest.TestCase):
@@ -144,8 +119,8 @@ class TestLerpAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 4], dtype=self.dtype)
-                y = paddle.static.data('y', [1, 4], dtype=self.dtype)
+                x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
+                y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
                 out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
                 res = exe.run(

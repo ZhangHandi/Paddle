@@ -16,12 +16,12 @@ import os
 
 import numpy as np
 
-os.environ["FLAGS_check_nan_inf"] = "1"
-os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
+os.environ[str("FLAGS_check_nan_inf")] = str("1")
+os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -46,14 +46,14 @@ def generator():
 
 
 def net():
-    x = paddle.static.data(name="x", shape=[-1, 3], dtype='float32')
-    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+    x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
 
     # test int64 value
-    zero = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
+    zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
 
     # test float16 value
-    fp16_zero = paddle.cast(zero, dtype='float16')
+    fp16_zero = fluid.layers.cast(zero, dtype='float16')
 
     y = y + zero
 
@@ -97,7 +97,7 @@ def check(use_cuda):
                 step += 1
                 print(
                     'iter={:.0f},cost={},acc1={}'.format(
-                        step, outs[1][0], outs[2]
+                        step, outs[1][0], outs[2][0]
                     )
                 )
 
@@ -105,7 +105,7 @@ def check(use_cuda):
 if __name__ == '__main__':
     try:
         check(use_cuda=False)
-        raise AssertionError()
+        assert False
     except Exception as e:
         print(e)
         print(type(e))
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            raise AssertionError()
+            assert False
         except Exception as e:
             print(e)
             print(type(e))

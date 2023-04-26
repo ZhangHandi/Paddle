@@ -15,20 +15,20 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.distributed.transpiler import collective
-from paddle.fluid import core
-from paddle.incubate.layers.nn import _pull_box_sparse
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.layers.nn import _pull_box_sparse
+from paddle.fluid.transpiler import collective
 
 
 class TestTranspile(unittest.TestCase):
     """TestCases for BoxPS Preload"""
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
-        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
+        config = fluid.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = mode
-        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
+        t = fluid.DistributeTranspiler(config=config)
         return t
 
     def test_transpile(self):
@@ -96,11 +96,11 @@ class TestPullBoxSparseOP(unittest.TestCase):
         paddle.enable_static()
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype='int64', lod_level=0
+            x = fluid.layers.data(
+                name='x', shape=[1], dtype='int64', lod_level=0
             )
-            y = paddle.static.data(
-                name='y', shape=[-1, 1], dtype='int64', lod_level=0
+            y = fluid.layers.data(
+                name='y', shape=[1], dtype='int64', lod_level=0
             )
             emb_x, emb_y = _pull_box_sparse([x, y], size=1)
 

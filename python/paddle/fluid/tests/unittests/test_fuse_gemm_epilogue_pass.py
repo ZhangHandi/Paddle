@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+import paddle.fluid.core as core
 
 
 def compare(ref, res, atol, rtol):
@@ -146,8 +146,11 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
     def _test_output(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.fuse_gemm_epilogue = True
-        program = paddle.static.CompiledProgram(
-            self.main_prog, build_strategy=build_strategy
+        program = paddle.static.CompiledProgram(self.main_prog)
+        program = program.with_data_parallel(
+            loss_name=self.loss.name,
+            build_strategy=build_strategy,
+            places=paddle.static.cuda_places(),
         )
 
         result = self.exe.run(
@@ -155,7 +158,7 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
         )
         self.assertTrue(
             compare(self.reference, result, self.atol, self.rtol),
-            f"[{type(self).__name__}] outputs are miss-matched.",
+            "[{}] outputs are miss-matched.".format(type(self).__name__),
         )
         self.assertTrue(
             verify_node_count(program._graph, "fused_gemm_epilogue", 3),
@@ -312,12 +315,12 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
 
         self.fetch = [
             self.loss.name,
-            f'{multi_layer.linear1.full_name()}.w_0@GRAD',
-            f'{multi_layer.linear1.full_name()}.b_0@GRAD',
-            f'{multi_layer.linear2.full_name()}.w_0@GRAD',
-            f'{multi_layer.linear2.full_name()}.b_0@GRAD',
-            f'{multi_layer.linear3.full_name()}.w_0@GRAD',
-            f'{multi_layer.linear3.full_name()}.b_0@GRAD',
+            '{}.w_0@GRAD'.format(multi_layer.linear1.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear1.full_name()),
+            '{}.w_0@GRAD'.format(multi_layer.linear2.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear2.full_name()),
+            '{}.w_0@GRAD'.format(multi_layer.linear3.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear3.full_name()),
         ]
         self.outs_ref = self.exe.run(
             self.main_prog, feed=self.feed, fetch_list=self.fetch
@@ -329,8 +332,11 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
     def _test_output(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.fuse_gemm_epilogue = True
-        program = paddle.static.CompiledProgram(
-            self.main_prog, build_strategy=build_strategy
+        program = paddle.static.CompiledProgram(self.main_prog)
+        program = program.with_data_parallel(
+            loss_name=self.loss.name,
+            build_strategy=build_strategy,
+            places=paddle.static.cuda_places(),
         )
 
         outs_res = self.exe.run(program, feed=self.feed, fetch_list=self.fetch)
@@ -338,7 +344,7 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
         for ref, res in zip(self.outs_ref, outs_res):
             self.assertTrue(
                 compare(ref, res, self.atol, self.rtol),
-                f"[{type(self).__name__}] output is miss-matched.",
+                "[{}] output is miss-matched.".format(type(self).__name__),
             )
 
         self.assertTrue(

@@ -16,10 +16,11 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(paddle.nn.Layer):
+class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(
         self,
         num_channels,
@@ -65,7 +66,7 @@ class SimpleImgConvPool(paddle.nn.Layer):
         return x
 
 
-class MNIST(paddle.nn.Layer):
+class MNIST(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
 

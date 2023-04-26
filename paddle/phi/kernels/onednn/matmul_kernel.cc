@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include "paddle/phi/kernels/matmul_kernel.h"
 
-#include "paddle/phi/backends/onednn/matmul_utils.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 using dnnl::engine;
@@ -24,15 +24,35 @@ using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
 using dnnl::stream;
-using phi::ReshapeToMatrix;
+using paddle::framework::ReshapeToMatrix;
 
 namespace phi {
+
+DDim GetDimsForInput(const OneDNNContext &dev_ctx,
+                     DDim input_dims,
+                     std::string input_name) {
+  auto shape =
+      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
+          : std::vector<int>();
+  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
+                  ? PADDLE_GET_CONST(
+                        std::vector<int>,
+                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
+                  : std::vector<int>();
+  if (!shape.empty() && !axis.empty()) {
+    return input_dims.reshape(shape).transpose(axis);
+  }
+  return input_dims;
+}
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          std::vector<int64_t> *x_bd_dims,
                          std::vector<int64_t> *y_bd_dims,
-                         DenseTensor *out) {
+                         DenseTensor *out,
+                         const bool is_output_fused) {
   if (x_dims.size() == 1) {
     (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
   } else if (x_dims.size() == 2) {
@@ -54,7 +74,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
     }
   }
 
-  if (x_dims.size() > 2 && y_dims.size() > 2) {
+  if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
     auto out_dims = vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
@@ -101,21 +121,39 @@ void MatmulKernel(const Context &dev_ctx,
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
 
-  auto x_dims = vectorize(x.dims());
-  auto y_dims = vectorize(y.dims());
+  bool fuse_relu = false;
+  if (dev_ctx.HasDnnAttr("fuse_activation")) {
+    auto act_type =
+        PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"));
+    if (act_type == "relu" || act_type == "relu6") {
+      fuse_relu = true;
+    }
+  }
+
+  auto x_dims = vectorize(GetDimsForInput(dev_ctx, x.dims(), "X"));
+  auto y_dims = vectorize(GetDimsForInput(dev_ctx, y.dims(), "Y"));
+
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
 
   std::vector<int64_t> x_bd_dims(ndims, 1);
   std::vector<int64_t> y_bd_dims(ndims, 1);
 
-  CalculateMatrixDims(x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
+  CalculateMatrixDims(x_dims,
+                      y_dims,
+                      &x_bd_dims,
+                      &y_bd_dims,
+                      out,
+                      funcs::IsOutputFused(dev_ctx));
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     funcs::ExecuteMatmul<T, float>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else if (is_bfloat16) {
-    funcs::ExecuteMatmul<T, phi::dtype::bfloat16>(
+    funcs::ExecuteMatmul<T, paddle::platform::bfloat16>(
+        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
+  } else if (fuse_relu) {
+    funcs::ExecuteMatmul<T, uint8_t>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else {
     funcs::ExecuteMatmul<T, int8_t>(
@@ -199,6 +237,11 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
+      paddle::platform::RecordEvent record_reorder(
+          "int_reorder",
+          paddle::platform::TracerEventType::UserDefined,
+          2,
+          paddle::platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -381,6 +424,11 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
+      paddle::platform::RecordEvent record_reorder(
+          "int_reorder",
+          paddle::platform::TracerEventType::UserDefined,
+          2,
+          paddle::platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -415,9 +463,9 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const DenseTensor *input_y,
     const engine &onednn_engine) {
   std::string key = funcs::CreateKey(dev_ctx,
-                                     phi::TransToProtoVarType(input_x->dtype()),
+                                     TransToProtoVarType(input_x->dtype()),
                                      vectorize(input_x->dims()),
-                                     phi::TransToProtoVarType(input_y->dtype()),
+                                     TransToProtoVarType(input_y->dtype()),
                                      vectorize(input_y->dims()),
                                      dev_ctx.GetOutputsName("Out")[0]);
   key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);

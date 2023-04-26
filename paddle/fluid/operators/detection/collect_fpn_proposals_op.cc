@@ -87,11 +87,11 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
-    return phi::KernelKey(data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 
@@ -140,12 +140,9 @@ REGISTER_OPERATOR(
     ops::CollectFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(collect_fpn_proposals,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CollectFpnProposalsOpKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
+                       ops::CollectFpnProposalsOpKernel<float>,
+                       ops::CollectFpnProposalsOpKernel<double>);
 REGISTER_OP_VERSION(collect_fpn_proposals)
     .AddCheckpoint(
         R"ROC(

@@ -19,8 +19,10 @@ if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import nn, static, utils
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
@@ -180,9 +182,6 @@ def check_send_recv_result(dist_main_prog, rank_id):
     return send_result and recv_result
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestMLPReshard(unittest.TestCase):
     def test_mlp_serial(self):
         global _global_parallel_strategy

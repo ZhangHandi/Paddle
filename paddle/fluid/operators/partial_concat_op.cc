@@ -89,13 +89,13 @@ class PartialConcatOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
-      if (input->IsInitialized()) {
+      if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
@@ -105,7 +105,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
                       1,
                       platform::errors::InvalidArgument(
                           "All Inputs of PartialSum OP are Empty!"));
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -138,11 +138,11 @@ class PartialConcatGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out")),
-                          ctx.device_context().GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -202,19 +202,14 @@ REGISTER_OPERATOR(partial_concat,
 
 REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(partial_concat,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialConcatKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialConcatGradientOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+REGISTER_OP_CPU_KERNEL(partial_concat,
+                       ops::PartialConcatKernel<phi::CPUContext, double>,
+                       ops::PartialConcatKernel<phi::CPUContext, float>,
+                       ops::PartialConcatKernel<phi::CPUContext, int64_t>,
+                       ops::PartialConcatKernel<phi::CPUContext, int>);
+
+REGISTER_OP_CPU_KERNEL(partial_concat_grad,
+                       ops::PartialConcatGradientOpKernel<float>,
+                       ops::PartialConcatGradientOpKernel<int>,
+                       ops::PartialConcatGradientOpKernel<double>,
+                       ops::PartialConcatGradientOpKernel<int64_t>);

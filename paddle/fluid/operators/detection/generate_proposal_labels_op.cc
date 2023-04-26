@@ -160,10 +160,10 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "RpnRois");
-    return phi::KernelKey(data_type, platform::CPUPlace());
+    return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
 
@@ -510,7 +510,7 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
   return res;
 }
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -811,12 +811,9 @@ REGISTER_OPERATOR(
     ops::GenerateProposalLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(generate_proposal_labels,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GenerateProposalLabelsKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
+                       ops::GenerateProposalLabelsKernel<float>,
+                       ops::GenerateProposalLabelsKernel<double>);
 
 REGISTER_OP_VERSION(generate_proposal_labels)
     .AddCheckpoint(

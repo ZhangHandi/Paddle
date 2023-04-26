@@ -84,8 +84,6 @@ std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
                                    new std::vector<std::string>({out_name}));
   g->GetOrInit<Name2VarInfoMap>(
       framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
-  g->GetOrInit<std::unordered_set<std::string>>(
-      framework::paddle2cinn::kInplaceVarNames);
   return g;
 }
 

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class Segment:
@@ -25,7 +25,7 @@ class Segment:
         self.end_idx = end_idx
 
     def __str__(self):
-        return '(Segment: {}, {}, {})'.format(
+        return '(Segment: %s, %s, %s)' % (
             self.chunk_type,
             self.start_idx,
             self.end_idx,
@@ -222,8 +222,7 @@ class TestChunkEvalOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestChunkEvalOpWithExclude(TestChunkEvalOp):

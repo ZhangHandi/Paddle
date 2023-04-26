@@ -16,18 +16,28 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 /*
- * Mish OP
+ * Mish converter from fluid to tensorRT.
  */
 class MishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert mish op to tensorrt mish plugin";
+    VLOG(4) << "convert fluid Mish op to tensorrt Mish plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

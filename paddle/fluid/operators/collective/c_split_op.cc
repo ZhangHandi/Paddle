@@ -66,10 +66,10 @@ class CSplitOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -121,12 +121,9 @@ REGISTER_OPERATOR(c_split,
                   ops::CSplitOpGradMaker<paddle::imperative::OpBase>,
                   ops::CSplitOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(c_split,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CSplitOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_split,
+                       ops::CSplitOpCPUKernel<float>,
+                       ops::CSplitOpCPUKernel<double>,
+                       ops::CSplitOpCPUKernel<int>,
+                       ops::CSplitOpCPUKernel<int64_t>,
+                       ops::CSplitOpCPUKernel<plat::float16>);

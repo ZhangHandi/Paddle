@@ -35,15 +35,7 @@ from ..log_helper import get_logger
 from . import utils
 from .adaround import run_adaround
 from .cal_kl_threshold import cal_kl_threshold
-from .quant_config import (
-    SUPPORT_QUANTIZATION_OP_DICT,
-    ARMCPUQuantizer,
-    BaseQuantizer,
-    MKLDNNQuantizer,
-    TensorRTQuantizer,
-)
 from .quantization_pass import (
-    AddQuantDequantForInferencePass,
     AddQuantDequantPass,
     AddQuantDequantPassV2,
     QuantizationFreezePass,
@@ -75,11 +67,12 @@ def _remove_unused_var_nodes(graph):
             all_used_vars.add(output_node)
 
     all_used_vars = {n.node for n in all_used_vars}
-    all_unused_vars = set(
-        filter(
+    all_unused_vars = {
+        n
+        for n in filter(
             lambda node: node.node not in all_used_vars, graph.all_var_nodes()
         )
-    )
+    }
     graph.safe_remove_nodes(all_unused_vars)
     return graph
 
@@ -108,7 +101,7 @@ def _apply_pass(
             ir_pass.set(attr, value)
     ir_pass.apply(cpp_graph)
     if debug:
-        graph.draw('.', f'qat_fp32_{pass_name}', graph.all_op_nodes())
+        graph.draw('.', 'qat_fp32_{}'.format(pass_name), graph.all_op_nodes())
     _remove_unused_var_nodes(graph)
     return graph
 
@@ -134,7 +127,7 @@ class PostTrainingQuantization:
         batch_nums=None,
         algo="KL",
         hist_percent=0.99999,
-        quantizable_op_type=[],
+        quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
         round_type='round',
         learning_rate=0.001,
         is_full_quantize=False,
@@ -152,7 +145,6 @@ class PostTrainingQuantization:
         cache_dir=None,
         scale_dict=None,
         return_graph=False,
-        deploy_backend=None,
     ):
         '''
         Constructor.
@@ -198,9 +190,8 @@ class PostTrainingQuantization:
             hist_percent(float, optional): The threshold of algo 'hist' for activations.
                 Default is 0.99999.
             quantizable_op_type(list[str], optional): List the type of ops
-                that will be quantized. Default is []. If quantizable_op_type is [],
-                it will use the default quantization op type of the qunat config in
-                the current deploy_backend.
+                that will be quantized. Default is ["conv2d", "depthwise_conv2d",
+                "mul"].
             round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
@@ -208,8 +199,8 @@ class PostTrainingQuantization:
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True,
                 apply quantization to all supported quantizable op type. If set
-                is_full_quantized as False, it will apply quantization to the op type
-                according to the input quantizable_op_type or quant config of deploy_backend.
+                is_full_quantized as False, only apply quantization to the op type
+                according to the input quantizable_op_type.
             bias_correction(bool, optional): If set as True, use the bias correction
                 method of https://arxiv.org/abs/1810.05723. Default is False.
             activation_bits(int): quantization bit number for activation.
@@ -243,9 +234,6 @@ class PostTrainingQuantization:
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
             cache_dir(str, optional): This param is deprecated.
-            deploy_backend(str, optional): Deploy backend, it can be None, `TensorRT`,
-                `MKLDNN`, `ARM`. And it will extend the new backend. Default is None,
-                which means to use the default general quantization configuration.
         Returns:
             None
 
@@ -306,6 +294,13 @@ class PostTrainingQuantization:
         self._round_type = round_type
         self._learning_rate = learning_rate
         self._dynamic_quantize_op_type = ['lstm']
+        self._support_quantize_op_type = list(
+            set(
+                utils._weight_supported_quantizable_op_type
+                + utils._act_supported_quantizable_op_type
+                + self._dynamic_quantize_op_type
+            )
+        )
 
         # Check inputs
         assert executor is not None, "The executor cannot be None."
@@ -360,6 +355,15 @@ class PostTrainingQuantization:
         self._onnx_format = onnx_format
         self._clip_extra = True if self._onnx_format else False
         self._skip_tensor_list = skip_tensor_list
+        self._is_full_quantize = is_full_quantize
+        if is_full_quantize:
+            self._quantizable_op_type = self._support_quantize_op_type
+        else:
+            self._quantizable_op_type = quantizable_op_type
+            for op_type in self._quantizable_op_type:
+                assert op_type in self._support_quantize_op_type, (
+                    op_type + " is not supported for quantization."
+                )
         self._optimize_model = optimize_model
 
         # Define variables
@@ -369,6 +373,7 @@ class PostTrainingQuantization:
         self._fetch_list = None
         self._data_loader = data_loader
 
+        self._out_scale_op_list = utils.QUANT_SUPPORTED_OP_TYPE_LIST
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._weight_op_pairs = {}
@@ -397,43 +402,6 @@ class PostTrainingQuantization:
         self.FLAG = False
         if self._program is not None:
             self.FLAG = True
-
-        self._is_full_quantize = is_full_quantize
-        if is_full_quantize:
-            quantizable_op_type = list(SUPPORT_QUANTIZATION_OP_DICT.keys())
-        elif quantizable_op_type:
-            for op_type in quantizable_op_type:
-                assert op_type in list(SUPPORT_QUANTIZATION_OP_DICT.keys()), (
-                    op_type + " is not supported for quantization."
-                )
-        assert (
-            activation_bits == weight_bits
-        ), "activation_bits and weight_bits must be the same, other cases are not supported."
-        support_deploy_backend = [None, "tensorrt", "mkldnn", "arm"]
-        if not deploy_backend:
-            self.quant_config = BaseQuantizer(
-                quantizable_op_type=quantizable_op_type,
-                quant_bits=weight_bits,
-            )
-        elif deploy_backend.lower() == "tensorrt":
-            self.quant_config = TensorRTQuantizer(
-                quantizable_op_type=quantizable_op_type,
-                quant_bits=weight_bits,
-            )
-        elif deploy_backend.lower() == "mkldnn":
-            self.quant_config = MKLDNNQuantizer(
-                quantizable_op_type=quantizable_op_type,
-                quant_bits=weight_bits,
-            )
-        elif deploy_backend.lower() == "arm":
-            self.quant_config = ARMCPUQuantizer(
-                quantizable_op_type=quantizable_op_type,
-                quant_bits=weight_bits,
-            )
-        else:
-            assert "Deploy Backend {} not support, please choose one of {}.".format(
-                deploy_backend, support_deploy_backend
-            )
 
     def quantize(self):
         '''
@@ -518,7 +486,7 @@ class PostTrainingQuantization:
             self._save_output_threshold()
 
         if any(
-            op_type in self.quant_config.activation_quant_operation_types
+            op_type in self._quantizable_op_type
             for op_type in self._dynamic_quantize_op_type
         ):
             self._collect_dynamic_quantize_op_threshold(
@@ -684,8 +652,9 @@ class PostTrainingQuantization:
                             op._set_attr("op_namescope", "skip_quant")
 
                 op_type = op.type
-                if self._is_full_quantize and op_type not in list(
-                    SUPPORT_QUANTIZATION_OP_DICT.keys()
+                if (
+                    self._is_full_quantize
+                    and op_type not in self._quantizable_op_type
                 ):
                     _logger.warning(
                         op_type + " is not supported for quantization."
@@ -695,14 +664,7 @@ class PostTrainingQuantization:
                     in persistable_var_names
                 )
                 # For quantized ops, sample inputs and outputs
-                if (
-                    op_type in self.quant_config.weight_quant_operation_types
-                    or op_type
-                    in self.quant_config.activation_quant_operation_types
-                    or is_conv1d_quant
-                ):
-                    trans_y = (op_type == 'matmul_v2') and op.attr('trans_y')
-                    op_type = op_type + '_trans_y' if trans_y else op_type
+                if op_type in self._quantizable_op_type or is_conv1d_quant:
                     collect_var_name(
                         utils._get_op_input_var_names(op),
                         persistable_var_names,
@@ -721,7 +683,7 @@ class PostTrainingQuantization:
                                     in_var_name
                                 ] = out_var_name
                 # For other op, only sample output scale
-                elif op_type in self.quant_config.observer_operation_types:
+                elif op_type in self._out_scale_op_list:
                     collect_var_name(
                         utils._get_op_output_var_names(op),
                         persistable_var_names,
@@ -790,7 +752,7 @@ class PostTrainingQuantization:
         _logger.info("MSE searching stage ...")
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = var_tensor.flatten()
@@ -844,7 +806,7 @@ class PostTrainingQuantization:
         _logger.info("EMD searching stage ...")
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = var_tensor.flatten()
@@ -900,7 +862,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -941,7 +903,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -976,7 +938,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             min_value = float(np.min(var_tensor))
@@ -993,7 +955,7 @@ class PostTrainingQuantization:
     def _sample_histogram(self):
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if (var_tensor.size == 0) or (
+            if (not var_tensor.any()) or (
                 var_name not in self._sampling_act_histogram
             ):
                 self._zero_size_var_names.add(var_name)
@@ -1032,7 +994,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -1072,11 +1034,7 @@ class PostTrainingQuantization:
         ), "The algo should be min_max to save input threshold."
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
-                if (
-                    op.type in self.quant_config.weight_quant_operation_types
-                    or op.type
-                    in self.quant_config.activation_quant_operation_types
-                ):
+                if op.type in self._quantizable_op_type:
                     for var_name in utils._get_op_input_var_names(op):
                         assert var_name in self._quantized_var_min
                         assert var_name in self._quantized_var_max
@@ -1095,7 +1053,7 @@ class PostTrainingQuantization:
         '''
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if var_tensor.size == 0:
+            if not var_tensor.any():
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = np.abs(var_tensor)
@@ -1133,7 +1091,7 @@ class PostTrainingQuantization:
         '''
         Calculate the KL or hist threshold of quantized variables.
         '''
-        _logger.info(f"Calculate {self._algo} threshold ...")
+        _logger.info("Calculate {} threshold ...".format(self._algo))
         assert self._algo in ["KL", "hist"], "The algo should be KL or hist."
 
         # Abs_max threshold for weights
@@ -1184,6 +1142,10 @@ class PostTrainingQuantization:
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
 
         # use QuantizationTransformPass to insert fake_quant/fake_dequantize op
+        major_quantizable_op_types = []
+        for op_type in utils._weight_supported_quantizable_op_type:
+            if op_type in self._quantizable_op_type:
+                major_quantizable_op_types.append(op_type)
         if not self._onnx_format:
             transform_pass = QuantizationTransformPass(
                 scope=self._scope,
@@ -1192,7 +1154,7 @@ class PostTrainingQuantization:
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=self.quant_config.weight_quant_operation_types,
+                quantizable_op_type=major_quantizable_op_types,
             )
         else:
             transform_pass = QuantizationTransformPassV2(
@@ -1202,7 +1164,7 @@ class PostTrainingQuantization:
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=self.quant_config.weight_quant_operation_types,
+                quantizable_op_type=major_quantizable_op_types,
             )
 
         for sub_graph in graph.all_sub_graphs():
@@ -1212,17 +1174,22 @@ class PostTrainingQuantization:
             transform_pass.apply(sub_graph)
 
         # use AddQuantDequantPass to insert fake_quant_dequant op
+        minor_quantizable_op_types = []
+        for op_type in utils._act_supported_quantizable_op_type:
+            if op_type in self._quantizable_op_type:
+                minor_quantizable_op_types.append(op_type)
         if not self._onnx_format:
             add_quant_dequant_pass = AddQuantDequantPass(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=self.quant_config.activation_quant_operation_types,
+                quantizable_op_type=minor_quantizable_op_types,
             )
         else:
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=self.quant_config.activation_quant_operation_types,
+                quantizable_op_type=minor_quantizable_op_types,
+                is_full_quantized=True,
             )
 
         for sub_graph in graph.all_sub_graphs():
@@ -1316,7 +1283,7 @@ class PostTrainingQuantization:
                     round_type=self._round_type,
                     activation_bits=self._activation_bits,
                     weight_quantize_type=self._weight_quantize_type,
-                    quantizable_op_type=self.quant_config.weight_quant_operation_types,
+                    quantizable_op_type=major_quantizable_op_types,
                 )
 
                 for sub_graph in graph.all_sub_graphs():
@@ -1327,22 +1294,6 @@ class PostTrainingQuantization:
             for sub_graph in graph.all_sub_graphs():
                 sub_graph._for_test = True
                 quant_weight_pass.apply(sub_graph)
-
-            infer_pass_quant_op_types = (
-                self.quant_config.weight_quant_operation_types
-                + self.quant_config.activation_quant_operation_types
-                + self.quant_config.observer_operation_types
-            )
-            out_scale_infer_pass = AddQuantDequantForInferencePass(
-                scope=self._scope,
-                place=self._place,
-                quant_bits=self._activation_bits,
-                quantizable_op_type=infer_pass_quant_op_types,
-                calibration_range_dict=self._scale_dict,
-            )
-            for sub_graph in graph.all_sub_graphs():
-                sub_graph._for_test = True
-                out_scale_infer_pass.apply(sub_graph)
 
         self._program = graph.to_program()
 
@@ -1388,12 +1339,7 @@ class PostTrainingQuantization:
                     threshold_map[out_var_name],
                 )
                 op_node._set_attr("with_quant_attr", True)
-                if (
-                    op_node.type
-                    in self.quant_config.weight_quant_operation_types
-                    or op_node.type
-                    in self.quant_config.activation_quant_operation_types
-                ):
+                if op_node.type in self._quantizable_op_type:
                     op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
@@ -1441,9 +1387,7 @@ class PostTrainingQuantization:
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
                 if op.type in (
-                    self.quant_config.weight_quant_operation_types
-                    + self.quant_config.activation_quant_operation_types
-                    + self.quant_config.observer_operation_types
+                    self._quantizable_op_type + self._out_scale_op_list
                 ):
                     out_var_names = utils._get_op_output_var_names(op)
                     for var_name in out_var_names:

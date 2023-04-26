@@ -15,7 +15,8 @@
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -29,10 +30,9 @@ class TestCollectiveAllGather(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype='float32'
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
             )
-            tindata.desc.set_need_check_feed(False)
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
                 dtype='float32',

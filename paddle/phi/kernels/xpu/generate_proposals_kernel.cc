@@ -20,7 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 
-#include "paddle/phi/common/memory_utils.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 
@@ -37,11 +37,11 @@ static void SortDescending(const XPUContext& dev_ctx,
   scores_slice_cpu.Resize({value.numel()});
   T* scores_slice_cpu_data = dev_ctx.template HostAlloc<T>(&scores_slice_cpu);
 
-  memory_utils::Copy(cpu_place,
-                     scores_slice_cpu_data,
-                     place,
-                     value_data,
-                     sizeof(T) * value.numel());
+  paddle::memory::Copy(cpu_place,
+                       scores_slice_cpu_data,
+                       place,
+                       value_data,
+                       sizeof(T) * value.numel());
   // Sort index
   DenseTensor index_t;
   index_t.Resize({value.numel()});
@@ -65,7 +65,7 @@ static void SortDescending(const XPUContext& dev_ctx,
 
   index_out->Resize({index_t.numel()});
   int* idx_out = dev_ctx.template Alloc<int>(index_out);
-  memory_utils::Copy(
+  paddle::memory::Copy(
       place, idx_out, cpu_place, index, sizeof(T) * index_t.numel());
 }
 
@@ -180,11 +180,11 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   int keep_num;
   const auto xpu_place = dev_ctx.GetPlace();
-  memory_utils::Copy(phi::CPUPlace(),
-                     &keep_num,
-                     xpu_place,
-                     keep_num_t.data<int>(),
-                     sizeof(int));
+  paddle::memory::Copy(phi::CPUPlace(),
+                       &keep_num,
+                       xpu_place,
+                       keep_num_t.data<int>(),
+                       sizeof(int));
   keep_index.Resize({keep_num});
 
   DenseTensor scores_filter, proposals_filter;
@@ -395,7 +395,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     rpn_rois_num->Resize(phi::make_ddim({num}));
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int* num_data = rpn_rois_num->data<int>();
-    memory_utils::Copy(
+    paddle::memory::Copy(
         place, num_data, cpu_place, &tmp_num[0], sizeof(int) * num);
   }
 
@@ -409,6 +409,4 @@ void GenerateProposalsKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    generate_proposals, XPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {
-  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
-}
+    generate_proposals, XPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {}

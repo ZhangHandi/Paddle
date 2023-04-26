@@ -15,24 +15,16 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace paddle {
-namespace operators {
-DEFINE_C_ALLREDUCE_CUDA_KERNEL(MpAllReduceSum, kRedSum)
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::MpAllReduceSumCUDAKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
+
+REGISTER_OP_CUDA_KERNEL(
+    mp_allreduce_sum,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, float>,
 #if NCCL_VERSION_CODE >= 21000
-                          plat::bfloat16,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, plat::bfloat16>,
 #endif
-                          plat::float16) {
-}
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, double>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, int>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, int64_t>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, plat::float16>)

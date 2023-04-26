@@ -35,10 +35,10 @@ class CIdentityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -87,12 +87,9 @@ REGISTER_OPERATOR(c_identity,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
                   ops::CIdentityOpMaker);
 
-PD_REGISTER_STRUCT_KERNEL(c_identity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CIdentityOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(c_identity,
+                       ops::CIdentityOpCPUKernel<float>,
+                       ops::CIdentityOpCPUKernel<double>,
+                       ops::CIdentityOpCPUKernel<int>,
+                       ops::CIdentityOpCPUKernel<int64_t>,
+                       ops::CIdentityOpCPUKernel<plat::float16>);

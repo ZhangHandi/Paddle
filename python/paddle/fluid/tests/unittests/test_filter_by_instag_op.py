@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 """This is Test Case 1"""
 
@@ -73,7 +73,9 @@ class TestFilterByInstagOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
+        self.check_grad(
+            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
+        )
 
 
 """This is Test Case 2"""
@@ -117,7 +119,9 @@ class TestFilterByInstagOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
+        self.check_grad(
+            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
+        )
 
 
 """This is Test Case 3"""
@@ -158,7 +162,9 @@ class TestFilterByInstagOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
+        self.check_grad(
+            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
+        )
 
 
 """This is Test Case 4"""
@@ -198,7 +204,9 @@ class TestFilterByInstagOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
+        self.check_grad(
+            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
+        )
 
 
 class TestFilterByInstagOp6(OpTest):

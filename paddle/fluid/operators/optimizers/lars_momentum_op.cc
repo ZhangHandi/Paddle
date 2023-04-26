@@ -133,11 +133,11 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -233,6 +233,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::LarsMomentumOpVarTypeInference);
-
-PD_REGISTER_STRUCT_KERNEL(
-    lars_momentum, CPU, ALL_LAYOUT, ops::LarsMomentumOpKernel, float, double) {}
+REGISTER_OP_CPU_KERNEL(lars_momentum,
+                       ops::LarsMomentumOpKernel<float>,
+                       ops::LarsMomentumOpKernel<double>);

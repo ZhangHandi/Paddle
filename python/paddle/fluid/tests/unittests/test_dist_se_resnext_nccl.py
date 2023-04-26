@@ -30,7 +30,7 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -49,7 +49,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._mp_mode = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

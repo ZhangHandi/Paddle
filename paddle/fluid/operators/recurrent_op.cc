@@ -758,8 +758,7 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     }
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs),
-                        /*allow_null=*/true),
+        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)),
         true,
         platform::errors::InvalidArgument(
             "The output of(%s) should not be empty.",

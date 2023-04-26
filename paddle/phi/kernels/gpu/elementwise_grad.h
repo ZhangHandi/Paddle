@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"

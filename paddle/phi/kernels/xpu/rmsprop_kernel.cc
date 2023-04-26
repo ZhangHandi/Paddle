@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/common/memory_utils.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 
@@ -29,24 +29,27 @@ void RmspropDenseKernel(const Context& dev_ctx,
                         const DenseTensor& moment,
                         const DenseTensor& learning_rate,
                         const paddle::optional<DenseTensor>& mean_grad,
-                        const paddle::optional<DenseTensor>& master_param,
                         float epsilon,
                         float decay,
                         float momentum,
                         bool centered,
-                        bool multi_precision,
                         DenseTensor* param_out,
                         DenseTensor* moment_out,
                         DenseTensor* mean_square_out,
-                        DenseTensor* mean_grad_out,
-                        DenseTensor* master_param_outs) {
+                        DenseTensor* mean_grad_out) {
   // copy learning_rate to cpu
+  PADDLE_ENFORCE_EQ(
+      learning_rate.dims().size(),
+      1,
+      errors::InvalidArgument("learining rate should have dimension = 1."
+                              " But received learning rate dim [%s] ",
+                              learning_rate.dims().size()));
   T learning_rate_cpu = 0.0f;
-  memory_utils::Copy(CPUPlace(),
-                     static_cast<void*>(&learning_rate_cpu),
-                     dev_ctx.GetPlace(),
-                     static_cast<const void*>(learning_rate.data()),
-                     sizeof(T));
+  paddle::memory::Copy(CPUPlace(),
+                       static_cast<void*>(&learning_rate_cpu),
+                       dev_ctx.GetPlace(),
+                       static_cast<const void*>(learning_rate.data()),
+                       sizeof(T));
 
   // alloc output
   dev_ctx.template Alloc<T>(param_out);

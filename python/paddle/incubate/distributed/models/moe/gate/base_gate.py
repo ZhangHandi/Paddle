@@ -19,7 +19,7 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-from paddle import nn
+import paddle.nn as nn
 
 
 class BaseGate(nn.Layer):

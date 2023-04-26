@@ -21,10 +21,11 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &x,
-                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *out);
+  void operator()(
+      const DeviceContext &ctx,
+      const phi::DenseTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      phi::DenseTensor *out);
 };
 
 template <typename DeviceContext, typename T>
@@ -32,7 +33,7 @@ struct SequenceSoftmaxGradFunctor {
   void operator()(const DeviceContext &ctx,
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
-                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx);
 };
 
@@ -40,7 +41,7 @@ template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &x,
-                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *out) {
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
@@ -63,7 +64,7 @@ struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
-                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx) {
     size_t height = ref_lod.size() - 1;
 
@@ -86,7 +87,7 @@ struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -130,7 +131,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

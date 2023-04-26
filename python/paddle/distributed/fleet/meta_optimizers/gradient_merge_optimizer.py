@@ -27,6 +27,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "GraphExecutionOptimizer",
             "RecomputeOptimizer",
         ]
         self.meta_optimizers_black_list = []

@@ -51,10 +51,10 @@ class PartialSendOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -65,7 +65,12 @@ class PartialSendMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for receiver.").SetDefault(0);
-
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
+        .SetDefault(0);
+#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -94,12 +99,9 @@ REGISTER_OP_WITHOUT_GRADIENT(partial_send,
                              ops::PartialSendOp,
                              ops::PartialSendMaker);
 
-PD_REGISTER_STRUCT_KERNEL(partial_send,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialSendOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+REGISTER_OP_CPU_KERNEL(partial_send,
+                       ops::PartialSendOpCPUKernel<float>,
+                       ops::PartialSendOpCPUKernel<double>,
+                       ops::PartialSendOpCPUKernel<int>,
+                       ops::PartialSendOpCPUKernel<int64_t>,
+                       ops::PartialSendOpCPUKernel<plat::float16>);
