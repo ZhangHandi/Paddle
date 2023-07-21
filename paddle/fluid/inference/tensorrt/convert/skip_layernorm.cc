@@ -115,6 +115,8 @@ class SkipLayerNormOpConverter : public OpConverter {
                               "dimension should > 0"));
         if (enable_int8) {
           type = static_cast<int>(nvinfer1::DataType::kHALF);
+          // type = static_cast<int>(nvinfer1::DataType::kINT8);
+          // LOG(ERROR) << "SKIP LN INT8";
         }
 
         const std::vector<nvinfer1::PluginField> fields{
